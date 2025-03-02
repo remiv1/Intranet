@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <link rel="shortcut icon" href="{{ url_for('static', filename='img/favicone.svg') }}" type="image/x-icon">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- CSS Bootstrap-->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" integrity="sha384-rbsA2VBKQhggwzxH7pPCaAqO46MgnOM80zW1RWuH61DGLwZJEdK2Kadq2F9CUG65" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+    <!--CSS propriétaires-->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style-accueil.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style-general.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style-menu.css') }}">
+    <!--Jeux de polices-->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fenix&family=Pattaya&display=swap" rel="stylesheet">
+    <!-- Sprite SVG Bootstrap -->
+    <svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+        <symbol id="house-door-fill" viewBox="0 0 16 16">
+            <path d="M8 1.52l6 5V14h-4V9H6v5H2V6.52l6-5zm8 5.67v6.11a1 1 0 0 1-1 1h-4a1 1 0 0 1-1-1v-4H6v4a1 1 0 0 1-1 1H1a1 1 0 0 1-1-1V7.19l-.94-.73a.8.8 0 0 1-.06-1.14l7-5.33a1.16 1.16 0 0 1 1.4 0l7 5.33a.8.8 0 0 1-.06 1.14L16 7.19z">
+        </symbol>
+    </svg>
+    <title>La Péraudière | Intranet</title>
+</head>
+<body>
+    <header>
+        <h1>Espace Professeurs Principaux</h1>
+    </header>
+    <main>
+        <!-- Fil d'Ariane -->
+        <div class="container-fluid my-5">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb breadcrumb-custom overflow-hidden text-center bg-body-tertiary border rounded-3">
+                    <li class="breadcrumb-item">
+                        <a class="link-body-emphasis fw-semibold text-decoration-none" href="{{ url_for('home')}}">
+                            <svg class="bi" width="20" height="20">
+                                <use xlink:href="#house-door-fill"></use>
+                            </svg>
+                        </a>
+                    </li>
+                    <li class="breadcrumb-item bi">
+                        Espace Professeurs Princiaux
+                    </li>
+                </ol>
+            </nav>
+        </div> 
+    </main>
+    <footer>
+        <p>© 2025 - La Péraudière - Tous droits réservés</p>
+    </footer>
+    <!--Scripts Propriétaire-->
+    <Script
+        src="{{ url_for('static', filename='js/evenements.js') }}">
+    </Script>
+    <!--Scripts Bootstrap-->
+    <script
+        src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js">
+    </script>
+    <script
+        src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js">
+    </script>
+    <script
+        src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"
+        integrity="sha384-kenU1KFdBIe4zVF0s0G1M5b4hcpxyD9F7jL+jjXkk+Q2h455rYXK/7HAuoJl+0I4"
+        crossorigin="anonymous">
+    </script>
+</body>

@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <link rel="shortcut icon" href="{{ url_for('static', filename='img/favicone.svg') }}" type="image/x-icon">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- CSS Bootstrap-->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" integrity="sha384-rbsA2VBKQhggwzxH7pPCaAqO46MgnOM80zW1RWuH61DGLwZJEdK2Kadq2F9CUG65" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+    <!--CSS propriétaires-->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style-accueil.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style-general.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style-menu.css') }}">
+    <!--Jeux de polices-->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fenix&family=Pattaya&display=swap" rel="stylesheet">
+    <!-- Sprite SVG Bootstrap -->
+    <svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+        <symbol id="house-door-fill" viewBox="0 0 16 16">
+            <path d="M8 1.52l6 5V14h-4V9H6v5H2V6.52l6-5zm8 5.67v6.11a1 1 0 0 1-1 1h-4a1 1 0 0 1-1-1v-4H6v4a1 1 0 0 1-1 1H1a1 1 0 0 1-1-1V7.19l-.94-.73a.8.8 0 0 1-.06-1.14l7-5.33a1.16 1.16 0 0 1 1.4 0l7 5.33a.8.8 0 0 1-.06 1.14L16 7.19z">
+        </symbol>
+    </svg>
+    <title>La Péraudière | Intranet</title>
+</head>
+<body>
+    <header>
+        <h1>Accès Contrat</h1>
+    </header>
+    <main>
+        <!-- Fil d'Ariane -->
+        <div class="container-fluid my-5">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb breadcrumb-custom overflow-hidden text-center bg-body-tertiary border rounded-3">
+                    <li class="breadcrumb-item">
+                        <a class="link-body-emphasis fw-semibold text-decoration-none" href="{{ url_for('home')}}">
+                            <svg class="bi" width="20" height="20">
+                                <use xlink:href="#house-door-fill"></use>
+                            </svg>
+                        </a>
+                    </li>
+                    <li class="breadcrumb-item">
+                        <a class="link-body-emphasis fw-semibold text-decoration-none" href="{{ url_for('contrats') }}">
+                            Gestion des Contrats
+                        </a>
+                    </li>
+                    <li class="breadcrumb-item bi">
+                        Contrat {{ contract['Entreprise'] }} {{ contract['Intitule'] }}
+                    </li>
+                </ol>
+            </nav>
+        </div> 
+        <!-- Conteneur pour les deux accordéons-->
+        <div class="container-fluid">
+            <div id="accordion">
+                <!-- Accordéon évènement-->
+                <div class="card">
+                    <!-- Titre -->
+                    <div class="card-header" id="headingOne">
+                        <h2 class="mb-0 d-flex justify-content-between align-items-center">
+                            Evènements
+                            <button class="btn btn-link" data-toggle="collapse" data-target="#collapseOne" aria-expanded="true" aria-controls="collapseOne">
+                                <i class="fas fa-chevron-down"></i>
+                            </button>
+                        </h2>
+                    </div>
+                    <!-- Contenu -->
+                    <div id="collapseOne" class="collapse show" aria-labelledby="headingOne" data-parent="#accordion">
+                        <div class="card-body">
+                            <div style="text-align: left;">
+                                <button type="button" class="button" data-bs-toggle="modal" data-bs-target="#modalAjoutEvenement">Ajouter</button>
+                            </div>
+                            <table class="table table-bordered">
+                                <thead>
+                                    <tr>
+                                        <th>id</th>
+                                        <th>Date</th>
+                                        <th>Type</th>
+                                        <th>Sous-Type</th>
+                                        <th>Descriptif</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for event in events %}
+                                    <tr>
+                                        <td class="align-middle">{{ event['id'] }}</td>
+                                        <td class="align-middle">{{ event['dateEvenement'] }}</td>
+                                        <td class="align-middle">{{ event['Type'] }}</td>
+                                        <td class="align-middle">{{ event['SType'] }}</td>
+                                        <td class="align-middle">{{ event['Descriptif'] }}</td>
+                                        <td class="align-middle">
+                                            <button type="button" class="button" data-bs-toggle="modal" data-bs-target="#modalModifEvent{{ event['id'] }}">
+                                                Modifier
+                                            </button>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                <!-- Accordéon Documents -->
+                <div class="card">
+                    <!-- Titre-->
+                    <div class="card-header" id="headingTwo">
+                        <h2 class="mb-0 d-flex justify-content-between align-items-center">
+                            Documents
+                            <button class="btn btn-link collapsed" data-toggle="collapse" data-target="#collapseTwo" aria-expanded="false" aria-controls="collapseTwo">
+                                <i class="fas fa-chevron-down"></i>
+                            </button>
+                        </h2>
+                    </div>
+                    <!-- Contenu -->
+                    <div id="collapseTwo" class="collapse" aria-labelledby="headingTwo" data-parent="#accordion">
+                        <div class="card-body">
+                            <!-- Bouton Ajouter -->
+                            <div style="text-align: left;">
+                                <button type="button" class="button" data-bs-toggle="modal" data-bs-target="#modalAjoutDocument">Ajouter</button>
+                            </div>
+                            <!-- Table de présentation des documents -->
+                            <table class="table table-bordered">
+                                <!-- Titres -->
+                                <thead>
+                                    <tr>
+                                        <th>id</th>
+                                        <th>Type</th>
+                                        <th>Sous-Type</th>
+                                        <th>Descriptif</th>
+                                        <th>Lien Document</th>
+                                        <th>Date Document</th>
+                                        <th>Nom Document</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <!-- Corps -->
+                                <tbody>
+                                    {% for document in documents %}
+                                    <tr>
+                                        <td class="align-middle">{{ document['id'] }}</td>
+                                        <td class="align-middle">{{ document['Type'] }}</td>
+                                        <td class="align-middle">{{ document['SType'] }}</td>
+                                        <td class="align-middle">{{ document['Descriptif'] }}</td>
+                                        <td class="align-middle">
+                                            <a href="{{ url_for('download_document', numDoc=document['id'], numContrat=document['idContrat'], Name=document['strLien']) }}" target="_blank">
+                                                {{ document['strLien'] }}
+                                            </a>
+                                        </td>
+                                        <td class="align-middle">{{ document['dateDocument'] }}</td>
+                                        <td class="align-middle">{{ document['Name'] }}</td>
+                                        <td class="align-middle">
+                                            <button type="button" class="button" data-bs-toggle="modal" data-bs-target="#modalModifDoc{{ document['id'] }}">
+                                                Modifier
+                                            </button>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- Modal d'ajout d'évènement -->
+        <div class="modal fade" id="modalAjoutEvenement" tabindex="-1" aria-labelledby="modalAjoutLabel" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="modalAjoutLabel">Ajouter un évênement</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <form action="{{ url_for('add_contrats_event', numContrat=contract['id']) }}" method="post">
+                            <!-- id Contrat -->
+                            <div class="mb-3 d-none">
+                                <input type="text" name="idContratE" id="idContrat" value="{{ contract['id'] }}">
+                            </div>
+                            <!-- Date de l'évènement -->
+                            <div class="mb-3">
+                                <label for="dateEvenementE" class="form-label">Date *</label>
+                                <input type="date" class="form-control" name="dateEvenementE" id="dateEvenementE">
+                            </div>
+                            <!-- Type de l'évènement -->
+                            <div class="mb-3">
+                                <label for="TypeE0" class="form-label">Type *</label>
+                                <select name="TypeE0" class="form-control" id="TypeE0" data-event-id="0" onchange="updateSousMenuEvent(this)" data-contract-id="0" required>
+                                    <option value=""></option>
+                                    <option value="Gestion">Gestion</option>
+                                    <option value="Contact">Contact</option>
+                                    <option value="Contrat">Contrat</option>
+                                    <option value="Autre">Autre</option>
+                                </select>
+                            </div>
+                            <!-- Sous-Type de l'évènement -->
+                            <div class="mb-3">
+                                <label for="STypeE0" class="form-label">Sous-Type *</label>
+                                <select name="STypeE0" class="form-control" id="STypeE0" required>
+                                    <option value=""></option>
+                                </select>
+                            </div>
+                            <!-- Descriptif du document -->
+                            <div class="mb-3">
+                                <label for="Descriptif" class="form-label">Descriptif *</label>
+                                <textarea name="DescriptifE" id="Descriptif" rows="4" id="DescriptifE" class="form-control" required></textarea>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Ajouter</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- Modal d'ajout de document -->
+        <div class="modal fade" id="modalAjoutDocument" tabindex="-1" aria-labelledby="modalAjoutLabel" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="modalAjoutLabel">Ajouter un document</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <form action="{{ url_for('add_contrats_document', numContrat=contract['id']) }}" method="post" enctype="multipart/form-data">
+                            <!-- id Contrat -->
+                            <div class="mb-3 d-none">
+                                <input type="text" name="idContratD" id="idContratD" value="{{ contract['id'] }}">
+                            </div>
+                            <!-- date du document -->
+                            <div class="mb-3">
+                                <label for="dateDocumentD" class="form-label">Date *</label>
+                                <input type="date" class="form-control" name="dateDocumentD" id="dateDocumentD">
+                            </div>
+                            <!-- Type du document -->
+                            <div class="mb-3">
+                                <label for="TypeD0" class="form-label">Type *</label>
+                                <select name="TypeD0" class="form-control" id="TypeD0" data-event-id="0" onchange="updateSousMenuDocument(this)" data-contract-id="0" required>
+                                    <option value=""></option>
+                                    <option value="Contact">Contact</option>
+                                    <option value="Contrat">Contrat</option>
+                                    <option value="Autre">Autre</option>
+                                </select>
+                            </div>
+                            <!-- Sous-Type du document -->
+                            <div class="mb-3">
+                                <label for="STypeD0" class="form-label">Sous-Type *</label>
+                                <select name="STypeD0" class="form-control" id="STypeD0" required>
+                                    <option value=""></option>
+                                </select>
+                            </div>
+                            <!-- Descriptif du document -->
+                            <div class="mb-3">
+                                <label for="DescriptifD" class="form-label">Descriptif *</label>
+                                <textarea name="DescriptifD" id="DescriptifD" rows="4" class="form-control" required></textarea>
+                            </div>
+                            <!-- Lien du document -->
+                            <div class="mb-3 d-none">
+                                <label for="LienDocumentD" class="form-label">Lien</label>
+                                <input type="url" class="form-control" name="LienDocumentD" id="LienDocumentD">
+                            </div>
+                            <!-- Document -->
+                            <div class="mb-3">
+                                <label for="documentD" class="form-label">Document</label>
+                                <input type="file" class="form-control" name="documentD" id="documentD" required>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Ajouter</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- Modaux de modification d'évènements-->
+        {% for event in events %}
+        <div class="modal fade" id="modalModifEvent{{ event['id'] }}" tabindex="-1" aria-labelledby="modalModif{{ event['id'] }}Label" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="modalModif{{ event['id'] }}Label">Modifier évènement du {{ event['dateEvenement'] }}</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <form action="{{ url_for('modif_event_id', numContrat=event['idContrat'], numEvent=event['id']) }}" method="post">
+                            <input type="hidden" name="_method" value="PUT">
+                            <!-- id Contrat -->
+                            <div class="mb-3 d-none">
+                                <input type="text" name="idContratE{{ event['id'] }}" id="idContratE{{ event['id'] }}" value="{{ event['idContrat'] }}">
+                            </div>
+                            <!-- Date d'évènement -->
+                            <div class="mb-3">
+                                <label for="dateEvenementE{{ event['id'] }}" class="form-label">Date *</label>
+                                <input type="date" class="form-control" name="dateEvenementE{{ event['id'] }}" id="dateEvenementE{{ event['id'] }}" value="{{ event['dateEvenement'] }}">
+                            </div>
+                            <!-- Type du document -->
+                            <div class="mb-3">
+                                <label for="TypeE{{ event['id'] }}" class="form-label">Type *</label>
+                                <select name="TypeE{{ event['id'] }}" class="form-control" id="TypeE{{ event['id'] }}" data-event-id="{{ event['id'] }}" onchange="updateSousMenuEvent(this)" data-contract-id="0" required>
+                                    <option value="" {% if event['Type'] == "" %}selected{% endif %}></option>
+                                    <option value="Gestion" {% if event['Type'] == "Gestion" %}selected{% endif %}>Gestion</option>
+                                    <option value="Contact" {% if event['Type'] == "Contact" %}selected{% endif %}>Contact</option>
+                                    <option value="Contrat" {% if event['Type'] == "Contrat" %}selected{% endif %}>Contrat</option>
+                                    <option value="Autre" {% if event['Type'] == "Autre" %}selected{% endif %}>Autre</option>
+                                </select>
+                            </div>
+                            <!-- Sous-Type du document -->
+                            <div class="mb-3">
+                                <label for="STypeE{{ event['id'] }}" class="form-label">Sous-Type *</label>
+                                <select name="STypeE{{ event['id'] }}" class="form-control" id="STypeE{{ event['id'] }}" required>
+                                    <option value="{{ event['SType'] }}" selected>{{ event['SType'] }}</option>
+                                </select>
+                            </div>
+                            <!-- Descriptif du document -->
+                            <div class="mb-3">
+                                <label for="DescriptifE{{ event['id'] }}" class="form-label">Descriptif *</label>
+                                <textarea name="DescriptifE{{ event['id'] }}" id="DescriptifE{{ event['id'] }}" rows="10" id="DescriptifE{{ event['id'] }}" class="form-control" required>{{ event['Descriptif'] }}</textarea>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Modifier</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+        <!-- Modaux de modification de documents-->
+        {% for document in documents %}
+        <div class="modal fade" id="modalModifDoc{{ document['id'] }}" tabindex="-1" aria-labelledby="modalModif{{ document['id'] }}Label" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="modalModif{{ document['id'] }}Label">Modifier document du {{ document['dateDocument'] }}</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <form action="{{ url_for('modif_document_id', numContrat=document['idContrat'], numDoc=document['id']) }}" method="post">
+                            <input type="hidden" name="_method" value="PUT">
+                            <!-- Identifiant du contrat -->
+                            <div class="mb-3 d-none">
+                                <input type="text" name="idContratD{{ document['id'] }}" id="idContratD{{ document['id'] }}" value="{{ document['idContrat'] }}">
+                            </div>
+                            <!-- Date du document -->
+                            <div class="mb-3">
+                                <label for="dateDocumentD{{ document['id'] }}" class="form-label">Date *</label>
+                                <input type="date" class="form-control" name="dateDocumentD{{ document['id'] }}" id="dateDocumentD" value="{{ document['dateDocument'] }}">
+                            </div>
+                            <!-- Type du document -->
+                            <div class="mb-3">
+                                <label for="TypeD{{ document['id'] }}" class="form-label">Type *</label>
+                                <select name="TypeD{{ document['id'] }}" class="form-control" id="TypeD{{ document['id'] }}" data-event-id="{{ document['id'] }}" onchange="updateSousMenuDocument(this)" data-contract-id="0" required>
+                                    <option value="" {% if document['Type'] == "" %}selected{% endif %}></option>
+                                    <option value="Contact" {% if document['Type'] == "Contact" %}selected{% endif %}>Contact</option>
+                                    <option value="Contrat" {% if document['Type'] == "Contrat" %}selected{% endif %}>Contrat</option>
+                                    <option value="Autre" {% if document['Type'] == "Autre" %}selected{% endif %}>Autre</option>
+                                </select>
+                            </div>
+                            <!-- Sous-Type du document -->
+                            <div class="mb-3">
+                                <label for="STypeD{{ document['id'] }}" class="form-label">Sous-Type *</label>
+                                <select name="STypeD{{ document['id'] }}" class="form-control" id="STypeD{{ document['id'] }}" required>
+                                    <option value="{{ document['SType'] }}" selected>{{ document['SType'] }}</option>
+                                </select>
+                            </div>
+                            <!-- Descriptif du document -->
+                            <div class="mb-3">
+                                <label for="DescriptifD{{ document['id'] }}" class="form-label">Descriptif *</label>
+                                <textarea name="DescriptifD{{ document['id'] }}" id="DescriptifD{{ document['id'] }}" rows="4" id="DescriptifD{{ document['id'] }}" class="form-control" required>{{ document['Descriptif'] }}</textarea>
+                            </div>
+                            <!-- Lien du document -->
+                            <div class="mb-3">
+                                <label for="strLienD{{ document['id'] }}" class="form-label">Lien *</label>
+                                <input type="url" class="form-control" name="strLienD{{ document['id'] }}" id="strLienD{{ document['id'] }}" value="{{ document['strLien'] }}">
+                            </div>
+                            <button type="submit" class="btn btn-primary">Modifier</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </main>
+    <footer>
+        <p>© 2025 - La Péraudière - Tous droits réservés</p>
+    </footer>
+    <!--Scripts Propriétaire-->
+    <Script src="{{ url_for('static', filename='js/evenements.js') }}"></Script>
+    <!--Scripts Bootstrap-->
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-kenU1KFdBIe4zVF0s0G1M5b4hcpxyD9F7jL+jjXkk+Q2h455rYXK/7HAuoJl+0I4" crossorigin="anonymous"></script>
+</body>

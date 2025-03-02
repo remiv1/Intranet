@@ -1,0 +1,22 @@
+.etiquette {
+    font-size: 1.5em;
+    font-weight: bold;
+    color: #000;
+    margin-top: 10px;
+    margin-bottom: 10px;
+    text-align: center;
+}
+.champ {
+    width: 100%;
+    border: 1px solid #000;
+    border-radius: 10px;
+    font-size: 1.5em;
+    text-align: center;
+}
+input {
+    border: none;
+    width: calc(100% - 20px);
+    padding: 10px;
+    margin: 10px;
+    font-size: 120%;
+}

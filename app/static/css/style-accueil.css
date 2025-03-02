@@ -1,0 +1,36 @@
+.container {
+    display: flex;
+    justify-content: center;
+    align-content: center;
+}
+.row {
+    display: flex;
+    justify-content: center;
+    align-content: center;
+}
+button {
+    font-family:var(--font-document);
+}
+.button {
+    background-color: var(--primary-color);
+    color: var(--secondary-color);
+    font-family:var(--font-document);
+    font-weight: 500;
+    border-radius: 10px;
+    padding: 10px 20px 10px 20px;
+    margin: 10px;
+    border: none;
+    text-decoration: none;
+    transition: box-shadow 1s;
+}
+.button:hover {
+    box-shadow: 0 0 10px var(--secondary-color);
+}
+.accueil {
+    color: var(--secondary-color);
+    font-size: 100%;
+    letter-spacing: 5px;
+    font-family: var(--font-title);
+    font-weight: 300;
+    text-decoration: none;
+}

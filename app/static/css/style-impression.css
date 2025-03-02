@@ -1,0 +1,32 @@
+main {
+    font-family: Arial, sans-serif;
+    /*display: flex;*/
+    justify-content: center;
+    align-items: center;
+    height: 70vh;
+    margin: 0;
+    background-color: white;
+}
+
+.drop-zone {
+    width: 80%;
+    height: 200px;
+    border: 2px dashed #ccc;
+    border-radius: 20px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    color: var(--primary-color);
+    background-color:var(--secondary-color);
+    transition: background-color 0.3s ease;
+}
+
+.drop-zone.dragover {
+    background-color: #e0ffe0;
+    border-color: #00cc00;
+}
+body {
+    color: var(--primary-color);
+    text-align: justify;
+}
