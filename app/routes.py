@@ -348,7 +348,10 @@ def add_contrats_document(numContrat):
         if request.method == 'POST':
             #Récupération du dernier élément
             last_doc = db_session.query(Document).order_by(Document.id.desc()).first()
-            id = last_doc.id + 1
+            if last_doc:
+                id = last_doc.id + 1
+            else:
+                id = 1
 
             #Récupération des données du formulaire
             idContrat = request.form.get('idContratD')
@@ -418,7 +421,17 @@ def modif_document_id(numDoc, numContrat):
                 SType = request.form.get(f'STypeD{numDoc}')
                 document.SType = SType
                 document.Descriptif = request.form.get(f'DescriptifD{numDoc}')
-                document.strLien = request.form.get(f'strLienD{numDoc}')
+                if request.files[f'documentD{numDoc}']:
+                    DocumentBinaire = request.files[f'documentD{numDoc}']
+                    Name = docs.create_name(dateDocument, idContrat, id, SType)
+                    extention = os.path.splitext(DocumentBinaire.filename)[1]
+                else:
+                    strLien = request.form.get(f'strLienD{numDoc}')
+                    completName = strLien.split('_')[3]
+                    Name = docs.create_name(dateDocument, idContrat, id, SType)
+                    extention = completName.split('.')[1]
+                LienDocument = Name + '.' + extention
+                document.strLien = LienDocument
 
                 # création d'un nom de document
                 date_date = datetime.datetime.strptime(dateDocument, '%Y-%m-%d').date()
@@ -435,7 +448,7 @@ def modif_document_id(numDoc, numContrat):
                 db_session.commit()
 
                 return redirect(url_for('contrats_by_num', numContrat = idContrat))
-
+            
     else:
         return redirect(url_for('logout'))
 

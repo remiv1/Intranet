@@ -9,7 +9,7 @@
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
     <!--CSS propriétaires-->
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style-accueil.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style-contrats.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style-general.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style-menu.css') }}">
     <!--Jeux de polices-->
@@ -51,115 +51,100 @@
                 </ol>
             </nav>
         </div> 
-        <!-- Conteneur pour les deux accordéons-->
-        <div class="container-fluid">
-            <div id="accordion">
-                <!-- Accordéon évènement-->
-                <div class="card">
-                    <!-- Titre -->
-                    <div class="card-header" id="headingOne">
-                        <h2 class="mb-0 d-flex justify-content-between align-items-center">
-                            Evènements
-                            <button class="btn btn-link" data-toggle="collapse" data-target="#collapseOne" aria-expanded="true" aria-controls="collapseOne">
-                                <i class="fas fa-chevron-down"></i>
-                            </button>
-                        </h2>
-                    </div>
-                    <!-- Contenu -->
-                    <div id="collapseOne" class="collapse show" aria-labelledby="headingOne" data-parent="#accordion">
-                        <div class="card-body">
-                            <div style="text-align: left;">
-                                <button type="button" class="button" data-bs-toggle="modal" data-bs-target="#modalAjoutEvenement">Ajouter</button>
-                            </div>
-                            <table class="table table-bordered">
-                                <thead>
-                                    <tr>
-                                        <th>id</th>
-                                        <th>Date</th>
-                                        <th>Type</th>
-                                        <th>Sous-Type</th>
-                                        <th>Descriptif</th>
-                                        <th>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for event in events %}
-                                    <tr>
-                                        <td class="align-middle">{{ event['id'] }}</td>
-                                        <td class="align-middle">{{ event['dateEvenement'] }}</td>
-                                        <td class="align-middle">{{ event['Type'] }}</td>
-                                        <td class="align-middle">{{ event['SType'] }}</td>
-                                        <td class="align-middle">{{ event['Descriptif'] }}</td>
-                                        <td class="align-middle">
-                                            <button type="button" class="button" data-bs-toggle="modal" data-bs-target="#modalModifEvent{{ event['id'] }}">
-                                                Modifier
-                                            </button>
-                                        </td>
-                                    </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
+        <!-- Onglets de gestion des contrats : Evènements & Documents -->
+        <div class="container">
+            <!-- Insertion de deux onglets -->
+            <div class="tab">
+                <button class="tablinks active" onclick="openTab(event, 'Events')" id="defaultOpen">Evènements</button>
+                <button class="tablinks" onclick="openTab(event, 'Documents')">Documents</button>
+            </div>
+            <!-- Conteneur du premier onglet -->
+            <div id="Events" class="tabcontent">
+                <!-- Contenu -->
+                <div id="collapseOne" class="show" aria-labelledby="headingOne" data-parent="#accordion">
+                    <div class="card-body">
+                        <div style="text-align: left;">
+                            <button type="button" class="button" data-bs-toggle="modal" data-bs-target="#modalAjoutEvenement">Ajouter</button>
                         </div>
+                        <table class="table table-bordered">
+                            <thead>
+                                <tr>
+                                    <th>id</th>
+                                    <th>Date</th>
+                                    <th>Type</th>
+                                    <th>Sous-Type</th>
+                                    <th>Descriptif</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for event in events %}
+                                <tr>
+                                    <td class="align-middle">{{ event['id'] }}</td>
+                                    <td class="align-middle">{{ event['dateEvenement'] }}</td>
+                                    <td class="align-middle">{{ event['Type'] }}</td>
+                                    <td class="align-middle">{{ event['SType'] }}</td>
+                                    <td class="align-middle">{{ event['Descriptif'] }}</td>
+                                    <td class="align-middle">
+                                        <button type="button" class="button" data-bs-toggle="modal" data-bs-target="#modalModifEvent{{ event['id'] }}">
+                                            Modifier
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
                     </div>
                 </div>
-                <!-- Accordéon Documents -->
-                <div class="card">
-                    <!-- Titre-->
-                    <div class="card-header" id="headingTwo">
-                        <h2 class="mb-0 d-flex justify-content-between align-items-center">
-                            Documents
-                            <button class="btn btn-link collapsed" data-toggle="collapse" data-target="#collapseTwo" aria-expanded="false" aria-controls="collapseTwo">
-                                <i class="fas fa-chevron-down"></i>
-                            </button>
-                        </h2>
-                    </div>
-                    <!-- Contenu -->
-                    <div id="collapseTwo" class="collapse" aria-labelledby="headingTwo" data-parent="#accordion">
-                        <div class="card-body">
-                            <!-- Bouton Ajouter -->
-                            <div style="text-align: left;">
-                                <button type="button" class="button" data-bs-toggle="modal" data-bs-target="#modalAjoutDocument">Ajouter</button>
-                            </div>
-                            <!-- Table de présentation des documents -->
-                            <table class="table table-bordered">
-                                <!-- Titres -->
-                                <thead>
-                                    <tr>
-                                        <th>id</th>
-                                        <th>Type</th>
-                                        <th>Sous-Type</th>
-                                        <th>Descriptif</th>
-                                        <th>Lien Document</th>
-                                        <th>Date Document</th>
-                                        <th>Nom Document</th>
-                                        <th>Actions</th>
-                                    </tr>
-                                </thead>
-                                <!-- Corps -->
-                                <tbody>
-                                    {% for document in documents %}
-                                    <tr>
-                                        <td class="align-middle">{{ document['id'] }}</td>
-                                        <td class="align-middle">{{ document['Type'] }}</td>
-                                        <td class="align-middle">{{ document['SType'] }}</td>
-                                        <td class="align-middle">{{ document['Descriptif'] }}</td>
-                                        <td class="align-middle">
-                                            <a href="{{ url_for('download_document', numDoc=document['id'], numContrat=document['idContrat'], Name=document['strLien']) }}" target="_blank">
-                                                {{ document['strLien'] }}
-                                            </a>
-                                        </td>
-                                        <td class="align-middle">{{ document['dateDocument'] }}</td>
-                                        <td class="align-middle">{{ document['Name'] }}</td>
-                                        <td class="align-middle">
-                                            <button type="button" class="button" data-bs-toggle="modal" data-bs-target="#modalModifDoc{{ document['id'] }}">
-                                                Modifier
-                                            </button>
-                                        </td>
-                                    </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
+            </div>
+            <!-- Conteneur du deuxième onglet -->
+            <div style="display: none;" id="Documents" class="tabcontent">
+                <!-- Contenu -->
+                <div id="collapseTwo" class="show" aria-labelledby="headingTwo" data-parent="#accordion">
+                    <div class="card-body">
+                        <!-- Bouton Ajouter -->
+                        <div style="text-align: left;">
+                            <button type="button" class="button" data-bs-toggle="modal" data-bs-target="#modalAjoutDocument">Ajouter</button>
                         </div>
+                        <!-- Table de présentation des documents -->
+                        <table class="table table-bordered">
+                            <!-- Titres -->
+                            <thead>
+                                <tr>
+                                    <th>id</th>
+                                    <th>Type</th>
+                                    <th>Sous-Type</th>
+                                    <th>Descriptif</th>
+                                    <th>Lien Document</th>
+                                    <th>Date Document</th>
+                                    <th>Nom Document</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <!-- Corps -->
+                            <tbody>
+                                {% for document in documents %}
+                                <tr>
+                                    <td class="align-middle">{{ document['id'] }}</td>
+                                    <td class="align-middle">{{ document['Type'] }}</td>
+                                    <td class="align-middle">{{ document['SType'] }}</td>
+                                    <td class="align-middle">{{ document['Descriptif'] }}</td>
+                                    <td class="align-middle">
+                                        <a href="{{ url_for('download_document', numDoc=document['id'], numContrat=document['idContrat'], Name=document['strLien']) }}" target="_blank">
+                                            {{ document['strLien'] }}
+                                        </a>
+                                    </td>
+                                    <td class="align-middle">{{ document['dateDocument'] }}</td>
+                                    <td class="align-middle">{{ document['Name'] }}</td>
+                                    <td class="align-middle">
+                                        <button type="button" class="button" data-bs-toggle="modal" data-bs-target="#modalModifDoc{{ document['id'] }}">
+                                            Modifier
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
@@ -256,7 +241,7 @@
                             <!-- Lien du document -->
                             <div class="mb-3 d-none">
                                 <label for="LienDocumentD" class="form-label">Lien</label>
-                                <input type="url" class="form-control" name="LienDocumentD" id="LienDocumentD">
+                                <input type="text" class="form-control" name="LienDocumentD" id="LienDocumentD">
                             </div>
                             <!-- Document -->
                             <div class="mb-3">
@@ -325,12 +310,14 @@
         <div class="modal fade" id="modalModifDoc{{ document['id'] }}" tabindex="-1" aria-labelledby="modalModif{{ document['id'] }}Label" aria-hidden="true">
             <div class="modal-dialog">
                 <div class="modal-content">
+                    <!-- Titre du modal -->
                     <div class="modal-header">
                         <h5 class="modal-title" id="modalModif{{ document['id'] }}Label">Modifier document du {{ document['dateDocument'] }}</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
+                    <!-- Contenu du modal -->
                     <div class="modal-body">
-                        <form action="{{ url_for('modif_document_id', numContrat=document['idContrat'], numDoc=document['id']) }}" method="post">
+                        <form action="{{ url_for('modif_document_id', numContrat=document['idContrat'], numDoc=document['id']) }}" method="post" enctype="multipart/form-data">
                             <input type="hidden" name="_method" value="PUT">
                             <!-- Identifiant du contrat -->
                             <div class="mb-3 d-none">
@@ -363,10 +350,15 @@
                                 <label for="DescriptifD{{ document['id'] }}" class="form-label">Descriptif *</label>
                                 <textarea name="DescriptifD{{ document['id'] }}" id="DescriptifD{{ document['id'] }}" rows="4" id="DescriptifD{{ document['id'] }}" class="form-control" required>{{ document['Descriptif'] }}</textarea>
                             </div>
-                            <!-- Lien du document -->
+                            <!-- Document -->
                             <div class="mb-3">
+                                <label for="documentD{{ document['id'] }}" class="form-label">Document</label>
+                                <input type="file" class="form-control" name="documentD{{ document['id'] }}" id="documentD{{ document['id'] }}">
+                            </div>
+                            <!-- Lien du document -->
+                            <div class="mb-3 d-none">
                                 <label for="strLienD{{ document['id'] }}" class="form-label">Lien *</label>
-                                <input type="url" class="form-control" name="strLienD{{ document['id'] }}" id="strLienD{{ document['id'] }}" value="{{ document['strLien'] }}">
+                                <input type="text" class="form-control" name="strLienD{{ document['id'] }}" id="strLienD{{ document['id'] }}" value="{{ document['strLien'] }}">
                             </div>
                             <button type="submit" class="btn btn-primary">Modifier</button>
                         </form>

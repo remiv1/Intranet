@@ -20,3 +20,6 @@ class Config:
     SSH_HOST = os.getenv('SSH_HOST')
     SSH_USER = os.getenv('SSH_USER')
     SSH_PASSWORD = os.getenv('SSH_PASSWORD')
+    #Gestion impression
+    PRINTER_NAME = os.getenv('PRINTER_NAME')
+    PRINT_PATH = os.getenv('PRINT_PATH')
