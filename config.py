@@ -23,3 +23,8 @@ class Config:
     #Gestion impression
     PRINTER_NAME = os.getenv('PRINTER_NAME')
     PRINT_PATH = os.getenv('PRINT_PATH')
+    #Gestion mail
+    EMAIL_USER = os.getenv('EMAIL_USER')
+    EMAIL_PASSWORD = os.getenv('EMAIL_PASSWORD')
+    EMAIL_SMTP = os.getenv('EMAIL_SMTP')
+    EMAIL_PORT = os.getenv('EMAIL_PORT')

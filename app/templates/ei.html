@@ -47,10 +47,37 @@
                 </ol>
             </nav>
         </div> 
-        <!-- Conteneur de déplacement de fichier-->
-        <div class="drop-zone container-fluid" id="drop-zone">
-            <h2 style="margin-left: 5%;">Déposez des PDF</h2>
-            <input type="file" id="file-input" accept="application/pdf" style="margin-left: 5%; margin-right: 5%;">
+        <!-- Conteneur de paramétrage de l'espace d'impression -->
+        <div class="container-fluid">
+            {% if message %}
+                <div class="alert alert-{{ message.type }}" role="alert">
+                    {{ message.text }}
+                </div>
+            {% endif %}
+            <h2>Paramétrage</h2>
+            <form id="form-impression" class="row" action="{{ url_for('print') }}" method="post" enctype="multipart/form-data">
+                <select name="format" class="form-control col-sm-4" id="format">
+                    <option value="A5">A5</option>
+                    <option value="A4" selected>A4</option>
+                    <option value="A3">A3</option>
+                </select>
+                <select name="recto_verso" class="form-control col-sm-4" id="recto_verso">
+                    <option value="one-sided">Recto seulement</option>
+                    <option value="two-sided-short-edge">Recto-verso / Côté court</option>
+                    <option value="two-sided-long-edge" selected>Recto-verso / Côté long</option>
+                </select>
+                <select name="orientation" class="form-control col-sm-4" id="orientation">
+                    <option value="3">Portrait</option>
+                    <option value="4">Paysage</option>
+                </select>
+                <select name="couleur" class="form-control col-sm-4" id="couleur">
+                    <option value="monochrome">Noir et blanc</option>
+                    <option value="color">Couleur</option>
+                </select>
+                <input type="number" name="copies" class="form-control col-sm-4" id="copies" value="1">
+                <input class="form-control col-sm-4" type="file" name="document" id="document" accept="application/pdf">
+                <button type="submit">Valider</button>
+            </form>
         </div>
     </main>
     <footer>

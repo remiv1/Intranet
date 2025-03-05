@@ -13,6 +13,8 @@
     --font-title:'Pattaya', cursive;
 }
 body {
+    display: flexbox;
+    flex-direction: row;
     color: var(--primary-color);
     text-align: justify;
     font-family: var(--font-document);
@@ -82,9 +84,10 @@ h2 {
     height: 100%;
   }
 footer {
-    display: inline-flex;
+    display: flex;
+    flex-direction: column;
     justify-content: center;
-    align-content: center;
+    align-items: center;
     width: 100%;
     font-style: italic;
     color: var(--tertiary-color);

@@ -148,6 +148,31 @@ def ei():
     else:
         return redirect(url_for('logout'))
 
+@app.route('/print', methods=['POST'])
+def print():
+    if '6' in str(session['habilitation']):
+        BinaryDocument = request.files['document']
+        document = BinaryDocument.filename
+        extension = os.path.splitext(document)[1]
+        docname = document.split('.')[0]
+        username = session['prenom'] + ' ' + session['nom']
+        site_name = 'Intranet'
+        copies = str(request.form.get('copies'))
+        sides = request.form.get('recto_verso')
+        media = request.form.get('format')
+        orientation = request.form.get('orientation')
+        color = request.form.get('couleur')
+
+        #Envoi du document à l'imprimante
+        docs.print_document(BinaryDocument,docname, extension, copies, username, sides, media, orientation, color)
+
+        #Suppression du document sur le serveur
+        docs.delete_file(docname, extension)
+
+        return redirect(url_for('ei', message='Impression envoyée'))
+    else:
+        return redirect(url_for('logout'))
+
 @app.route('/ere')
 def ere():
     if '5' in str(session['habilitation']):

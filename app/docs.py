@@ -1,11 +1,7 @@
 from flask import jsonify, send_file
-import paramiko
 from werkzeug.utils import secure_filename
-import os
-import io
-import datetime
-from app import app
-from app import __init__
+import os, io, datetime, paramiko
+from app import __init__, app, impression
 
 #Définition des variables de gestion
 hostname = app.config["SSH_HOST"]
@@ -13,6 +9,7 @@ port = app.config["SSH_PORT"]
 username = app.config["SSH_USER"]
 password = app.config["SSH_PASSWORD"]
 folder = app.config["UPLOAD_FOLDER"]
+print_folder = app.config["PRINT_PATH"]
 
 #Validation des chemins
 if not os.path.exists(folder):
@@ -76,6 +73,51 @@ def download_file(file_name: str, extension: str):
         file_stream.seek(0)
 
         return send_file(file_stream, as_attachment=True, download_name=secure_filename(file_name) + '.' + extension)
+    
+    except paramiko.SSHException as se:
+        return jsonify({'erreur': f'Erreur SSH : {se}'})
+    except IOError as ie:
+        return jsonify({'erreur': f'Erreur d\'entrée/sortie : {ie}'})
+    except Exception as e:
+        return jsonify({'erreur': f'Erreur inconnue : {e}'})
+    
+def delete_file(file_name: str, extension: str):
+    
+    try:
+        #Création du chemin du fichier sur le serveur
+        file_path = folder + secure_filename(file_name) + '.' + extension
+        
+        #Suppression du fichier sur le serveur
+        sftp = client.open_sftp()
+        sftp.remove(file_path)
+        sftp.close()
+        
+        return jsonify({'message': 'File deleted successfully'})
+    
+    except paramiko.SSHException as se:
+        return jsonify({'erreur': f'Erreur SSH : {se}'})
+    except IOError as ie:
+        return jsonify({'erreur': f'Erreur d\'entrée/sortie : {ie}'})
+    except Exception as e:
+        return jsonify({'erreur': f'Erreur inconnue : {e}'})
+    
+def print_document(file: io.BytesIO, file_name: str, extension: str, copies: str, username: str, sides: str, media: str, orientation: str, color: str):
+    
+    try:
+        #Création du chemin du fichier sur le serveur
+        file_path = print_folder + secure_filename(file_name) + '.' + extension
+        
+        #Transfert du fichier vers le serveur
+        sftp = client.open_sftp()
+        with sftp.file(file_path, 'wb') as remote_file:
+            remote_file.write(file.read())
+        sftp.close()
+        
+        #Impression du fichier
+        impression.print_file(file_path, username, 'Intranet' , copies, sides, media, orientation, color)
+        os.remove(file_path)
+        
+        return jsonify({'message': 'File printed successfully'})
     
     except paramiko.SSHException as se:
         return jsonify({'erreur': f'Erreur SSH : {se}'})
