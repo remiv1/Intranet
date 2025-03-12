@@ -75,6 +75,7 @@ def home():
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
+    message = request.args.get('message', '')
     if request.method == 'POST':
         # récupération du contenu du formulaire
         username = request.form.get('username')
@@ -92,11 +93,28 @@ def login():
             session['nom'] = user.Nom
             session['mail'] = user.mail
             session['habilitation'] = user.habilitation
+            user.falseTest=0
+            db_session.commit()
             return redirect(url_for('home'))
-        
-        return render_template('login_error.html')
-    
-    return render_template('login.html')
+        elif not user:
+            mes='Utilisateur inconnu'
+        else:
+            if user.falseTest == '' or user.falseTest == 0:
+                user.falseTest =1
+                db_session.commit()
+                mes = 'Erreur identifiant ou mot de passe'
+            elif user.falseTest >= 2:
+                user.Locked = True
+                user.falseTest = 3
+                db_session.commit()
+                mes = 'Utilisateur vérouillé, merci de contacter votre administrateur'
+            else:
+                user.falseTest += 1
+                db_session.commit()
+                mes = 'Erreur identifiant ou mot de passe'
+        return redirect(url_for('login', message=mes))
+    else:
+        return render_template('login.html', message=message)
 
 @app.route('/logout')
 def logout():

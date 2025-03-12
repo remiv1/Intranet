@@ -15,6 +15,7 @@ class User(Base):
     habilitation = Column(Integer, nullable=True)
     Début = Column(Date, nullable=True, default=func.current_date())
     Fin = Column(Date, nullable=True)
+    falseTest = Column(Integer, nullable=True, default=0)
     Locked = Column(Boolean, nullable=True, default=False)
 
     def __repr__(self):
