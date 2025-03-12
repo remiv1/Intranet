@@ -26,11 +26,15 @@
     <title>La Péraudière | Intranet</title>
 </head>
 <body>
+    <!-- Titre de la fonctionnalité en en-tête -->
     <header>
         <h1>Gestion des utilisateurs</h1>
     </header>
+    <!-- Corps de la page -->
     <main>
+        <!-- Conteneur du fil d'Ariane -->
         <div class="container-fluid my-5">
+            <!-- Fil d'Ariane -->
             <nav aria-label="breadcrumb">
                 <ol class="breadcrumb breadcrumb-custom overflow-hidden text-center bg-body-tertiary border rounded-3">
                     <li class="breadcrumb-item">
@@ -46,12 +50,15 @@
                 </ol>
             </nav>
         </div> 
+        <!-- Conteneur boutons -->
         <div style="text-align: center;">
             <button type="button" class="button" data-bs-toggle="modal" data-bs-target="#modalAjout">Ajouter un utilisateur</button>
         </div>
+        <!-- Conteneur de table -->
         <div class="container">
             <div class="table-responsive">
                 <table class="table table-striped table-hover">
+                    <!-- En-tête tableau -->
                     <thead>
                         <tr>
                             <th scope="col">Identifiant</th>
@@ -61,6 +68,7 @@
                             <th scope="col">Actions</th>
                         </tr>
                     </thead>
+                    <!-- Contenu du tableau -->
                     <tbody>
                         {% for user in users %}
                             <tr>
@@ -78,35 +86,45 @@
                 </table>
             </div>
         </div>
+        <!-- Modal d'ajout de bénéficiaire -->
         <div class="modal fade" id="modalAjout" tabindex="-1" aria-labelledby="modalAjoutLabel" aria-hidden="true">
             <div class="modal-dialog">
                 <div class="modal-content">
+                    <!-- En-tête du modal d'ajout de bénéficiaire -->
                     <div class="modal-header">
                         <h5 class="modal-title" id="modalAjoutLabel">Ajouter un utilisateur</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
+                    <!-- Corps du modal d'ajout de bénéficiaire -->
                     <div class="modal-body">
+                        <!-- Formulaire d'ajout -->
                         <form action="{{ url_for('ajout_utilisateurs') }}" method="post">
+                            <!-- Ajout du prénom -->
                             <div class="mb-3">
                                 <label for="prenom" class="form-label">Prénom</label>
                                 <input type="text" class="form-control" id="prenom" name="prenom">
                             </div>
+                            <!-- Ajout du nom -->
                             <div class="mb-3">
                                 <label for="nom" class="form-label">Nom</label>
                                 <input type="text" class="form-control" id="nom" name="nom">
                             </div>
+                            <!-- Ajout du mail -->
                             <div class="mb-3">
                                 <label for="mail" class="form-label">Mail</label>
                                 <input type="email" class="form-control" id="mail" name="mail">
                             </div>
+                            <!-- Ajout d'identifiant -->
                             <div class="mb3">
                                 <label for="identifiant" class="form-label">Identifiant (pnnnnnnnnnnn)</label>
                                 <input type="text" class="form-control" id="identifiant" name="identifiant">
                             </div>
+                            <!-- Ajout du mot de passe -->
                             <div class="mb-3">
                                 <label for="mdp" class="form-label">Mot de passe</label>
                                 <input type="password" class="form-control" id="mdp" name="mdp">
                             </div>
+                            <!-- Ajout des habilitations -->
                             <div class="mb-3">
                                 <input type="checkbox" name="habil1" id="administration" value="1">
                                 <label for="administration" class="form-label">Administrateur</label><br>
@@ -121,6 +139,7 @@
                                 <input type="checkbox" name="habil6" id="impression" value="6">
                                 <label for="impression" class="form-label">Impression</label>
                             </div>
+                            <!-- Bouton d'envoi du formulaire -->
                             <button type="submit" class="btn btn-primary">Ajouter</button>
                         </form>
                     </div>
@@ -131,46 +150,60 @@
             <div class="modal fade" id="modalModif{{ user['identifiant'] }}" tabindex="-1" aria-labelledby="modalModif{{ user['identifiant'] }}Label" aria-hidden="true">
                 <div class="modal-dialog">
                     <div class="modal-content">
+                        <!-- En-tête du modal de modification -->
                         <div class="modal-header">
                             <h5 class="modal-title" id="modalModif{{ user['identifiant'] }}Label">Modifier un utilisateur</h5>
                             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                         </div>
+                        <!-- Corps du modal de modification -->
                         <div class="modal-body">
                             <form action="{{ url_for('modif_utilisateurs') }}" method="post">
+                                <!-- Modification de prénom -->
                                 <div class="mb-3">
                                     <label for="prenom" class="form-label">Prénom</label>
                                     <input type="text" class="form-control" id="prenom" name="prenom" value="{{ user['Prenom'] }}">
                                 </div>
+                                <!-- Modification du nom -->
                                 <div class="mb-3">
                                     <label for="nom" class="form-label">Nom</label>
                                     <input type="text" class="form-control" id="nom" name="nom" value="{{ user['Nom'] }}">
                                 </div>
+                                <!-- Modification du mail -->
                                 <div class="mb-3">
                                     <label for="mail" class="form-label">Mail</label>
                                     <input type="email" class="form-control" id="mail" name="mail" value="{{ user['mail'] }}">
                                 </div>
+                                <!-- Modification de l'identifiant -->
                                 <div class="mb3">
                                     <label for="identifiant" class="form-label">Identifiant (pnnnnnnnnnnn)</label>
                                     <input type="text" class="form-control" id="identifiant" name="identifiant" value="{{ user['identifiant'] }}">
                                 </div>
+                                <!-- Modification du mot de passe-->
                                 <div class="mb-3">
                                     <label for="mdp" class="form-label">Mot de passe</label>
                                     <input type="password" class="form-control" id="mdp" name="mdp">
                                 </div>
+                                <!-- Modification des habilitations -->
                                 <div class="mb-3">
-                                    <input type="checkbox" name="habil1" id="administration" value="1" {% if '1' in user.habilitation|string %}checked{% endif %}>
-                                    <label for="administration" class="form-label">Administrateur</label><br>
-                                    <input type="checkbox" name="habil2" id="administratif" value="2" {% if '2' in user.habilitation|string %}checked{% endif %}>
-                                    <label for="administratif" class="form-label">Administratif</label><br>
-                                    <input type="checkbox" name="habil3" id="pprofesseur" value="3" {% if '3' in user.habilitation|string %}checked{% endif %}>
-                                    <label for="pprofesseur" class="form-label">Professeur principal</label><br>
-                                    <input type="checkbox" name="habil4" id="professeur" value="4" {% if '4' in user.habilitation|string %}checked{% endif %}>
-                                    <label for="professeur" class="form-label">Professeur</label><br>
-                                    <input type="checkbox" name="habil5" id="eleve" value="5" {% if '5' in user.habilitation|string %}checked{% endif %}>
-                                    <label for="eleve" class="form-label">Elève</label><br>
-                                    <input type="checkbox" name="habil6" id="impression" value="6" {% if '6' in user.habilitation|string %}checked{% endif %}>
-                                    <label for="impression" class="form-label">Impression</label>
+                                    <input type="checkbox" name="habil1" id="administration{{ user['id'] }}" value="1" {% if '1' in user.habilitation|string %}checked{% endif %}>
+                                    <label for="administration{{ user['id'] }}" class="form-label">Administrateur</label><br>
+                                    <input type="checkbox" name="habil2" id="administratif{{ user['id'] }}" value="2" {% if '2' in user.habilitation|string %}checked{% endif %}>
+                                    <label for="administratif{{ user['id'] }}" class="form-label">Administratif</label><br>
+                                    <input type="checkbox" name="habil3" id="pprofesseur{{ user['id'] }}" value="3" {% if '3' in user.habilitation|string %}checked{% endif %}>
+                                    <label for="pprofesseur{{ user['id'] }}" class="form-label">Professeur principal</label><br>
+                                    <input type="checkbox" name="habil4" id="professeur{{ user['id'] }}" value="4" {% if '4' in user.habilitation|string %}checked{% endif %}>
+                                    <label for="professeur{{ user['id'] }}" class="form-label">Professeur</label><br>
+                                    <input type="checkbox" name="habil5" id="eleve{{ user['id'] }}" value="5" {% if '5' in user.habilitation|string %}checked{% endif %}>
+                                    <label for="eleve{{ user['id'] }}" class="form-label">Elève</label><br>
+                                    <input type="checkbox" name="habil6" id="impression{{ user['id'] }}" value="6" {% if '6' in user.habilitation|string %}checked{% endif %}>
+                                    <label for="impression{{ user['id'] }}" class="form-label">Impression</label>
                                 </div>
+                                <!-- Déverrouillage de l'utilisateur -->
+                                <div class="mb-3">
+                                    <input type="checkbox" name="unlock" id="unlock{{ user['id'] }}" value="1">
+                                    <label for="unlock{{ user['id'] }}" class="form-label">Déverrouiller</label>
+                                </div>
+                                <!-- Bouton d'envoi du formulaire -->
                                 <button type="submit" class="btn btn-primary">Modifier</button>
                             </form>
                         </div>

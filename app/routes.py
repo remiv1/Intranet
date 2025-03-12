@@ -97,21 +97,23 @@ def login():
             db_session.commit()
             return redirect(url_for('home'))
         elif not user:
-            mes='Utilisateur inconnu'
+            mes=f'L\'utilisateur {username} semble inconnu'
         else:
             if user.falseTest == '' or user.falseTest == 0:
                 user.falseTest =1
+                reste = 2
                 db_session.commit()
-                mes = 'Erreur identifiant ou mot de passe'
+                mes = f'Erreur d\'identifiant ou de mot de passe, il vous reste {reste} essais.'
             elif user.falseTest >= 2:
                 user.Locked = True
                 user.falseTest = 3
                 db_session.commit()
-                mes = 'Utilisateur vérouillé, merci de contacter votre administrateur'
+                mes = f'Utilisateur {username} vérouillé, merci de contacter votre administrateur.'
             else:
                 user.falseTest += 1
                 db_session.commit()
-                mes = 'Erreur identifiant ou mot de passe'
+                reste = 3 - user.falseTest
+                mes = f'Erreur d\'identifiant ou de mot de passe, il vous reste {reste} essais.'
         return redirect(url_for('login', message=mes))
     else:
         return render_template('login.html', message=message)
@@ -166,8 +168,8 @@ def ei():
     else:
         return redirect(url_for('logout'))
 
-@app.route('/print', methods=['POST'])
-def print():
+@app.route('/print_doc', methods=['POST'])
+def print_doc():
     if '6' in str(session['habilitation']):
         BinaryDocument = request.files['document']
         document = BinaryDocument.filename
@@ -251,6 +253,7 @@ def modif_utilisateurs():
         identifiant = request.form.get('identifiant')
         mdp = request.form.get('mdp')
         mdp = hashlib.sha256(mdp.encode()).hexdigest()
+        unlock = int(request.form.get('unlock'))
 
         #Création du niveau d'habilitation
         habilitation_values = []
@@ -272,6 +275,11 @@ def modif_utilisateurs():
         user.identifiant = identifiant
         if mdp != '': 
             user.shaMdp = mdp
+        
+        if unlock == 1:
+            user.falseTest = 0
+            user.Locked = False
+
         user.habilitation = habilitation
 
         db_session.commit()
