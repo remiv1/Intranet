@@ -55,7 +55,7 @@
                 </div>
             {% endif %}
             <h2>Paramétrage</h2>
-            <form id="form-impression" class="row" action="{{ url_for('print') }}" method="post" enctype="multipart/form-data">
+            <form id="form-impression" class="row" action="{{ url_for('print_doc') }}" method="post" enctype="multipart/form-data">
                 <select name="format" class="form-control col-sm-4" id="format">
                     <option value="A5">A5</option>
                     <option value="A4" selected>A4</option>

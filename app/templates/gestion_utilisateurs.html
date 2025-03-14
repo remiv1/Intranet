@@ -146,6 +146,7 @@
                 </div>
             </div>
         </div>
+        <!-- Modal de modification des utilisateurs -->
         {% for user in users %}
             <div class="modal fade" id="modalModif{{ user['identifiant'] }}" tabindex="-1" aria-labelledby="modalModif{{ user['identifiant'] }}Label" aria-hidden="true">
                 <div class="modal-dialog">
@@ -184,7 +185,7 @@
                                     <input type="password" class="form-control" id="mdp" name="mdp">
                                 </div>
                                 <!-- Modification des habilitations -->
-                                <div class="mb-3">
+                                <div class="mb-3 d-none">
                                     <input type="checkbox" name="habil1" id="administration{{ user['id'] }}" value="1" {% if '1' in user.habilitation|string %}checked{% endif %}>
                                     <label for="administration{{ user['id'] }}" class="form-label">Administrateur</label><br>
                                     <input type="checkbox" name="habil2" id="administratif{{ user['id'] }}" value="2" {% if '2' in user.habilitation|string %}checked{% endif %}>
