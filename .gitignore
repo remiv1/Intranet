@@ -1,4 +1,5 @@
 .env
 veraudiere
 venveraudiere
-app/__pycache__/
+__pycache__
+app/__pycache__
