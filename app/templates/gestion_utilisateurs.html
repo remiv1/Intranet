@@ -73,8 +73,8 @@
                         {% for user in users %}
                             <tr>
                                 <td>{{ user['identifiant'] }}</td>
-                                <td>{{ user['Prenom'] }}</td>
-                                <td>{{ user['Nom'] }}</td>
+                                <td>{{ user['prenom'] }}</td>
+                                <td>{{ user['nom'] }}</td>
                                 <td>{{ user['mail'] }}</td>
                                 <td>
                                     <button type="button" class="button" data-bs-toggle="modal" data-bs-target="#modalModif{{ user['identifiant'] }}">Modifier</button>
@@ -162,12 +162,12 @@
                                 <!-- Modification de prénom -->
                                 <div class="mb-3">
                                     <label for="prenom" class="form-label">Prénom</label>
-                                    <input type="text" class="form-control" id="prenom" name="prenom" value="{{ user['Prenom'] }}">
+                                    <input type="text" class="form-control" id="prenom" name="prenom" value="{{ user['prenom'] }}">
                                 </div>
                                 <!-- Modification du nom -->
                                 <div class="mb-3">
                                     <label for="nom" class="form-label">Nom</label>
-                                    <input type="text" class="form-control" id="nom" name="nom" value="{{ user['Nom'] }}">
+                                    <input type="text" class="form-control" id="nom" name="nom" value="{{ user['nom'] }}">
                                 </div>
                                 <!-- Modification du mail -->
                                 <div class="mb-3">

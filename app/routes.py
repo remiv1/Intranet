@@ -89,8 +89,8 @@ def login():
         if user and user.shaMdp == password:
             # Stocker les informations de l'utilisateur dans la session
             session['identifiant'] = username
-            session['prenom'] = user.Prenom
-            session['nom'] = user.Nom
+            session['prenom'] = user.prenom
+            session['nom'] = user.nom
             session['mail'] = user.mail
             session['habilitation'] = user.habilitation
             user.falseTest=0
@@ -105,7 +105,7 @@ def login():
                 db_session.commit()
                 mes = f'Erreur d\'identifiant ou de mot de passe, il vous reste {reste} essais.'
             elif user.falseTest >= 2:
-                user.Locked = True
+                user.locked = True
                 user.falseTest = 3
                 db_session.commit()
                 mes = f'Utilisateur {username} vérouillé, merci de contacter votre administrateur.'
@@ -135,7 +135,7 @@ def gestion_droits():
 def gestion_utilisateurs():
     if '2' in str(session['habilitation']): 
         users = db_session.query(User).all()
-        users.sort(key=lambda x: (x.Nom, x.Prenom))
+        users.sort(key=lambda x: (x.nom, x.prenom))
         return render_template('gestion_utilisateurs.html', users=users)
     else:
         return redirect(url_for('logout'))
@@ -223,7 +223,7 @@ def ajout_utilisateurs():
         #Concaténation des valeurs d'habilitation
         habilitation = int(''.join(sorted_habil))
 
-        user = User(Prenom=prenom, Nom=nom, identifiant=identifiant, mail=mail, habilitation=habilitation, shaMdp=mdp)
+        user = User(prenom=prenom, nom=nom, identifiant=identifiant, mail=mail, habilitation=habilitation, shaMdp=mdp)
         db_session.add(user)
         db_session.commit()
 
@@ -253,7 +253,10 @@ def modif_utilisateurs():
         identifiant = request.form.get('identifiant')
         mdp = request.form.get('mdp')
         mdp = hashlib.sha256(mdp.encode()).hexdigest()
-        unlock = int(request.form.get('unlock'))
+        if request.form.get('unlock'):
+            unlock = int(request.form.get('unlock'))
+        else:
+            unlock = 0
 
         #Création du niveau d'habilitation
         habilitation_values = []
@@ -267,10 +270,12 @@ def modif_utilisateurs():
         #Concaténation des valeurs d'habilitation
         habilitation = int(''.join(sorted_habil))
 
+        #Récupération de l'utilisateur
         user = db_session.query(User).filter(User.identifiant == identifiant).first()
 
-        user.Prenom = prenom
-        user.Nom = nom
+        # Modification des informations de l'utilisateur
+        user.prenom = prenom
+        user.nom = nom
         user.mail = mail
         user.identifiant = identifiant
         if mdp != '': 
@@ -278,7 +283,7 @@ def modif_utilisateurs():
         
         if unlock == 1:
             user.falseTest = 0
-            user.Locked = False
+            user.locked = False
 
         user.habilitation = habilitation
 
@@ -329,17 +334,17 @@ def contrats():
             #Récupération des données du formulaire*
             Type = request.form.get('Type0')
             SType = request.form.get('SType0')
-            Entreprise = request.form.get('Entreprise')
+            entreprise = request.form.get('Entreprise')
             numContratExterne = request.form.get('numContratExterne')
-            Intitule = request.form.get('Intitule')
+            intitule = request.form.get('Intitule')
             dateDebut = request.form.get('dateDebut')
             dateFinPreavis = request.form.get('dateFinPreavis')
             dateFin = request.form.get('dateFin')
 
             if dateFin != '': 
-                contract = Contract(Type = Type, SType = SType, Entreprise = Entreprise, numContratExterne = numContratExterne, Intitule = Intitule, dateDebut = dateDebut, dateFin = dateFin, dateFinPreavis = dateFinPreavis)
+                contract = Contract(Type = Type, SType = SType, entreprise = entreprise, numContratExterne = numContratExterne, intitule = intitule, dateDebut = dateDebut, dateFin = dateFin, dateFinPreavis = dateFinPreavis)
             else: 
-                contract = Contract(Type = Type, SType = SType, Entreprise = Entreprise, numContratExterne = numContratExterne, Intitule = Intitule, dateDebut = dateDebut, dateFinPreavis = dateFinPreavis)
+                contract = Contract(Type = Type, SType = SType, entreprise = entreprise, numContratExterne = numContratExterne, intitule = intitule, dateDebut = dateDebut, dateFinPreavis = dateFinPreavis)
             
             db_session.add(contract)
             db_session.commit()
@@ -382,9 +387,9 @@ def add_contrats_event(numContrat):
             dateEvenement = request.form.get('dateEvenementE')
             Type = request.form.get('TypeE0')
             SType = request.form.get('STypeE0')
-            Descriptif = request.form.get('DescriptifE')
+            descriptif = request.form.get('descriptifE')
 
-            event = Event(idContrat = idContrat, dateEvenement = dateEvenement, Type = Type, SType = SType, Descriptif = Descriptif)
+            event = Event(idContrat = idContrat, dateEvenement = dateEvenement, Type = Type, SType = SType, descriptif = descriptif)
             
             db_session.add(event)
             db_session.commit()
@@ -409,21 +414,21 @@ def add_contrats_document(numContrat):
             dateDocument = request.form.get('dateDocumentD')
             Type = request.form.get('TypeD0')
             SType = request.form.get('STypeD0')
-            Descriptif = request.form.get('DescriptifD')
+            descriptif = request.form.get('descriptifD')
             DocumentBinaire = request.files['documentD']
             extention = os.path.splitext(DocumentBinaire.filename)[1]
-            Name = docs.create_name(dateDocument, idContrat, id, SType)
-            LienDocument = Name + extention
+            name = docs.create_name(dateDocument, idContrat, id, SType)
+            LienDocument = name + extention
 
             #Création du document dans la base de données
-            document = Document(idContrat = idContrat, Type = Type, SType = SType, Descriptif = Descriptif, strLien = LienDocument, dateDocument = dateDocument, Name = Name)
+            document = Document(idContrat = idContrat, Type = Type, SType = SType, descriptif = descriptif, strLien = LienDocument, dateDocument = dateDocument, name = name)
             
             #Ajout et Fermeture de la session
             db_session.add(document)
             db_session.commit()
 
             #Enregistrement du fichier sur le serveur
-            docs.upload_file(DocumentBinaire, Name, extention)
+            docs.upload_file(DocumentBinaire, name, extention)
 
             #Retour du formulaire
             return redirect(url_for('contrats_by_num', numContrat=idContrat))
@@ -444,7 +449,7 @@ def modif_event_id(numEvent, numContrat):
                 event.dateEvenement = request.form.get(f'dateEvenementE{numEvent}')
                 event.Type = request.form.get(f'TypeE{numEvent}')
                 event.SType = request.form.get(f'STypeE{numEvent}')
-                event.Descriptif = request.form.get(f'DescriptifE{numEvent}')
+                event.descriptif = request.form.get(f'descriptifE{numEvent}')
 
                 #Retour
                 db_session.commit()
@@ -471,17 +476,17 @@ def modif_document_id(numDoc, numContrat):
                 document.Type = Type
                 SType = request.form.get(f'STypeD{numDoc}')
                 document.SType = SType
-                document.Descriptif = request.form.get(f'DescriptifD{numDoc}')
+                document.descriptif = request.form.get(f'descriptifD{numDoc}')
                 if request.files[f'documentD{numDoc}']:
                     DocumentBinaire = request.files[f'documentD{numDoc}']
-                    Name = docs.create_name(dateDocument, idContrat, id, SType)
+                    name = docs.create_name(dateDocument, idContrat, id, SType)
                     extention = os.path.splitext(DocumentBinaire.filename)[1]
                 else:
                     strLien = request.form.get(f'strLienD{numDoc}')
                     completName = strLien.split('_')[3]
-                    Name = docs.create_name(dateDocument, idContrat, id, SType)
+                    name = docs.create_name(dateDocument, idContrat, id, SType)
                     extention = completName.split('.')[1]
-                LienDocument = Name + '.' + extention
+                LienDocument = name + '.' + extention
                 document.strLien = LienDocument
 
                 # création d'un nom de document
@@ -490,10 +495,10 @@ def modif_document_id(numDoc, numContrat):
                 str_idContrat = str(idContrat).zfill(6)
                 str_idDocument = str(id).zfill(6)
                 str_SType = SType[:5]
-                Name = f"{str_date}_{str_idContrat}_{str_idDocument}_{str_SType}"
+                name = f"{str_date}_{str_idContrat}_{str_idDocument}_{str_SType}"
 
                 #Gestion automatique du nom de document
-                document.Name = Name
+                document.name = name
 
                 #Retour
                 db_session.commit()
@@ -503,11 +508,11 @@ def modif_document_id(numDoc, numContrat):
     else:
         return redirect(url_for('logout'))
 
-@app.route('/contrats/numContrat/<numContrat>/numDocument/<numDoc>/download/<Name>', methods=['GET'])
-def download_document(numDoc, numContrat, Name:str):
+@app.route('/contrats/numContrat/<numContrat>/numDocument/<numDoc>/download/<name>', methods=['GET'])
+def download_document(numDoc, numContrat, name:str):
     if '2' in str(session['habilitation']):
-        extention = Name.split('.')[1]
-        Name = Name.split('.')[0]
-        return docs.download_file(file_name=Name, extension=extention)
+        extention = name.split('.')[1]
+        name = name.split('.')[0]
+        return docs.download_file(file_name=name, extension=extention)
     else:
         return redirect(url_for('logout'))

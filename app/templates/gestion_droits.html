@@ -64,8 +64,8 @@
                         {% for user in users %}
                             <tr>
                                 <td>{{ user['identifiant'] }}</td>
-                                <td>{{ user['Prenom'] }}</td>
-                                <td>{{ user['Nom'] }}</td>
+                                <td>{{ user['prenom'] }}</td>
+                                <td>{{ user['nom'] }}</td>
                                 <td>{{ user['mail'] }}</td>
                                 <td>
                                     <button type="button" class="button" data-bs-toggle="modal" data-bs-target="#modalModif{{ user['id'] }}">Modifier</button>
@@ -82,7 +82,7 @@
             <div class="modal-dialog">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h5 class="modal-title" id="modalModif{{ user['id'] }}Label">Modifier {{ user['Prenom'] }} {{ user['Nom'] }}</h5>
+                        <h5 class="modal-title" id="modalModif{{ user['id'] }}Label">Modifier {{ user['prenom'] }} {{ user['nom'] }}</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div class="modal-body">
@@ -90,7 +90,7 @@
                             <input type="hidden" name="identifiant" value="{{ user['identifiant'] }}">
                             <div class="form-group">
                                 <label for="mdp">Nouveau mot de passe<br>(ne rien mettre pour ne pas modifier)</label>
-                                <input type="password" class="form-control" id="mdp" name="mdp" required>
+                                <input type="password" class="form-control" id="mdp" name="mdp">
                                 <div class="mb-3">
                                     <input type="checkbox" name="habil1" id="administration" value="1" {% if '1' in user.habilitation|string %}checked{% endif %}>
                                     <label for="administration" class="form-label">Administrateur</label><br>
