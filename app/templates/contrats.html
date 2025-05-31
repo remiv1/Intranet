@@ -101,9 +101,9 @@
                                 </td>
                                 <td class="align-middle">{{ contract['Type'] }}</td>
                                 <td class="align-middle">{{ contract['SType'] }}</td>
-                                <td class="align-middle">{{ contract['Entreprise'] }}</td>
+                                <td class="align-middle">{{ contract['entreprise'] }}</td>
                                 <td class="align-middle">{{ contract['numContratExterne'] }}</td>
-                                <td class="align-middle">{{ contract['Intitule'] }}</td>
+                                <td class="align-middle">{{ contract['intitule'] }}</td>
                                 <td class="align-middle">{{ contract['dateDebut'] }}</td>
                                 <td class="align-middle">{{ contract['dateFinPreavis'] }}</td>
                                 <td class="align-middle">{{ contract['dateFin'] }}</td>
@@ -182,7 +182,7 @@
             <div class="modal-dialog">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h5 class="modal-title" id="modalModifLabel{{ contract['id'] }}">Modifier contrat {{ contract['Entreprise'] }} {{ contract['numContratExterne'] }}</h5>
+                        <h5 class="modal-title" id="modalModifLabel{{ contract['id'] }}">Modifier contrat {{ contract['entreprise'] }} {{ contract['numContratExterne'] }}</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div class="modal-body">
@@ -208,7 +208,7 @@
                             </div>
                             <div class="mb-3">
                                 <label for="Entreprise{{ contract['id'] }}" class="form-label">Entreprise *</label>
-                                <input type="text" class="form-control" id="Entreprise{{ contract['id'] }}" name="Entreprise{{ contract['id'] }}" value="{{ contract['Entreprise'] }}" required>
+                                <input type="text" class="form-control" id="Entreprise{{ contract['id'] }}" name="Entreprise{{ contract['id'] }}" value="{{ contract['entreprise'] }}" required>
                             </div>
                             <div class="mb-3">
                                 <label for="numContratExterne{{ contract['id'] }}" class="form-label">N° Contrat *</label>
@@ -216,7 +216,7 @@
                             </div>
                             <div class="mb3">
                                 <label for="Intitule{{ contract['id'] }}" class="form-label">Intitulé *</label>
-                                <input type="text" class="form-control" id="Intitule{{ contract['id'] }}" name="Intitule{{ contract['id'] }}" value="{{ contract['Intitule'] }}" required>
+                                <input type="text" class="form-control" id="Intitule{{ contract['id'] }}" name="Intitule{{ contract['id'] }}" value="{{ contract['intitule'] }}" required>
                             </div>
                             <div class="mb-3">
                                 <label for="dateDebut{{ contract['id'] }}" class="form-label">Début *</label>

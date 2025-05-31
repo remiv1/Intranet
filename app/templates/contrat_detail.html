@@ -84,7 +84,7 @@
                                     <td class="align-middle">{{ event['dateEvenement'] }}</td>
                                     <td class="align-middle">{{ event['Type'] }}</td>
                                     <td class="align-middle">{{ event['SType'] }}</td>
-                                    <td class="align-middle">{{ event['Descriptif'] }}</td>
+                                    <td class="align-middle">{{ event['descriptif'] }}</td>
                                     <td class="align-middle">
                                         <button type="button" class="button" data-bs-toggle="modal" data-bs-target="#modalModifEvent{{ event['id'] }}">
                                             Modifier
@@ -128,14 +128,14 @@
                                     <td class="align-middle">{{ document['id'] }}</td>
                                     <td class="align-middle">{{ document['Type'] }}</td>
                                     <td class="align-middle">{{ document['SType'] }}</td>
-                                    <td class="align-middle">{{ document['Descriptif'] }}</td>
+                                    <td class="align-middle">{{ document['descriptif'] }}</td>
                                     <td class="align-middle">
-                                        <a href="{{ url_for('download_document', numDoc=document['id'], numContrat=document['idContrat'], Name=document['strLien']) }}" target="_blank">
+                                        <a href="{{ url_for('download_document', numDoc=document['id'], numContrat=document['idContrat'], name=document['strLien']) }}" target="_blank">
                                             {{ document['strLien'] }}
                                         </a>
                                     </td>
                                     <td class="align-middle">{{ document['dateDocument'] }}</td>
-                                    <td class="align-middle">{{ document['Name'] }}</td>
+                                    <td class="align-middle">{{ document['name'] }}</td>
                                     <td class="align-middle">
                                         <button type="button" class="button" data-bs-toggle="modal" data-bs-target="#modalModifDoc{{ document['id'] }}">
                                             Modifier
@@ -188,8 +188,8 @@
                             </div>
                             <!-- Descriptif du document -->
                             <div class="mb-3">
-                                <label for="Descriptif" class="form-label">Descriptif *</label>
-                                <textarea name="DescriptifE" id="Descriptif" rows="4" id="DescriptifE" class="form-control" required></textarea>
+                                <label for="descriptifE" class="form-label">Descriptif *</label>
+                                <textarea name="descriptifE" rows="4" id="descriptifE" class="form-control" required></textarea>
                             </div>
                             <button type="submit" class="btn btn-primary">Ajouter</button>
                         </form>
@@ -235,8 +235,8 @@
                             </div>
                             <!-- Descriptif du document -->
                             <div class="mb-3">
-                                <label for="DescriptifD" class="form-label">Descriptif *</label>
-                                <textarea name="DescriptifD" id="DescriptifD" rows="4" class="form-control" required></textarea>
+                                <label for="descriptifD" class="form-label">Descriptif *</label>
+                                <textarea name="descriptifD" id="descriptifD" rows="4" class="form-control" required></textarea>
                             </div>
                             <!-- Lien du document -->
                             <div class="mb-3 d-none">
@@ -295,8 +295,8 @@
                             </div>
                             <!-- Descriptif du document -->
                             <div class="mb-3">
-                                <label for="DescriptifE{{ event['id'] }}" class="form-label">Descriptif *</label>
-                                <textarea name="DescriptifE{{ event['id'] }}" id="DescriptifE{{ event['id'] }}" rows="10" id="DescriptifE{{ event['id'] }}" class="form-control" required>{{ event['Descriptif'] }}</textarea>
+                                <label for="descriptifE{{ event['id'] }}" class="form-label">Descriptif *</label>
+                                <textarea name="descriptifE{{ event['id'] }}" id="descriptifE{{ event['id'] }}" rows="10" id="descriptifE{{ event['id'] }}" class="form-control" required>{{ event['descriptif'] }}</textarea>
                             </div>
                             <button type="submit" class="btn btn-primary">Modifier</button>
                         </form>
@@ -347,8 +347,8 @@
                             </div>
                             <!-- Descriptif du document -->
                             <div class="mb-3">
-                                <label for="DescriptifD{{ document['id'] }}" class="form-label">Descriptif *</label>
-                                <textarea name="DescriptifD{{ document['id'] }}" id="DescriptifD{{ document['id'] }}" rows="4" id="DescriptifD{{ document['id'] }}" class="form-control" required>{{ document['Descriptif'] }}</textarea>
+                                <label for="descriptifD{{ document['id'] }}" class="form-label">Descriptif *</label>
+                                <textarea name="descriptifD{{ document['id'] }}" id="descriptifD{{ document['id'] }}" rows="4" id="descriptifD{{ document['id'] }}" class="form-control" required>{{ document['descriptif'] }}</textarea>
                             </div>
                             <!-- Document -->
                             <div class="mb-3">
