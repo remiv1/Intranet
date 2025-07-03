@@ -1,0 +1,36 @@
+version: "3.9"
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.app
+    container_name: intranet_app
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+    volumes:
+      - ./documents:/home/partage/gestion  # Persistance des fichiers de contrats
+    environment:
+      - DATABASE_URL=${DB_URL}
+    env_file:
+      - .env
+    restart: always
+    entrypoint: ["sh", "entrypoint.sh"]
+
+  db:
+    image: mariadb:latest
+    container_name: intranet_db
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ${ROOT_PASSWORD}
+      MYSQL_DATABASE: ${DB_NAME}
+      MYSQL_USER: ${DB_USER}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+    env_file:
+      - .env
+    volumes:
+      - dbdata:/var/lib/mysql
+
+volumes:
+  dbdata:

@@ -1,0 +1,5 @@
+cd /chemin/vers/les/sources/python
+make clean
+./configure --enable-optimizations
+make -j$(nproc)
+sudo make install

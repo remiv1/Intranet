@@ -4,21 +4,21 @@ import os, io, datetime, paramiko
 from app import __init__, app, impression
 
 #Définition des variables de gestion
-hostname = app.config["SSH_HOST"]
-port = app.config["SSH_PORT"]
-username = app.config["SSH_USER"]
-password = app.config["SSH_PASSWORD"]
-folder = app.config["UPLOAD_FOLDER"]
-print_folder = app.config["PRINT_PATH"]
+HOSTNAME = app.config["SSH_HOST"]
+PORT = app.config["SSH_PORT"]
+USERNAME = app.config["SSH_USER"]
+PASSWORD = app.config["SSH_PASSWORD"]
+FOLDER = app.config["UPLOAD_FOLDER"]
+PRINT_FOLDER = app.config["PRINT_PATH"]
 
 #Validation des chemins
-if not os.path.exists(folder):
-    os.makedirs(folder)
+if not os.path.exists(FOLDER):
+    os.makedirs(FOLDER)
 
 #Connexion au serveur SSH
 client = paramiko.SSHClient()
 client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-client.connect(hostname=hostname, port=port, username=username, password=password)
+client.connect(HOSTNAME=HOSTNAME, port=PORT, username=USERNAME, password=PASSWORD)
 
 #Création d'un nom de docment
 def create_name(doc_date: str, idContrat: str, idDocument: str, SType: str):

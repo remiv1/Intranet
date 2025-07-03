@@ -1,0 +1,51 @@
+.
+├── app
+│   ├── docs.py
+│   ├── impression.py
+│   ├── __init__.py
+│   ├── models.py
+│   ├── __pycache__
+│   │   └── ...
+│   ├── rapport_echeances.py
+│   ├── routes.py
+│   ├── static
+│   │   ├── css
+│   │   │   ├── style-accueil.css
+│   │   │   ├── style-contrats.css
+│   │   │   ├── style-documents.css
+│   │   │   ├── style-echeances.css
+│   │   │   ├── style-general.css
+│   │   │   ├── style-impression.css
+│   │   │   ├── style-login.css
+│   │   │   ├── style-menu.css
+│   │   │   └── style-tableau.css
+│   │   ├── img
+│   │   │   └── favicone.svg
+│   │   └── js
+│   │       ├── accueil.js
+│   │       ├── contrats.js
+│   │       ├── documents.js
+│   │       ├── echeances.js
+│   │       ├── evenements.js
+│   │       └── impression.js
+│   └── templates
+│       ├── contrat_detail.html
+│       ├── contrats.html
+│       ├── ei.html
+│       ├── ere.html
+│       ├── erp.html
+│       ├── erpp.html
+│       ├── gestion_droits.html
+│       ├── gestion_utilisateurs.html
+│       ├── index.html
+│       └── login.html
+├── arborescence.txt
+├── config.py
+├── __pycache__
+│   └── ...
+├── README.md
+├── requirements.txt
+├── run.py
+├── todo.txt
+├── veraudiere (virtual environment)
+│   ├── ...
