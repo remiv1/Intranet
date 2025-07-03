@@ -1,5 +1,8 @@
-cd /chemin/vers/les/sources/python
-make clean
-./configure --enable-optimizations
-make -j$(nproc)
-sudo make install
+test
+-[ ] test d'ajout de contrats
+-[ ] test d'ajout d'évènements
+-[ ] test d'ajout de documents
+impression
+-[ ] modification de l'installation pour que l'imprimante soit en direct sur le switch
+-[ ] Gestion de cups en local
+-[ ] Liaison de cups Local/Conteneur

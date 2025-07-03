@@ -15,14 +15,14 @@ class Config:
     DB_HOST = os.getenv('DB_HOST')
     DB_NAME = os.getenv('DB_NAME')
     #Gestion SSH
-    UPLOAD_FOLDER = os.getenv('FILES_PATH')
+    UPLOAD_FOLDER = os.getenv('FILES_DOCKER_PATH')
     SSH_PORT = os.getenv('SSH_PORT')
     SSH_HOST = os.getenv('SSH_HOST')
     SSH_USER = os.getenv('SSH_USER')
     SSH_PASSWORD = os.getenv('SSH_PASSWORD')
     #Gestion impression
     PRINTER_NAME = os.getenv('PRINTER_NAME')
-    PRINT_PATH = os.getenv('PRINT_PATH')
+    PRINT_PATH = os.getenv('PRINT_DOCKER_PATH')
     #Gestion mail
     EMAIL_USER = os.getenv('EMAIL_USER')
     EMAIL_PASSWORD = os.getenv('EMAIL_PASSWORD')

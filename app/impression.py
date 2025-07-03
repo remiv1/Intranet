@@ -2,7 +2,7 @@ import cups
 from app import app
 
 WATCHED_DIR = app.config["PRINT_PATH"]
-conn = cups.Connection()
+conn = cups.Connection(host='host.docker.internal')
 printer_name = app.config["PRINTER_NAME"]
 
 def print_file(file_path, user_name='Default', site_name='Default', copies='1', sides='one-sided', media='A4', orientation='3', color='monochrome'):

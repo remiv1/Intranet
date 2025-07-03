@@ -6,5 +6,5 @@ while ! nc -z db 3306; do
 done
 
 echo "✅ Base de données disponible !"
-echo "🚀 Lancement de l'application Flask (main.py)..."
-exec python main.py
+echo "🚀 Lancement de l'application Flask (run.py)..."
+exec python run.py

@@ -6,11 +6,12 @@ services:
       dockerfile: Dockerfile.app
     container_name: intranet_app
     ports:
-      - "8000:8000"
+      - "80:5000"  # Port d'écoute de l'application
     depends_on:
       - db
     volumes:
-      - ./documents:/home/partage/gestion  # Persistance des fichiers de contrats
+      - ${FILES_LOCAL_PATH}:${FILES_DOCKER_PATH}  # Persistance des fichiers de contrats
+      - ${PRINT_LOCAL_PATH}:${PRINT_DOCKER_PATH}
     environment:
       - DATABASE_URL=${DB_URL}
     env_file:
@@ -30,7 +31,12 @@ services:
     env_file:
       - .env
     volumes:
-      - dbdata:/var/lib/mysql
+      - dbdata:${DB_DOCKER_PATH}
 
 volumes:
   dbdata:
+    driver: local
+    driver_opts:
+      type: none
+      device: ${DB_LOCAL_PATH}
+      o: bind
