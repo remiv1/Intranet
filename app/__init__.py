@@ -25,13 +25,17 @@ db_url = URL.create(
 )
 
 #Créer l'engin SQLAlchemy
-engine = create_engine(db_url, echo=True)
+engine = create_engine(db_url,
+                        pool_recycle=1800,
+                        pool_timeout=30,
+                        pool_pre_ping=True,
+                        connect_args={'connect_timeout': 10},
+                        echo=True)
 
 #Créer les tables de la base de données
 Base.metadata.create_all(engine)
 
 #Créer une session de base de données
 Session = sessionmaker(bind=engine)
-db_session = Session()
 
 from app import routes

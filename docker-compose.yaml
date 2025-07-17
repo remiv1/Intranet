@@ -1,4 +1,3 @@
-version: "3.9"
 services:
   web:
     build:
@@ -18,6 +17,9 @@ services:
       - .env
     restart: always
     entrypoint: ["sh", "entrypoint.sh"]
+    networks:
+      intranet_net:
+        ipv4_address: 172.20.0.10
 
   db:
     image: mariadb:latest
@@ -32,6 +34,8 @@ services:
       - .env
     volumes:
       - dbdata:${DB_DOCKER_PATH}
+    networks:
+      - intranet_net
 
 volumes:
   dbdata:
@@ -40,3 +44,11 @@ volumes:
       type: none
       device: ${DB_LOCAL_PATH}
       o: bind
+
+networks:
+  intranet_net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+          gateway: 172.20.0.1
