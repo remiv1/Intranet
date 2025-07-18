@@ -2,3 +2,4 @@
 veraudiere/
 __pycache__/
 app/__pycache__
+.pem
