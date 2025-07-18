@@ -1,0 +1,69 @@
+version: '3.8'
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.app
+    container_name: intranet_app_dev
+    depends_on:
+      - db
+    ports:
+      - "5000:5000"  # Port de développement Flask
+    volumes:
+      - .:/app  # Montage du code source pour développement
+      - ${FILES_LOCAL_PATH}:${FILES_DOCKER_PATH}
+      - ${PRINT_LOCAL_PATH}:${PRINT_DOCKER_PATH}
+    environment:
+      - FLASK_ENV=development
+      - FLASK_DEBUG=1
+      - DATABASE_URL=${DB_URL}
+    env_file:
+      - .env.dev
+    restart: "no"  # Pas de redémarrage automatique en dev
+    command: python run.py
+    networks:
+      - intranet_dev_net
+
+  db:
+    image: mariadb:latest
+    container_name: intranet_db_dev
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ${ROOT_PASSWORD}
+      MYSQL_DATABASE: ${DB_NAME}
+      MYSQL_USER: ${DB_USER}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+    env_file:
+      - .env.dev
+    ports:
+      - "3306:3306"  # Port exposé pour accès direct en dev
+    volumes:
+      - dbdata_dev:/var/lib/mysql
+    networks:
+      - intranet_dev_net
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: intranet_phpmyadmin_dev
+    depends_on:
+      - db
+    environment:
+      PMA_HOST: db
+      PMA_PORT: 3306
+      PMA_USER: ${DB_USER}
+      PMA_PASSWORD: ${DB_PASSWORD}
+    env_file:
+      - .env.dev
+    ports:
+      - "8080:80"  # Interface web phpmyadmin
+    networks:
+      - intranet_dev_net
+
+volumes:
+  dbdata_dev:
+    driver: local
+
+networks:
+  intranet_dev_net:
+    driver: bridge
