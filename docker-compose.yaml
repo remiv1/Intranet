@@ -6,7 +6,6 @@ services:
     container_name: intranet_app
     depends_on:
       - db
-      - nginx
     volumes:
       - ${FILES_LOCAL_PATH}:${FILES_DOCKER_PATH}  # Persistance des fichiers de contrats
       - ${PRINT_LOCAL_PATH}:${PRINT_DOCKER_PATH}
@@ -22,6 +21,8 @@ services:
   nginx:
     image: nginx:latest
     container_name: intranet_proxy
+    depends_on:
+      - web
     volumes:
       - ./app/nginx/nginx.conf:/etc/nginx/nginx.conf
       - ./app/nginx/certs:/etc/nginx/certs
