@@ -4,10 +4,9 @@ services:
       context: .
       dockerfile: Dockerfile.app
     container_name: intranet_app
-    ports:
-      - "80:5000"  # Port d'écoute de l'application
     depends_on:
       - db
+      - nginx
     volumes:
       - ${FILES_LOCAL_PATH}:${FILES_DOCKER_PATH}  # Persistance des fichiers de contrats
       - ${PRINT_LOCAL_PATH}:${PRINT_DOCKER_PATH}
@@ -24,12 +23,11 @@ services:
     image: nginx:latest
     container_name: intranet_proxy
     volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
-      - ./nginx/certs:/etc/nginx/certs
+      - ./app/nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./app/nginx/certs:/etc/nginx/certs
     ports:
       - "443:443"  # Port HTTPS
-    depends_on:
-      - intranet_app
+      - "80:80"
     networks:
       - intranet_net
 
