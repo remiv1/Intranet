@@ -104,33 +104,19 @@ docker compose up -d
 ### 📋 Variables d'environnement détaillées
 
 Le fichier `.env` contient toutes les variables de configuration nécessaires :
-
-| Variable             | Description                              | Exemple                           |
-|----------------------|------------------------------------------|-----------------------------------|
-| `ROOT_PASSWORD`      | Mot de passe root MySQL                  | `mot_de_passe_securise`           |
-| `DB_USER`            | Utilisateur de la base de données        | `lsorueidpr`                      |
-| `DB_PASSWORD`        | Mot de passe de la base de données       | `mot_de_passe_securise`           |
-| `DB_HOST`            | Hôte de la base de données               | `intranet_db`                     |
-| `DB_NAME`            | Nom de la base de données                | `msldkfjgury`                     |
-| `DB_URL`             | URL de connexion à la base de données    | `mysql+mysqlconnector://...`            |
-| `SECRET_KEY`         | Clé secrète Flask                        | `cle_secrete_a_generer`           |
-| `FILES_DOCKER_PATH`  | Chemin Docker des documents              | `/documents`                      |
-| `PRINT_DOCKER_PATH`  | Chemin Docker des impressions            | `/print`                          |
-| `FILES_LOCAL_PATH`   | Chemin local des documents               | `/home/partage/documents`         |
-| `PRINT_LOCAL_PATH`   | Chemin local des impressions             | `/home/partage/print`             |
-| `DB_DOCKER_PATH`     | Chemin Docker de la base de données      | `/var/lib/mysql`                  |
-| `DB_LOCAL_PATH`      | Chemin local de la base de données       | `/var/lib/mysql`                  |
-| `PRINTER_NAME`       | Nom de l'imprimante                      | `Imprim_name`                     |
-| `SSH_PORT`           | Port SSH                                 | `22`                              |
-| `SSH_HOST`           | Hôte SSH                                 | `adresse_ip_a_tester`             |
-| `SSH_USERNAME`       | Utilisateur SSH                          | `mqlskdjfhg`                      |
-| `SSH_PASSWORD`       | Mot de passe SSH                         | `mqlskdjfhdueirpcl`               |
-| `EMAIL_USER`         | Adresse email d'envoi                    | `mail@domaine.com`                |
-| `EMAIL_PASSWORD`     | Mot de passe email                       | `msdokgnôpqioghn`                 |
-| `EMAIL_SMTP`         | Serveur SMTP                             | `adresse_smtp`                    |
-| `EMAIL_PORT`         | Port SMTP                                | `587`                             |
-
-> **Remarque** : Adaptez les chemins et identifiants selon votre environnement. Ne partagez jamais le fichier `.env` publiquement.
+| Variable           | Description                        | Exemple                       |
+|--------------------|------------------------------------|-------------------------------|
+| `DB_USER`          | Utilisateur de la base de données  | `intranet_user`               |
+| `DB_PASSWORD`      | Mot de passe de la base de données | *Généré automatiquement*      |
+| `DB_HOST`          | Hôte de la base de données         | `db`                          |
+| `DB_NAME`          | Nom de la base de données          | `intranet_db`                 |
+| `ROOT_PASSWORD`    | Mot de passe root MySQL            | *Généré automatiquement*      |
+| `SECRET_KEY`       | Clé secrète Flask                  | *Généré automatiquement*      |
+| `FILES_LOCAL_PATH` | Chemin local des documents         | `/var/www/intranet/documents` |
+| `PRINT_LOCAL_PATH` | Chemin local des impressions       | `/var/www/intranet/print`     |
+| `SSH_HOST`         | Serveur SSH pour transferts        | `192.168.1.100`               |
+| `PRINTER_NAME`     | Nom de l'imprimante                | `HP_LaserJet_Pro`             |
+| `EMAIL_SMTP`       | Serveur SMTP                       | `smtp.gmail.com`              |
 
 ## 🗄️ Base de Données
 
@@ -174,46 +160,45 @@ L'application utilise **MariaDB** avec 4 tables principales interconnectées :
 | `identifiant`  | VARCHAR(25)  | Login de connexion         |
 | `sha_mdp`      | VARCHAR(255) | Mot de passe hashé SHA-256 |
 | `habilitation` | INT(11)      | Niveau d'autorisation      |
-| `debut`        | DATE         | Date de début d'accès      |
-| `fin`          | DATE         | Date de fin d'accès        |
-| `locked`       | BIT(1)       | Compte verrouillé (0/1)    |
+| `Début`        | DATE         | Date de début d'accès      |
+| `Fin`          | DATE         | Date de fin d'accès        |
+| `Locked`       | BIT(1)       | Compte verrouillé (0/1)    |
 
 #### Table `01_Contrats` - Gestion des contrats
 
 | Champ               | Type         | Description               |
 |---------------------|--------------|---------------------------|
 | `id`                | INT(11) PK   | Identifiant unique        |
-| `type_contrat`      | VARCHAR(50)  | Type de contrat           |
-| `sous_type_contrat` | VARCHAR(50)  | Sous-type de contrat      |
-| `entreprise`        | VARCHAR(255) | Nom de l'entreprise       |
-| `id_externe_contrat`| VARCHAR(50)  | Numéro de contrat externe |
-| `intitule`          | VARCHAR(255) | Intitulé du contrat       |
-| `date_debut`        | DATE         | Date de début             |
-| `date_fin_preavis`  | DATE         | Date de fin de préavis    |
-| `date_fin`          | DATE         | Date de fin de contrat    |
+| `Type`              | VARCHAR(50)  | Type de contrat           |
+| `Stype`             | VARCHAR(50)  | Sous-type de contrat      |
+| `Entreprise`        | VARCHAR(255) | Nom de l'entreprise       |
+| `numContratExterne` | VARCHAR(50)  | Numéro de contrat externe |
+| `Intitule`          | VARCHAR(255) | Intitulé du contrat       |
+| `dateDebut`         | DATE         | Date de début             |
+| `dateFinPreavis`    | DATE         | Date de fin de préavis    |
+| `dateFin`           | DATE         | Date de fin de contrat    |
 
 #### Table `11_Documents` - Documents liés aux contrats
-
-| Champ               | Type         | Description               |
-|---------------------|--------------|---------------------------|
-| `id`                | INT(11) PK   | Identifiant unique        |
-| `id_contrat`        | INT(11) FK   | Référence vers le contrat |
-| `type_document`     | VARCHAR(50)  | Type de document          |
-| `sous_type_document`| VARCHAR(50)  | Sous-type de document     |
-| `Descriptif`        | VARCHAR(255) | Description du document   |
-| `str_lien`          | VARCHAR(255) | Chemin vers le fichier    |
-| `date_document`     | DATE         | Date du document          |
+| Champ          | Type         | Description               |
+|----------------|--------------|---------------------------|
+| `id`           | INT(11) PK   | Identifiant unique        |
+| `idContrat`    | INT(11) FK   | Référence vers le contrat |
+| `Type`         | VARCHAR(50)  | Type de document          |
+| `SType`        | VARCHAR(50)  | Sous-type de document     |
+| `Descriptif`   | VARCHAR(255) | Description du document   |
+| `strLien`      | VARCHAR(255) | Chemin vers le fichier    |
+| `dateDocument` | DATE         | Date du document          |
+| `Name`         | VARCHAR(30)  | Nom du créateur           |
 
 #### Table `12_Evenements` - Événements liés aux contrats
-
-| Champ                  | Type         | Description                |
-|------------------------|--------------|----------------------------|
-| `id`                   | INT(11) PK   | Identifiant unique         |
-| `id_contrat`           | INT(11) FK   | Référence vers le contrat  |
-| `date_evenement`       | DATE         | Date de l'événement        |
-| `type_evenement`       | VARCHAR(50)  | Type d'événement           |
-| `sous_type_evenement`  | VARCHAR(50)  | Sous-type d'événement      |
-| `descriptif`           | VARCHAR(255) | Description de l'événement |
+| Champ           | Type         | Description                |
+|-----------------|--------------|----------------------------|
+| `id`            | INT(11) PK   | Identifiant unique         |
+| `idContrat`     | INT(11) FK   | Référence vers le contrat  |
+| `dateEvenement` | DATE         | Date de l'événement        |
+| `Type`          | VARCHAR(50)  | Type d'événement           |
+| `Stype`         | VARCHAR(50)  | Sous-type d'événement      |
+| `Descriptif`    | VARCHAR(255) | Description de l'événement |
 
 ### 🔐 Système d'Habilitations
 
