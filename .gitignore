@@ -1,6 +1,7 @@
 .env
 venveraudiere/
 veraudiere/
+venveraudiere/
 __pycache__/
 app/__pycache__
 *.pem
