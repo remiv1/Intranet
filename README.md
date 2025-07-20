@@ -179,6 +179,7 @@ L'application utilise **MariaDB** avec 4 tables principales interconnectées :
 | `dateFin`           | DATE         | Date de fin de contrat    |
 
 #### Table `11_Documents` - Documents liés aux contrats
+
 | Champ          | Type         | Description               |
 |----------------|--------------|---------------------------|
 | `id`           | INT(11) PK   | Identifiant unique        |
@@ -191,6 +192,7 @@ L'application utilise **MariaDB** avec 4 tables principales interconnectées :
 | `Name`         | VARCHAR(30)  | Nom du créateur           |
 
 #### Table `12_Evenements` - Événements liés aux contrats
+
 | Champ           | Type         | Description                |
 |-----------------|--------------|----------------------------|
 | `id`            | INT(11) PK   | Identifiant unique         |
