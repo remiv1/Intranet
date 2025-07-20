@@ -58,6 +58,14 @@ services:
       - dbdata:${DB_DOCKER_PATH}
     networks:
       - intranet_net
+  
+  intranet-logs-mongodb:
+    image: mongo:latest
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+
 
 volumes:
   dbdata:
@@ -66,6 +74,8 @@ volumes:
       type: none
       device: ${DB_LOCAL_PATH}
       o: bind
+  mongo_data:
+    driver: local
 
 networks:
   intranet_net:
