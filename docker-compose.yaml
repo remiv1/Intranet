@@ -80,24 +80,6 @@ volumes:
       type: none
       device: ${DB_LOCAL_PATH}
       o: bind
-  signature_data:
-    driver: local
-    driver_opts:
-      type: none
-      device: ${SIGNATURE_LOCAL_PATH}
-      o: bind
-  documents_data:
-    driver: local
-    driver_opts:
-      type: none
-      device: ${FILES_LOCAL_PATH}
-      o: bind
-  print_data:
-    driver: local
-    driver_opts:
-      type: none
-      device: ${PRINT_LOCAL_PATH}
-      o: bind
   mongo_data:
     driver: local
 
