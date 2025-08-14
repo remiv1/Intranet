@@ -6,9 +6,9 @@ function updateSousMenuEvent(idContract) {
 
     var options = []
     if (menu === 'Gestion') {
-        var options = ['', 'Souscription', 'Gestion', 'Renégociation', 'Résiliation'];
+        var options = ['', 'Souscription', 'Gestion', 'Renégociation', 'Résiliation', 'Autre'];
     } else if (menu === 'Contact') {
-        var options = ['', 'Appel', 'Mail', 'SMS'];
+        var options = ['', 'Appel', 'Mail', 'SMS', 'Courrier'];
     } else if (menu === 'Contrat') {
         var options = ['', 'Contrat'];
     } else {
@@ -30,9 +30,9 @@ function updateSousMenuDocument(idContract) {
 
     var options = []
     if (menu === 'Contact') {
-        var options = ['', 'Appel', 'Mail', 'SMS'];
+        var options = ['', 'Appel', 'Mail', 'SMS', 'Courrier'];
     } else if (menu === 'Contrat') {
-        var options = ['', 'Contrat', 'Avenant', 'Résiliation'];
+        var options = ['', 'Contrat', 'Avenant', 'Résiliation', 'Autre'];
     } else {
         var options = ['', 'Autre']
     }

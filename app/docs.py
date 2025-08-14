@@ -31,7 +31,7 @@ def upload_file(file: io.BytesIO, file_name: str, extension: str):
 
     try:
         #Création du chemin du fichier sur le serveur
-        file_name = secure_filename(file_name) + '.' + extension
+        file_name = secure_filename(file_name) + extension
         file_path = os.path.join(_FOLDER, file_name)
         
         # Enregistrement du fichier sur le serveur

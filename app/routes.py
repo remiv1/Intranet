@@ -7,6 +7,9 @@ from app.__init__ import Session
 import hashlib
 import datetime
 import os
+from datetime import timedelta
+
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(minutes=30)
 
 @app.before_request
 def before_request():
@@ -93,7 +96,7 @@ def login():
         try:
             # récupération du contenu du formulaire
             username = request.form.get('username')
-            password = request.form.get('password')
+            password: str = request.form.get('password', '')
             password = hashlib.sha256(password.encode()).hexdigest()
 
             # recherche de l'utilisateur dans la base de données
@@ -113,7 +116,7 @@ def login():
                     return redirect(url_for('home'))
                 except Exception as e:
                     g.db_session.rollback()
-                    mes = f'Erreur lors de la connexion, veuillez réessayer.'
+                    mes = f'Erreur {e} lors de la connexion, veuillez réessayer.'
             elif not user:
                 mes=f'L\'utilisateur {username} semble inconnu'
             else:
@@ -202,7 +205,6 @@ def print_doc():
         extension = os.path.splitext(document)[1]
         docname = document.split('.')[0]
         username = session['prenom'] + ' ' + session['nom']
-        site_name = 'Intranet'
         copies = str(request.form.get('copies'))
         sides = request.form.get('recto_verso')
         media = request.form.get('format')
@@ -549,7 +551,7 @@ def modif_document_id(numDoc, numContrat):
                         completName = strLien.split('_')[3]
                         name = docs.create_name(dateDocument, idContrat, id, SType)
                         extention = completName.split('.')[1]
-                    LienDocument = name + '.' + extention
+                    LienDocument = name + extention
                     document.strLien = LienDocument
 
                     # création d'un nom de document
