@@ -1,38 +1,66 @@
 from flask import jsonify, send_file
 from werkzeug.utils import secure_filename
-import os, io, datetime, paramiko
-from app import __init__, app#, impression
+import os, io, datetime
+from config import ConfigDict
+from typing import cast
+from impression import print_file
 
-#Définition des variables de gestion
-_HOSTNAME = app.config["SSH_HOST"]
-_PORT = app.config["SSH_PORT"]
-_USERNAME = app.config["SSH_USER"]
-_PASSWORD = app.config["SSH_PASSWORD"]
-_FOLDER = app.config["UPLOAD_FOLDER"]
-_PRINT_FOLDER = app.config["PRINT_PATH"]
+def get_config() -> ConfigDict:
+    """Import tardif pour éviter l'import circulaire"""
+    from application import peraudiere
+    return cast(ConfigDict, peraudiere.config)
 
-#Validation des chemins
-if not os.path.exists(_FOLDER):
-    os.makedirs(_FOLDER)
+# Définition des variables de gestion (évaluées lors de la première utilisation)
+def _get_hostname() -> str:
+    return get_config().get("SSH_HOST", 'localhost')
+
+def _get_port() -> int:
+    return int(get_config().get("SSH_PORT", 22))
+
+def _get_username() -> str:
+    return get_config().get("SSH_USER", 'user')
+
+def _get_password() -> str:
+    return get_config().get("SSH_PASSWORD", 'password')
+
+def _get_folder() -> str:
+    return get_config().get("UPLOAD_FOLDER", '/uploads')
+
+def _get_print_folder() -> str:
+    return get_config().get("PRINT_PATH", '/prints')
+
+# Validation des chemins (appelée lors du premier accès)
+_folder_initialized = False
+
+def _ensure_folder_exists():
+    global _folder_initialized
+    if not _folder_initialized:
+        folder = _get_folder()
+        if not os.path.exists(folder):
+            os.makedirs(folder)
+        _folder_initialized = True
+
+# Ne plus créer le dossier lors de l'import
+# _ensure_folder_exists() - Retiré pour éviter l'import circulaire
 
 #Création d'un nom de docment
-def create_name(doc_date: str, idContrat: str, idDocument: str, SType: str):
+def create_name(doc_date: str, id_contrat: str, id_document: str, stype: str):
     date_date = datetime.datetime.strptime(doc_date, '%Y-%m-%d')
     str_date = date_date.strftime('%d%m%Y')
-    str_idContrat = str(idContrat).zfill(3)
-    str_idDocument = str(idDocument).zfill(4)
-    str_SType = SType[:5]
-    retour = f'{str_date}_{str_idContrat}_{str_idDocument}_{str_SType}'
+    id_contrat = str(id_contrat).zfill(3)
+    id_document = str(id_document).zfill(4)
+    stype = stype[:5]
+    retour = f'{str_date}_{id_contrat}_{id_document}_{stype}'
     return retour
-
 
 #Téléchargement du fichier vers le serveur
 def upload_file(file: io.BytesIO, file_name: str, extension: str):
-
+    _ensure_folder_exists()  # S'assurer que le dossier existe
+    
     try:
         #Création du chemin du fichier sur le serveur
         file_name = secure_filename(file_name) + extension
-        file_path = os.path.join(_FOLDER, file_name)
+        file_path = os.path.join(_get_folder(), file_name)
         
         # Enregistrement du fichier sur le serveur
         with open(file_path, 'wb') as f:
@@ -45,10 +73,11 @@ def upload_file(file: io.BytesIO, file_name: str, extension: str):
     
 #Téléchargement du fichier depuis le serveur
 def download_file(file_name: str, extension: str):
+    _ensure_folder_exists()  # S'assurer que le dossier existe
     
     try:
         #Création du chemin du fichier sur le serveur
-        remote_file_path = os.path.join(_FOLDER, secure_filename(file_name) + '.' + extension)
+        remote_file_path = os.path.join(_get_folder(), secure_filename(file_name) + '.' + extension)
 
         #Transfert du fichier depuis le serveur
         with open(remote_file_path, 'rb') as f:
@@ -66,18 +95,19 @@ def download_file(file_name: str, extension: str):
         return jsonify({'erreur': f'Erreur inconnue lors du téléchargement : {e}'})
     
 def delete_file(file_name: str, extension: str):
+    _ensure_folder_exists()  # S'assurer que le dossier existe
     
     try:
         #Création du chemin du fichier sur le serveur
         file_name = secure_filename(file_name) + '.' + extension
-        file_path = os.path.join(_FOLDER, file_name)
+        file_path = os.path.join(_get_folder(), file_name)
 
         #Suppression du fichier sur le serveur
         if os.path.exists(file_path):
             os.remove(file_path)
             return jsonify({'message': 'Fichier supprimé avec succès'})
         else:
-            return jsonify({'erreur': f'Erreur lors de la suppression : {file_name}, {e}'})
+            return jsonify({'erreur': 'Erreur lors de la suppression : dossier inexistant'})
 
     except Exception as e:
         return jsonify({'erreur': f'Erreur inconnue : {e}'})
@@ -87,14 +117,14 @@ def print_document(file: io.BytesIO, file_name: str, extension: str, copies: str
     try:
         #Création du chemin du fichier sur le serveur
         file_name = secure_filename(file_name) + '.' + extension
-        file_path = os.path.join(_PRINT_FOLDER, file_name)
+        file_path = os.path.join(_get_print_folder(), file_name)
         
         #Transfert du fichier vers le serveur
         with open(file_path, 'wb') as f:
             f.write(file.read())
         
         #Impression du fichier
-        impression.print_file(file_path, username, 'Intranet' , copies, sides, media, orientation, color)
+        print_file(file_path, username, 'Intranet' , copies, sides, media, orientation, color)
         os.remove(file_path)
         
         return jsonify({'message': 'Document imprimé avec succès'})

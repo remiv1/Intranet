@@ -6,13 +6,13 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.mime.base import MIMEBase
 from email import encoders
-from app import db_session
+from flask import g
 from config import Config
 from models import Contract
 
 def envoi_contrats_renego(mail: str):
     # Connexion à la base de données
-    conn = db_session.connection()
+    conn = g.db_session
 
     # Calcul des dates limites
     date_4_mois = (datetime.now() + timedelta(days=4*30)).strftime('%Y-%m-%d')

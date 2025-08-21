@@ -1,6 +1,10 @@
 .env
+venveraudiere/
 veraudiere/
 __pycache__/
 app/__pycache__
 *.pem
 venv/
+
+# Fichiers de test (ne pas commiter vers main)
+sql/test_user.sql

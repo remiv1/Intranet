@@ -11,7 +11,6 @@ services:
     ports:
       - "5000:5000"  # Port de développement Flask
     volumes:
-      - .:/app  # Montage du code source pour développement
       - ${FILES_LOCAL_PATH}:${FILES_DOCKER_PATH}
       - ${PRINT_LOCAL_PATH}:${PRINT_DOCKER_PATH}
     environment:
@@ -19,9 +18,9 @@ services:
       - FLASK_DEBUG=1
       - DATABASE_URL=${DB_URL}
     env_file:
-      - .env.dev
+      - .env
     restart: "no"  # Pas de redémarrage automatique en dev
-    command: python run.py
+    command: python app/run.py
     networks:
       - intranet_dev_net
 
@@ -35,11 +34,12 @@ services:
       MYSQL_USER: ${DB_USER}
       MYSQL_PASSWORD: ${DB_PASSWORD}
     env_file:
-      - .env.dev
+      - .env
     ports:
       - "3306:3306"  # Port exposé pour accès direct en dev
     volumes:
       - dbdata_dev:/var/lib/mysql
+      - ./sql:/docker-entrypoint-initdb.d  # Scripts SQL d'initialisation
     networks:
       - intranet_dev_net
 
@@ -54,7 +54,7 @@ services:
       PMA_USER: ${DB_USER}
       PMA_PASSWORD: ${DB_PASSWORD}
     env_file:
-      - .env.dev
+      - .env
     ports:
       - "8080:80"  # Interface web phpmyadmin
     networks:

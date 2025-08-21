@@ -5,25 +5,25 @@ from config import Config
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.engine.url import URL
-from app.models import Base
-from app import docs
-from app.models import User, Contract, Event, Document
+from models import Base
+import docs
+from models import User, Contract, Event, Document
 from typing import List, Dict, Any, cast, Optional, Tuple
 import hashlib
 import datetime
 import os
 from datetime import timedelta
 
-app = Flask(__name__)
+peraudiere = Flask(__name__)
 
 # Charger la configuration depuis config.py
-app.config.from_object(Config)
+peraudiere.config.from_object(Config)
 
 # Construction de l'URL de la base de données
-db_user: str = cast(str, app.config["DB_USER"])
-db_password: str = cast(str, app.config["DB_PASSWORD"])
-db_host: str = cast(str, app.config["DB_HOST"])
-db_name: str = cast(str, app.config["DB_NAME"])
+db_user: str = cast(str, peraudiere.config["DB_USER"])
+db_password: str = cast(str, peraudiere.config["DB_PASSWORD"])
+db_host: str = cast(str, peraudiere.config["DB_HOST"])
+db_name: str = cast(str, peraudiere.config["DB_NAME"])
 db_url = URL.create(
     drivername="mysql+mysqlconnector",
     username=db_user,
@@ -42,8 +42,25 @@ engine = create_engine(db_url,
                         connect_args={'connect_timeout': 10},
                         echo=True)
 
-# Créer les tables de la base de données
-Base.metadata.create_all(engine)
+# Créer les tables de la base de données (avec retry en cas d'erreur de connexion)
+def initialize_database():
+    import time
+    max_retries = 10
+    retry_delay = 2
+    
+    for attempt in range(max_retries):
+        try:
+            Base.metadata.create_all(engine)
+            print(f"✓ Base de données initialisée avec succès (tentative {attempt + 1})")
+            return True
+        except Exception as e:
+            if attempt < max_retries - 1:
+                print(f"✗ Tentative {attempt + 1} échouée: {e}")
+                print(f"  Nouvelle tentative dans {retry_delay} secondes...")
+                time.sleep(retry_delay)
+            else:
+                print(f"✗ Échec de la connexion à la base de données après {max_retries} tentatives: {e}")
+                raise
 
 # Créer une session de base de données
 Session = sessionmaker(bind=engine)
@@ -53,8 +70,11 @@ UPLOAD_EXTENSIONS = ['.jpg', '.png', '.gif', '.jpeg', '.tif', '.tiff', '.pdf']
 RESERVED_SPACE = 'Espace réservé'
 
 # Configuration de l'application
-app.config['UPLOAD_EXTENSIONS'] = UPLOAD_EXTENSIONS
-app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(minutes=30)
+peraudiere.config['UPLOAD_EXTENSIONS'] = UPLOAD_EXTENSIONS
+peraudiere.config['PERMANENT_SESSION_LIFETIME'] = timedelta(minutes=30)
+
+# Initialiser la base de données avec retry
+initialize_database()
 
 def get_user_from_credentials(request_form: Request) -> Tuple[User | None, str, str]:
     # Récupération du credential
@@ -107,11 +127,11 @@ def generate_nb_false_pwd(user: User) -> str:
     return message
 
 
-@app.before_request
+@peraudiere.before_request
 def before_request() -> None:
     g.db_session = Session()
 
-@app.teardown_appcontext
+@peraudiere.teardown_appcontext
 def teardown_request(exception: Optional[BaseException]):
     db_session = g.pop('db_session', None)
     if db_session is not None:
@@ -119,7 +139,7 @@ def teardown_request(exception: Optional[BaseException]):
             db_session.rollback()
         db_session.close()
 
-@app.route('/')
+@peraudiere.route('/')
 def home() -> str | Response:
     if 'prenom' in session and 'nom' in session:
         prenom = session['prenom']
@@ -185,7 +205,7 @@ def home() -> str | Response:
     else:
         return redirect(url_for('login'))
 
-@app.route('/login', methods=['GET', 'POST'])
+@peraudiere.route('/login', methods=['GET', 'POST'])
 def login() -> Response | str:
     message = request.args.get('message', '')
 
@@ -218,12 +238,12 @@ def login() -> Response | str:
     else:
         return render_template('login.html', message=message)
 
-@app.route('/logout')
+@peraudiere.route('/logout')
 def logout() -> Response:
     session.clear()
     return redirect(url_for('login'))
 
-@app.route('/gestion_droits')
+@peraudiere.route('/gestion_droits')
 def gestion_droits() -> str | Response:
     if '1' in str(session['habilitation']): 
         users = g.db_session.query(User).all()
@@ -231,7 +251,7 @@ def gestion_droits() -> str | Response:
     else:
         return redirect(url_for('logout'))
 
-@app.route('/gestion_utilisateurs')
+@peraudiere.route('/gestion_utilisateurs')
 def gestion_utilisateurs() -> str | Response:
     if '2' in str(session['habilitation']): 
         users: list[User] = g.db_session.query(User).all()
@@ -240,35 +260,35 @@ def gestion_utilisateurs() -> str | Response:
     else:
         return redirect(url_for('logout'))
 
-@app.route('/gestion_documents')
+@peraudiere.route('/gestion_documents')
 def gestion_documents() -> str | Response:
     if '2' in str(session['habilitation']):
         return render_template('gestion_documents.html')
     else:
         return redirect(url_for('logout'))
 
-@app.route('/erpp')
+@peraudiere.route('/erpp')
 def erpp() -> str | Response:
     if '3' in str(session['habilitation']):
         return render_template('erpp.html')
     else:
         return redirect(url_for('logout'))
 
-@app.route('/erp')
+@peraudiere.route('/erp')
 def erp() -> str | Response:
     if '4' in str(session['habilitation']): 
         return render_template('erp.html')
     else:
         return redirect(url_for('logout'))
 
-@app.route('/ei')
+@peraudiere.route('/ei')
 def ei() -> str | Response:
     if '6' in str(session['habilitation']):
         return render_template('ei.html')
     else:
         return redirect(url_for('logout'))
 
-@app.route('/print_doc', methods=['POST'])
+@peraudiere.route('/print_doc', methods=['POST'])
 def print_doc() -> Response:
     if '6' in str(session['habilitation']):
         binary_document: Any = request.files['document']
@@ -292,14 +312,14 @@ def print_doc() -> Response:
     else:
         return redirect(url_for('logout'))
 
-@app.route('/ere')
+@peraudiere.route('/ere')
 def ere() -> str | Response:
     if '5' in str(session['habilitation']):
         return render_template('ere.html')
     else:
         return redirect(url_for('logout'))
 
-@app.route('/ajout_utilisateurs', methods=['POST'])
+@peraudiere.route('/ajout_utilisateurs', methods=['POST'])
 def ajout_utilisateurs() -> Response:
     if '1' in str(session['habilitation']): 
         try:
@@ -334,7 +354,7 @@ def ajout_utilisateurs() -> Response:
     else: 
         return redirect(url_for('logout'))
 
-@app.route('/suppr_utilisateurs', methods=['POST'])
+@peraudiere.route('/suppr_utilisateurs', methods=['POST'])
 def suppr_utilisateurs() -> Response:
     if '1' in str(session['habilitation']): 
         try:
@@ -350,7 +370,7 @@ def suppr_utilisateurs() -> Response:
     else:
         return redirect(url_for('logout'))
 
-@app.route('/modif_utilisateurs', methods=['POST'])
+@peraudiere.route('/modif_utilisateurs', methods=['POST'])
 def modif_utilisateurs() -> Response:
     if '1' in str(session['habilitation']) or '2' in str(session['habilitation']): 
         try:
@@ -360,16 +380,11 @@ def modif_utilisateurs() -> Response:
             identifiant = request.form.get('identifiant', '')
             mdp = request.form.get('mdp', '')
             mdp = hashlib.sha256(mdp.encode()).hexdigest()
-            if request.form.get('unlock'):
-                unlock = int(request.form.get('unlock', 0))
-            else:
-                unlock = 0
+            unlock = int(request.form.get('unlock', 0)) if request.form.get('unlock') == '1' else 0
 
             #Création du niveau d'habilitation
             habilitation_values: List[str] = []
-            for key, value in request.form.items():
-                if key.startswith('habil'):
-                    habilitation_values.append(value)
+            habilitation_values.extend(value for key, value in request.form.items() if key.startswith('habil'))
 
             #Trier les valeurs d'habilitation
             sorted_habil = sorted(habilitation_values, key=int)
@@ -386,13 +401,10 @@ def modif_utilisateurs() -> Response:
                 user.nom = nom
                 user.mail = mail
                 user.identifiant = identifiant
-                if mdp != '': 
-                    user.shaMdp = mdp
-                
+                user.shaMdp = mdp if mdp != '' else user.shaMdp
                 if unlock == 1:
                     user.falseTest = 0
                     user.locked = False
-
                 user.habilitation = habilitation
 
                 g.db_session.commit()
@@ -404,7 +416,7 @@ def modif_utilisateurs() -> Response:
     else:
         return redirect(url_for('logout'))
 
-@app.route('/gestion_droits', methods=['POST'])
+@peraudiere.route('/gestion_droits', methods=['POST'])
 def gestion_droits_post() -> Response:
     if '1' in str(session['habilitation']) or '2' in str(session['habilitation']): 
         try:
@@ -414,9 +426,7 @@ def gestion_droits_post() -> Response:
             
             #Création du niveau d'habilitation
             habilitation_values: List[str] = []
-            for key, value in request.form.items():
-                if key.startswith('habil'):
-                    habilitation_values.append(value)
+            habilitation_values.extend(value for key, value in request.form.items() if key.startswith('habil'))
             
             #Trier les valeurs d'habilitation
             sorted_habil = sorted(habilitation_values, key=int)
@@ -426,20 +436,18 @@ def gestion_droits_post() -> Response:
 
             user = g.db_session.query(User).filter(User.identifiant == identifiant).first()
             if user:
-                if mdp != '':
-                    user.shaMdp = mdp
+                user.shaMdp = mdp if mdp != '' else user.shaMdp
                 user.habilitation = habilitation
-
                 g.db_session.commit()
 
             return redirect(url_for('gestion_droits'))
-        except Exception as e:
+        except Exception:
             g.db_session.rollback()
             return redirect(url_for('gestion_droits'))
     else:
         return redirect(url_for('logout'))
 
-@app.route('/contrats', methods=['GET', 'POST'])
+@peraudiere.route('/contrats', methods=['GET', 'POST'])
 def contrats() -> ResponseReturnValue:
     if '2' in str(session['habilitation']):
         if request.method == 'GET':
@@ -457,24 +465,24 @@ def contrats() -> ResponseReturnValue:
                 date_debut = request.form.get('dateDebut', '')
                 date_fin_preavis = request.form.get('dateFinPreavis', '')
                 date_fin = request.form.get('dateFin', '')
-
-                if date_fin != '': 
-                    contract = Contract(Type = type_contrat,
-                                        SType = sous_type_contrat,
-                                        entreprise = entreprise,
-                                        numContratExterne = num_contrat_externe,
-                                        intitule = intitule,
-                                        dateDebut = date_debut,
-                                        dateFin = date_fin,
-                                        dateFinPreavis = date_fin_preavis)
-                else:
-                    contract = Contract(Type = type_contrat,
-                                        SType = sous_type_contrat,
-                                        entreprise = entreprise,
-                                        numContratExterne = num_contrat_externe,
-                                        intitule = intitule,
-                                        dateDebut = date_debut,
-                                        dateFinPreavis = date_fin_preavis)
+                contract = Contract(Type = type_contrat,
+                                    SType = sous_type_contrat,
+                                    entreprise = entreprise,
+                                    numContratExterne = num_contrat_externe,
+                                    intitule = intitule,
+                                    dateDebut = date_debut,
+                                    dateFin = date_fin,
+                                    dateFinPreavis = date_fin_preavis
+                                    ) \
+                           if date_fin != '' \
+                           else \
+                           Contract(Type = type_contrat,
+                                    SType = sous_type_contrat,
+                                    entreprise = entreprise,
+                                    numContratExterne = num_contrat_externe,
+                                    intitule = intitule,
+                                    dateDebut = date_debut,
+                                    dateFinPreavis = date_fin_preavis)
 
                 g.db_session.add(contract)
                 g.db_session.commit()
@@ -488,27 +496,27 @@ def contrats() -> ResponseReturnValue:
     else:
         return redirect(url_for('logout'))
 
-@app.route('/contrats/<numContrat>', methods=['GET', 'POST'])
-def contrats_by_num(numContrat: int) -> ResponseReturnValue:
+@peraudiere.route('/contrats/<numContrat>', methods=['GET', 'POST'])
+def contrats_by_num(num_contrat: int) -> ResponseReturnValue:
     if request.method == 'GET': 
-        contract = g.db_session.query(Contract).filter(Contract.id == numContrat).first()
-        events = g.db_session.query(Event).filter(Event.idContrat == numContrat)
-        documents = g.db_session.query(Document).filter(Document.idContrat == numContrat)
+        contract = g.db_session.query(Contract).filter(Contract.id == num_contrat).first()
+        events = g.db_session.query(Event).filter(Event.idContrat == num_contrat)
+        documents = g.db_session.query(Document).filter(Document.idContrat == num_contrat)
 
         return render_template('contrat_detail.html', contract = contract, events = events, documents = documents)
     elif request.method == 'POST' and request.form.get('_method') == 'PUT':
         try:
-            contract = g.db_session.query(Contract).filter(Contract.id == numContrat).first()
+            contract = g.db_session.query(Contract).filter(Contract.id == num_contrat).first()
             if contract:
-                contract.Type = request.form.get(f'Type{numContrat}')
-                contract.SType = request.form.get(f'SType{numContrat}')
-                contract.Entreprise = request.form.get(f'Entreprise{numContrat}')
-                contract.numContratExterne = request.form.get(f'numContratExterne{numContrat}')
-                contract.Intitule = request.form.get(f'Intitule{numContrat}')
-                contract.dateDebut = request.form.get(f'dateDebut{numContrat}')
-                contract.dateFinPreavis = request.form.get(f'dateFinPreavis{numContrat}')
-                if request.form.get(f'dateFin{numContrat}') != '':
-                    contract.dateFin = request.form.get(f'dateFin{numContrat}')
+                contract.Type = request.form.get(f'Type{num_contrat}')
+                contract.SType = request.form.get(f'SType{num_contrat}')
+                contract.Entreprise = request.form.get(f'Entreprise{num_contrat}')
+                contract.numContratExterne = request.form.get(f'numContratExterne{num_contrat}')
+                contract.Intitule = request.form.get(f'Intitule{num_contrat}')
+                contract.dateDebut = request.form.get(f'dateDebut{num_contrat}')
+                contract.dateFinPreavis = request.form.get(f'dateFinPreavis{num_contrat}')
+                if request.form.get(f'dateFin{num_contrat}') != '':
+                    contract.dateFin = request.form.get(f'dateFin{num_contrat}')
             
                 g.db_session.commit()
 
@@ -519,43 +527,43 @@ def contrats_by_num(numContrat: int) -> ResponseReturnValue:
     else:
         return redirect(url_for('contrats'))
 
-@app.route('/contrats/<numContrat>/evenement', methods=['POST'])
-def add_contrats_event(numContrat: int) -> ResponseReturnValue:
+@peraudiere.route('/contrats/<numContrat>/evenement', methods=['POST'])
+def add_contrats_event(num_contrat: int) -> ResponseReturnValue:
     if '2' in str(session['habilitation']):
         if request.method == 'POST':
             try:
                 #Récupération des données du formulaire*
-                idContrat = request.form.get('idContratE')
-                dateEvenement = request.form.get('dateEvenementE')
-                Type = request.form.get('TypeE0')
-                SType = request.form.get('STypeE0')
+                id_contrat = request.form.get('idContratE')
+                date_evenement = request.form.get('dateEvenementE')
+                type_contrat = request.form.get('TypeE0')
+                stype_contrat = request.form.get('STypeE0')
                 descriptif = request.form.get('descriptifE')
 
-                event = Event(idContrat = idContrat, dateEvenement = dateEvenement, Type = Type, SType = SType, descriptif = descriptif)
+                event = Event(idContrat = id_contrat, dateEvenement = date_evenement, Type = type_contrat, SType = stype_contrat, descriptif = descriptif)
                 
                 g.db_session.add(event)
                 g.db_session.commit()
 
-                return redirect(url_for('contrats_by_num', numContrat=idContrat))
+                return redirect(url_for('contrats_by_num', numContrat=id_contrat))
             except Exception:
                 g.db_session.rollback()
-                return redirect(url_for('contrats_by_num', numContrat=numContrat))
+                return redirect(url_for('contrats_by_num', numContrat=num_contrat))
         else:
-            return redirect(url_for('contrats_by_num', numContrat=numContrat))
+            return redirect(url_for('contrats_by_num', numContrat=num_contrat))
     else:
         return redirect(url_for('logout'))
 
-@app.route('/contrats/<numContrat>/document', methods=['POST'])
-def add_contrats_document(numContrat: int) -> ResponseReturnValue:
+@peraudiere.route('/contrats/<numContrat>/document', methods=['POST'])
+def add_contrats_document(num_contrat: int) -> ResponseReturnValue:
     if '2' in str(session['habilitation']):
         if request.method == 'POST':
             try:
                 #Récupération du dernier élément
                 last_doc = g.db_session.query(Document).order_by(Document.id.desc()).first()
                 if last_doc:
-                    id = str(last_doc.id + 1)
+                    id_contrat = str(last_doc.id + 1)
                 else:
-                    id = '1'
+                    id_contrat = '1'
 
                 #Récupération des données du formulaire
                 id_contrat = request.form.get('idContratD', '')
@@ -565,7 +573,7 @@ def add_contrats_document(numContrat: int) -> ResponseReturnValue:
                 descriptif = request.form.get('descriptifD', '')
                 document_binaire: Any = request.files['documentD']
                 extention: str = os.path.splitext(str(document_binaire.filename))[1]
-                name = docs.create_name(date_document, id_contrat, id, sous_type_document)
+                name = docs.create_name(date_document, id_contrat, id_contrat, sous_type_document)
                 lien_document = name + extention
 
                 #Création du document dans la base de données
@@ -588,93 +596,104 @@ def add_contrats_document(numContrat: int) -> ResponseReturnValue:
                 return redirect(url_for('contrats_by_num', numContrat=id_contrat))
             except Exception:
                 g.db_session.rollback()
-                return redirect(url_for('contrats_by_num', numContrat=numContrat))
+                return redirect(url_for('contrats_by_num', numContrat=num_contrat))
         else:
-            return redirect(url_for('contrats_by_num', numContrat=numContrat))
+            return redirect(url_for('contrats_by_num', numContrat=num_contrat))
     else:
         return redirect(url_for('logout'))
 
-@app.route('/contrats/numContrat/<numContrat>/numEvenement/<numEvent>', methods=['POST'])
-def modif_event_id(numEvent, numContrat):
+@peraudiere.route('/contrats/numContrat/<numContrat>/numEvenement/<numEvent>', methods=['POST'])
+def modif_event_id(num_event: int, num_contrat: int) -> ResponseReturnValue:
     if '2' in str(session['habilitation']):
         if request.method == 'POST' and request.form.get('_method') == 'PUT':
             try:
                 #Récupération de l'évènement
-                event = g.db_session.query(Event).filter(Event.id == numEvent).first()
+                event = g.db_session.query(Event).filter(Event.id == num_event).first()
 
                 if event:
                     #Récupération formulaire
-                    idContrat = request.form.get(f'idContratE{numEvent}')
-                    event.idContrat = request.form.get(f'idContratE{numEvent}')
-                    event.dateEvenement = request.form.get(f'dateEvenementE{numEvent}')
-                    event.Type = request.form.get(f'TypeE{numEvent}')
-                    event.SType = request.form.get(f'STypeE{numEvent}')
-                    event.descriptif = request.form.get(f'descriptifE{numEvent}')
+                    id_contrat = request.form.get(f'idContratE{num_event}')
+                    event.idContrat = request.form.get(f'idContratE{num_event}')
+                    event.dateEvenement = request.form.get(f'dateEvenementE{num_event}')
+                    event.Type = request.form.get(f'TypeE{num_event}')
+                    event.SType = request.form.get(f'STypeE{num_event}')
+                    event.descriptif = request.form.get(f'descriptifE{num_event}')
 
                     #Retour
                     g.db_session.commit()
 
-                    return redirect(url_for('contrats_by_num', numContrat = idContrat))
-            except Exception as e:
+                    return redirect(url_for('contrats_by_num', numContrat = id_contrat))
+                else:
+                    return redirect(url_for('contrats_by_num', numContrat = num_contrat))
+            except Exception:
                 g.db_session.rollback()
-                return redirect(url_for('contrats_by_num', numContrat = numContrat))
+                return redirect(url_for('contrats_by_num', numContrat = num_contrat))
+        else:
+            return redirect(url_for('contrats_by_num', numContrat = num_contrat))
     else:
         return redirect(url_for('logout'))
 
-@app.route('/contrats/numContrat/<numContrat>/numDocument/<numDoc>', methods=['POST'])
-def modif_document_id(numDoc, numContrat):
+@peraudiere.route('/contrats/numContrat/<numContrat>/numDocument/<numDoc>', methods=['POST'])
+def modif_document_id(num_doc: int, num_contrat: int) -> ResponseReturnValue:
+
+    def _fonction_modif_doc(document: Document, req: Request, num_doc: int) -> int:
+        doc_id = document.id
+        id_contrat = req.form.get(f'idContratD{num_doc}', '')
+        date_document = req.form.get(f'dateDocumentD{num_doc}', '')
+        document.dateDocument = date_document
+        type_document = req.form.get(f'TypeD{num_doc}', '')
+        document.Type = type_document
+        stype_document = req.form.get(f'STypeD{num_doc}', '')
+        document.SType = stype_document
+        document.descriptif = req.form.get(f'descriptifD{num_doc}', '')
+        if req.files[f'documentD{num_doc}']:
+            document_binaire = req.files[f'documentD{num_doc}']
+            name = docs.create_name(date_document, id_contrat, doc_id, stype_document)
+            extention = os.path.splitext(str(document_binaire.filename))[1]
+        else:
+            str_lien = req.form.get(f'strLienD{num_doc}', '')
+            complet_name = str_lien.split('_')[3]
+            name = docs.create_name(date_document, id_contrat, doc_id, stype_document)
+            extention = complet_name.split('.')[1]
+        lien_document = name + extention
+        document.strLien = lien_document
+
+        # création d'un nom de document
+        date_date = datetime.datetime.strptime(date_document, '%Y-%m-%d').date()
+        str_date = date_date.strftime('%y%m%d')
+        str_id_contrat = str(id_contrat).zfill(6)
+        str_id_document = str(doc_id).zfill(6)
+        str_stype = stype_document[:5]
+        name = f"{str_date}_{str_id_contrat}_{str_id_document}_{str_stype}"
+
+        #Gestion automatique du nom de document
+        document.name = name
+
+        #Retour
+        g.db_session.commit()
+
+        return document.id
+
     if '2' in str(session['habilitation']):
         if request.method == 'POST' and request.form.get('_method') == 'PUT':
             try:
                 #Récupération du document
-                document = g.db_session.query(Document).filter(Document.id == numDoc).first()
+                document = g.db_session.query(Document).filter(Document.id == num_doc).first()
 
-                if document:
-                    #Récupération formulaire
-                    id = document.id
-                    idContrat = request.form.get(f'idContratD{numDoc}')
-                    dateDocument = request.form.get(f'dateDocumentD{numDoc}')
-                    document.dateDocument = dateDocument
-                    Type = request.form.get(f'TypeD{numDoc}')
-                    document.Type = Type
-                    SType = request.form.get(f'STypeD{numDoc}')
-                    document.SType = SType
-                    document.descriptif = request.form.get(f'descriptifD{numDoc}')
-                    if request.files[f'documentD{numDoc}']:
-                        DocumentBinaire = request.files[f'documentD{numDoc}']
-                        name = docs.create_name(dateDocument, idContrat, id, SType)
-                        extention = os.path.splitext(DocumentBinaire.filename)[1]
-                    else:
-                        strLien = request.form.get(f'strLienD{numDoc}')
-                        completName = strLien.split('_')[3]
-                        name = docs.create_name(dateDocument, idContrat, id, SType)
-                        extention = completName.split('.')[1]
-                    LienDocument = name + extention
-                    document.strLien = LienDocument
+                # Création du document et récupération de son id
+                id_contrat = _fonction_modif_doc(document, request, num_doc)
+                return redirect(url_for('contrats_by_num', numContrat = id_contrat))
 
-                    # création d'un nom de document
-                    date_date = datetime.datetime.strptime(dateDocument, '%Y-%m-%d').date()
-                    str_date = date_date.strftime('%y%m%d')
-                    str_idContrat = str(idContrat).zfill(6)
-                    str_idDocument = str(id).zfill(6)
-                    str_SType = SType[:5]
-                    name = f"{str_date}_{str_idContrat}_{str_idDocument}_{str_SType}"
-
-                    #Gestion automatique du nom de document
-                    document.name = name
-
-                    #Retour
-                    g.db_session.commit()
-
-                    return redirect(url_for('contrats_by_num', numContrat = idContrat))
-            except Exception as e:
+            except Exception:
                 g.db_session.rollback()
-                return redirect(url_for('contrats_by_num', numContrat = numContrat))
+                return redirect(url_for('contrats_by_num', numContrat = num_contrat))
+        else:
+            return redirect(url_for('contrats_by_num', numContrat = num_contrat))
     else:
         return redirect(url_for('logout'))
 
-@app.route('/contrats/numContrat/<numContrat>/numDocument/<numDoc>/download/<name>', methods=['GET'])
-def download_document(numDoc, numContrat, name:str):
+@peraudiere.route('/contrats/numContrat/<numContrat>/numDocument/<numDoc>/download/<name>', methods=['GET'])
+def download_document(num_doc: int, num_contrat: int, name: str):
     if '2' in str(session['habilitation']):
         extention = name.split('.')[1]
         name = name.split('.')[0]

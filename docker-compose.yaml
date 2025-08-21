@@ -1,7 +1,7 @@
 services:
   web:
     build:
-      context: .
+      context: ./app
       dockerfile: Dockerfile.app
     container_name: intranet_app
     depends_on:
