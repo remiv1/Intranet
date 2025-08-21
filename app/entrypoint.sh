@@ -7,4 +7,4 @@ done
 
 echo "✅ Base de données disponible !"
 echo "🚀 Lancement de l'application Flask (run.py)..."
-exec python run.py
+exec python app/run.py
