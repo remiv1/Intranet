@@ -1,8 +1,8 @@
 services:
   web:
     build:
-      context: ./app
-      dockerfile: Dockerfile.app
+      context: .
+      dockerfile: app/Dockerfile.app
     container_name: intranet_app
     depends_on:
       - db
@@ -14,7 +14,7 @@ services:
     env_file:
       - .env
     restart: always
-    entrypoint: ["sh", "entrypoint.sh"]
+    entrypoint: ["sh", "app/entrypoint.sh"]
     networks:
       - intranet_net
 
