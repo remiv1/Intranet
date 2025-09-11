@@ -1,4 +1,4 @@
-from flask import Flask, render_template, Request, request, redirect, url_for, session, g
+from flask import Flask, jsonify, render_template, Request, request, redirect, url_for, session, g
 from flask.typing import ResponseReturnValue
 from werkzeug import Response
 from config import Config
@@ -708,3 +708,13 @@ def download_document(numDoc: int, numContrat: int, name: str):
         return docs.download_file(file_name=name, extension=extention)
     else:
         return redirect(url_for('logout'))
+
+@peraudiere.route('/rapport-contrats', methods=['POST'])
+def rapport_contrats() -> Response:
+    email: str = request.args.get('email', '')
+    try:
+        from rapport_echeances import envoi_contrats_renego
+        envoi_contrats_renego(email)
+        return jsonify(f"Rapport envoyé à {email}", 200)
+    except Exception as e:
+        return jsonify(f"Erreur lors de l'envoi du rapport à {email} : {e}", 500)

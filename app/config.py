@@ -10,25 +10,25 @@ load_dotenv(env_path, override=True)
 
 class Config:
     #Gestion base de données
-    SECRET_KEY = os.getenv('SECRET_KEY', '')
-    DB_USER = os.getenv('DB_USER', '')
-    DB_PASSWORD = os.getenv('DB_PASSWORD', '')
-    DB_HOST = os.getenv('DB_HOST', '')
-    DB_NAME = os.getenv('DB_NAME', '')
+    SECRET_KEY: str = os.getenv('SECRET_KEY', '')
+    DB_USER: str = os.getenv('DB_USER', '')
+    DB_PASSWORD: str = os.getenv('DB_PASSWORD', '')
+    DB_HOST: str = os.getenv('DB_HOST', '')
+    DB_NAME: str = os.getenv('DB_NAME', '')
     #Gestion SSH
-    UPLOAD_FOLDER = os.getenv('FILES_DOCKER_PATH', '')
-    SSH_PORT = os.getenv('SSH_PORT', 22)
-    SSH_HOST = os.getenv('SSH_HOST', 'localhost')
-    SSH_USER = os.getenv('SSH_USER', 'user')
-    SSH_PASSWORD = os.getenv('SSH_PASSWORD', '')
+    UPLOAD_FOLDER: str = os.getenv('FILES_DOCKER_PATH', '')
+    SSH_PORT: int = int(os.getenv('SSH_PORT', 22))
+    SSH_HOST: str = os.getenv('SSH_HOST', 'localhost')
+    SSH_USER: str = os.getenv('SSH_USER', 'user')
+    SSH_PASSWORD: str = os.getenv('SSH_PASSWORD', '')
     #Gestion impression
-    PRINTER_NAME = os.getenv('PRINTER_NAME', '')
-    PRINT_PATH = os.getenv('PRINT_DOCKER_PATH', '')
+    PRINTER_NAME: str = os.getenv('PRINTER_NAME', '')
+    PRINT_PATH: str = os.getenv('PRINT_DOCKER_PATH', '')
     #Gestion mail
-    EMAIL_USER = os.getenv('EMAIL_USER', '')
-    EMAIL_PASSWORD = os.getenv('EMAIL_PASSWORD', '')
-    EMAIL_SMTP = os.getenv('EMAIL_SMTP', '')
-    EMAIL_PORT = os.getenv('EMAIL_PORT', 587)
+    EMAIL_USER: str = os.getenv('EMAIL_USER', '')
+    EMAIL_PASSWORD: str = os.getenv('EMAIL_PASSWORD', '')
+    EMAIL_SMTP: str = os.getenv('EMAIL_SMTP', '')
+    EMAIL_PORT: int = int(os.getenv('EMAIL_PORT', 587))
 
 class ConfigDict(TypedDict, total=False):
     SECRET_KEY: str

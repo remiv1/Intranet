@@ -26,9 +26,9 @@ def envoi_contrats_renego(mail: str):
                 'id' : contract.id,
                 'Type': contract.Type,
                 'SType': contract.SType,
-                'Entreprise': contract.Entreprise,
+                'Entreprise': contract.entreprise,
                 'numContratExterne': contract.numContratExterne,
-                'Intitule': contract.Intitule,
+                'Intitule': contract.intitule,
                 'dateDebut': contract.dateDebut,
                 'dateFinPreavis': contract.dateFinPreavis,
                 'dateFin': contract.dateFin
@@ -36,13 +36,13 @@ def envoi_contrats_renego(mail: str):
             for contract in contracts
         ]
         df = pd.DataFrame(data)
-        fichier_excel = 'contrats_a_renegocier.xlsx'
-        df.to_excel(fichier_excel, index=False)
+        fichier_csv = 'contrats_a_renegocier.csv'
+        df.to_csv(fichier_csv, index=False)
 
         # Configuration de l'e-mail
-        email_expediteur = Config.MAIL_USERNAME
-        email_destinataire = mail
-        mot_de_passe = Config.MAIL_PASSWORD
+        email_expediteur: str = Config.EMAIL_USER
+        email_destinataire: str = mail
+        mot_de_passe: str = Config.EMAIL_PASSWORD
 
         msg = MIMEMultipart()
         msg['From'] = email_expediteur
@@ -53,13 +53,13 @@ def envoi_contrats_renego(mail: str):
         msg.attach(MIMEText(body, 'plain'))
 
         # Ajouter le fichier Excel en pièce jointe
-        with open(fichier_excel, 'rb') as attachment:
+        with open(fichier_csv, 'rb') as attachment:
             part = MIMEBase('application', 'octet-stream')
             part.set_payload(attachment.read())
             encoders.encode_base64(part)
             part.add_header(
                 'Content-Disposition',
-                f'attachment; filename={fichier_excel}',
+                f'attachment; filename={fichier_csv}',
             )
             msg.attach(part)
 
@@ -74,6 +74,6 @@ def envoi_contrats_renego(mail: str):
             print(f"Erreur lors de l'envoi de l'e-mail : {e}")
         finally:
             conn.close()
-            os.remove(fichier_excel)
+            os.remove(fichier_csv)
     else:
         conn.close()
