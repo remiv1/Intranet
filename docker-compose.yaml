@@ -33,7 +33,7 @@ services:
       - intranet_net
 
   db:
-    image: mariadb:latest
+    image: mariadb:12.0.2
     container_name: intranet_db
     restart: always
     environment:
