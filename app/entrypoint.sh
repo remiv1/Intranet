@@ -1,6 +1,5 @@
-#!/bin/sh
-
-echo "⏳ Attente de la base de données MariaDB..."
+﻿#!/bin/sh
+echo "Attente de la base de données MariaDB..."
 while ! nc -z db 3306; do
   sleep 1
 done
