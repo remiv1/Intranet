@@ -187,7 +187,6 @@ docker-compose exec db mysqldump -u root -p$(grep ROOT_PASSWORD .env | cut -d'='
 ### 📋 Variables d'environnement détaillées
 
 Le fichier `.env` contient toutes les variables de configuration nécessaires :
-+--------------------+------------------------------------+-------------------------------+
 | Variable           | Description                        | Exemple                       |
 |--------------------|------------------------------------|-------------------------------|
 | `DB_USER`          | Utilisateur de la base de données  | `intranet_user`               |
@@ -201,7 +200,6 @@ Le fichier `.env` contient toutes les variables de configuration nécessaires :
 | `SSH_HOST`         | Serveur SSH pour transferts        | `192.168.1.100`               |
 | `PRINTER_NAME`     | Nom de l'imprimante                | `HP_LaserJet_Pro`             |
 | `EMAIL_SMTP`       | Serveur SMTP                       | `smtp.gmail.com`              |
-+--------------------+------------------------------------+-------------------------------+
 
 ## 🗄️ Base de Données
 
@@ -235,7 +233,6 @@ L'application utilise **MariaDB** avec 4 tables principales interconnectées :
 ### 📊 Structure détaillée des tables
 
 #### Table `99_Users` - Gestion des utilisateurs
-+----------------+--------------+----------------------------+
 | Champ          | Type         | Description                |
 |----------------|--------------|----------------------------|
 | `id`           | INT(11) PK   | Identifiant unique         |
@@ -248,10 +245,8 @@ L'application utilise **MariaDB** avec 4 tables principales interconnectées :
 | `Début`        | DATE         | Date de début d'accès      |
 | `Fin`          | DATE         | Date de fin d'accès        |
 | `Locked`       | BIT(1)       | Compte verrouillé (0/1)    |
-+----------------+--------------+----------------------------+
 
 #### Table `01_Contrats` - Gestion des contrats
-+---------------------+--------------+---------------------------+
 | Champ               | Type         | Description               |
 |---------------------|--------------|---------------------------|
 | `id`                | INT(11) PK   | Identifiant unique        |
@@ -263,10 +258,8 @@ L'application utilise **MariaDB** avec 4 tables principales interconnectées :
 | `dateDebut`         | DATE         | Date de début             |
 | `dateFinPreavis`    | DATE         | Date de fin de préavis    |
 | `dateFin`           | DATE         | Date de fin de contrat    |
-+---------------------+--------------+---------------------------+
 
 #### Table `11_Documents` - Documents liés aux contrats
-+----------------+--------------+---------------------------+
 | Champ          | Type         | Description               |
 |----------------|--------------|---------------------------|
 | `id`           | INT(11) PK   | Identifiant unique        |
@@ -277,10 +270,8 @@ L'application utilise **MariaDB** avec 4 tables principales interconnectées :
 | `strLien`      | VARCHAR(255) | Chemin vers le fichier    |
 | `dateDocument` | DATE         | Date du document          |
 | `Name`         | VARCHAR(30)  | Nom du créateur           |
-+----------------+--------------+---------------------------+
 
 #### Table `12_Evenements` - Événements liés aux contrats
-+-----------------+--------------+----------------------------+
 | Champ           | Type         | Description                |
 |-----------------|--------------|----------------------------|
 | `id`            | INT(11) PK   | Identifiant unique         |
@@ -289,13 +280,10 @@ L'application utilise **MariaDB** avec 4 tables principales interconnectées :
 | `Type`          | VARCHAR(50)  | Type d'événement           |
 | `Stype`         | VARCHAR(50)  | Sous-type d'événement      |
 | `Descriptif`    | VARCHAR(255) | Description de l'événement |
-+-----------------+--------------+----------------------------+
 
 ### 🔐 Système d'Habilitations
 
 L'application utilise un système d'habilitations numérique flexible :
-
-+-------+--------------------------+----------------------------------+
 | Code  | Rôle                     | Permissions                      |
 |-------|--------------------------|----------------------------------|
 | **1** | 🔧 Super-administrateur  | Gestion des droits utilisateurs  |
@@ -304,7 +292,6 @@ L'application utilise un système d'habilitations numérique flexible :
 | **4** | 📚 Professeur            | Espace professeurs               |
 | **5** | 🎒 Élève                 | Espace élèves                    |
 | **6** | 🖨️ Impression            | Accès aux fonctions d'impression |
-+-------+--------------------------+----------------------------------+
 
 **Combinaisons possibles :**
 - `126` = Super-admin + Admin + Impression
@@ -798,7 +785,7 @@ Ce projet open-source a été créé bénévolement pour répondre aux besoins s
 
 ### 📈 Roadmap
 
-#### Version actuelle : 0.9.3
+#### Version actuelle : 1.0
 - [x] Gestion complète des contrats
 - [x] Système d'impression à distance  
 - [x] Interface responsive
