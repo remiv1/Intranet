@@ -1,19 +1,64 @@
+"""
+#==================================================
+# Application principale de l'Intranet API'Raudière
+#==================================================
+Fichier de l'application principale de l'Intranet API'Raudière.
+
+Le projet doit être pleinement refactorisé pour une meilleure maintenabilité.
+
+Auteur : Rémi Verschuur
+
+Date : 2025-09-11
+
+Routes disponibles :
+- '/' : Page d'accueil
+- '/login' : Page de connexion
+- '/logout' : Déconnexion de l'utilisateur
+- '/gestion_droits' : Gestion des droits des utilisateurs
+- '/gestion_utilisateurs' : Gestion des utilisateurs
+- '/gestion_documents' : Gestion des documents
+- '/erpp' : Espace réservé pour les professeurs principaux
+- '/erp' : Espace réservé pour les professeurs
+- '/ei' : Espace impressions
+- '/print_doc' : Impression d'un document
+- '/ere' : Espace réservé pour les élèves
+- '/ajout_utilisateurs' : Ajout d'un utilisateur
+- '/suppr_utilisateurs' : Suppression d'un utilisateur
+- '/modif_utilisateurs' : Modification d'un utilisateur
+- '/gestion_droits' (POST) : Modification des droits d'un utilisateur
+- '/contrats' : Gestion des contrats
+- '/contrats/<int:numContrat>' : Détail d'un contrat
+- '/contrats/<numContrat>/evenement' : Ajout d'un évènement à un contrat
+- '/contrats/<numContrat>/document' : Ajout d'un document à un contrat
+- '/contrats/numContrat/<numContrat>/numEvenement/<numEvent>' : Modification d'un évènement
+- '/contrats/numContrat/<numContrat>/numDocument/<numDoc>' : Modification d'un document
+- '/contrats/numContrat/<numContrat>/numDocument/<numDoc>/download' : Téléchargement d'un document
+- '/rapport-contrats' : Rapport des contrats arrivant à échéance entre m-6 et m-3
+
+"""
+# Imports liés à Flask et SQLAlchemy
 from flask import Flask, jsonify, render_template, Request, request, redirect, url_for, session, g
 from flask.typing import ResponseReturnValue
 from werkzeug import Response
-from config import Config
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.engine.url import URL
+from habilitations import (validate_habilitation, ADMINISTRATEUR, GESTIONNAIRE, PROFESSEURS_PRINCIPAUX,
+                           PROFESSEURS, ELEVES, IMPRESSIONS)
+
+# Imports liés à l'application
+from config import Config
 from models import Base
 import docs
 from models import User, Contract, Event, Document
+
+# Imports standards
 from typing import List, Dict, Any, cast, Optional, Tuple
 import hashlib
 import datetime
 import os
-from datetime import timedelta
 
+# Initialisation de l'application Flask
 peraudiere = Flask(__name__)
 
 # Charger la configuration depuis config.py
@@ -40,99 +85,138 @@ engine = create_engine(db_url,
                         pool_timeout=30,
                         pool_pre_ping=True,
                         connect_args={'connect_timeout': 10},
-                        echo=True)
+                        echo=False)
 
 # Créer les tables de la base de données (avec retry en cas d'erreur de connexion)
-def initialize_database():
+def initialize_database(max_retries: int = 10, retry_delay: int = 2) -> bool | None:
     import time
-    max_retries = 10
-    retry_delay = 2
     
+    # Tenter de créer les tables avec des retries
     for attempt in range(max_retries):
         try:
             Base.metadata.create_all(engine)
-            print(f"✓ Base de données initialisée avec succès (tentative {attempt + 1})")
             return True
-        except Exception as e:
+        except Exception:
             if attempt < max_retries - 1:
-                print(f"✗ Tentative {attempt + 1} échouée: {e}")
-                print(f"  Nouvelle tentative dans {retry_delay} secondes...")
                 time.sleep(retry_delay)
             else:
-                print(f"✗ Échec de la connexion à la base de données après {max_retries} tentatives: {e}")
                 raise
 
-# Créer une session de base de données
+# Créer une session de base de données sans ouverture de celle-ci
 Session = sessionmaker(bind=engine)
 
 # Création des constantes
-UPLOAD_EXTENSIONS = ['.jpg', '.png', '.gif', '.jpeg', '.tif', '.tiff', '.pdf']
 RESERVED_SPACE = 'Espace réservé'
-
-# Configuration de l'application
-peraudiere.config['UPLOAD_EXTENSIONS'] = UPLOAD_EXTENSIONS
-peraudiere.config['PERMANENT_SESSION_LIFETIME'] = timedelta(minutes=30)
 
 # Initialiser la base de données avec retry
 initialize_database()
 
-def get_user_from_credentials(request_form: Request) -> Tuple[User | None, str, str]:
-    # Récupération du credential
-    username = request_form.form.get('username', '')
-    password = request_form.form.get('password', '')
-    password = hashlib.sha256(password.encode()).hexdigest()
+class UsersMethods:
+    """
+    Classe pour gérer les méthodes liées aux utilisateurs.
+    Méthodes statiques :
+    - get_user_from_credentials : Récupère un utilisateur à partir des identifiants fournis dans une requête.
+    - valid_authentication : Valide l'authentification d'un utilisateur et initialise la session.
+    - generate_nb_false_pwd : Gère le compteur d'essais de mot de passe incorrects et verrouille l'utilisateur si nécessaire.
+    """
+    
+    @staticmethod
+    def get_user_from_credentials(request: Request) -> Tuple[User, str, str]:
+        """
+        Récupère un utilisateur à partir des identifiants fournis dans une requête.
+        Args:
+            request (Request): La requête contenant les identifiants :
+                - 'username' : nom d'utilisateur
+                - 'password' : mot de passe
+        Returns:
+            Tuple[User, str, str]: Un tuple contenant l'utilisateur, le nom d'utilisateur et le mot de passe.
+        """
+        # Récupération du credential
+        username = request.form.get('username', '')
+        password = request.form.get('password', '')
+        password = hashlib.sha256(password.encode()).hexdigest()
 
-    try:
-        # Recherche de l'utilisateur dans la base de données
-        user = g.db_session.query(User).filter(User.identifiant == username).first()
-
-    except Exception:
-        # Gérer les exceptions potentielles
-        user = None
-
-    # Retourne les identifiants de l'utilisateur et l'utilisateur
-    return user, username, password
-
-def valid_authentication(user: User, password: str) -> bool:
-    if user and user.shaMdp == password:
-        session['identifiant'] = user.identifiant
-        session['prenom'] = user.prenom
-        session['nom'] = user.nom
-        session['mail'] = user.mail
-        session['habilitation'] = user.habilitation
         try:
-            # Stocker les informations de l'utilisateur dans la session
-            user.falseTest=0
-            g.db_session.commit()
-            return True
+            # Recherche de l'utilisateur dans la base de données
+            user = g.db_session.query(User).filter(User.identifiant == username).first()
+
         except Exception:
-            g.db_session.rollback()
-            return False
-    return False
+            # Gérer les exceptions potentielles
+            user = User()
 
-def generate_nb_false_pwd(user: User) -> str:
-    if user.falseTest < 2:
-        user.falseTest += 1
-        reste = 3 - user.falseTest
-        message = f'Erreur d\'identifiant ou de mot de passe, il vous reste {reste} essais.'
-    else:
-        user.locked = True
-        user.falseTest = 3
-        message = f'Utilisateur {user.nom} vérouillé, merci de contacter votre administrateur.'
-    try:
-        g.db_session.commit()
-    except Exception as e:
-        g.db_session.rollback()
-        message = f'Erreur lors de la mise à jour du compteur d\'essais : {e}'
-    return message
+        # Retourne les identifiants de l'utilisateur et l'utilisateur
+        return user, username, password
 
+    @staticmethod
+    def valid_authentication(user: User, password: str) -> bool:
+        """
+        Valide l'authentification d'un utilisateur et initialise la session.
+        Args:
+            user (User): L'utilisateur à valider.
+            password (str): Le mot de passe fourni pour la validation.
+        Returns:
+            bool: True si l'authentification est réussie, False sinon.
+        """
+        if user and user.shaMdp == password:
+            session['identifiant'] = user.identifiant
+            session['prenom'] = user.prenom
+            session['nom'] = user.nom
+            session['mail'] = user.mail
+            session['habilitation'] = user.habilitation
+            try:
+                # Stocker les informations de l'utilisateur dans la session
+                user.falseTest=0
+                g.db_session.commit()
+                return True
+            except Exception:
+                return False
+        return False
+
+    @staticmethod
+    def generate_nb_false_pwd(user: User) -> str:
+        """
+        Gère le compteur d'essais de mot de passe incorrects et verrouille l'utilisateur si nécessaire.
+        Args:
+            user (User): L'utilisateur pour lequel gérer le compteur d'essais.
+        Returns:
+            str: Un message indiquant le résultat de l'opération.
+        """
+        if user.falseTest < 2:
+            user.falseTest += 1
+            reste = 3 - user.falseTest
+            message = f'Erreur d\'identifiant ou de mot de passe, il vous reste {reste} essais.'
+        else:
+            user.locked = True
+            user.falseTest = 3
+            message = f'Utilisateur {user.nom} vérouillé, merci de contacter votre administrateur.'
+        try:
+            g.db_session.commit()
+        except Exception as e:
+            message = f'Erreur lors de la mise à jour du compteur d\'essais : {e}'
+        return message
 
 @peraudiere.before_request
 def before_request() -> None:
+    """
+    Fonction exécutée avant chaque requête.
+    Initialise une session de base de données et la stocke dans l'objet `g`.
+    Args:
+        None
+    Returns:
+        None
+    """
     g.db_session = Session()
 
 @peraudiere.teardown_appcontext
-def teardown_request(exception: Optional[BaseException]):
+def teardown_request(exception: Optional[BaseException]) -> None:
+    """
+    Fonction exécutée après chaque requête.
+    Ferme la session de base de données stockée dans l'objet `g` et réalise les rollbacks si nécessaire.
+    Args:
+        exception (Optional[BaseException]): Une exception éventuelle survenue lors de la requête.
+    Returns:
+        None
+    """
     db_session = g.pop('db_session', None)
     if db_session is not None:
         if exception:
@@ -141,6 +225,16 @@ def teardown_request(exception: Optional[BaseException]):
 
 @peraudiere.route('/')
 def home() -> str | Response:
+    """
+    Route pour la page d'accueil.
+    Si l'utilisateur est connecté, affiche la page d'accueil avec les informations utilisateur et les sections disponibles.
+    Sinon, redirige vers la page de connexion.
+    Args:
+        None
+    Returns:
+        str | Response: La page d'accueil ou une redirection vers la page de connexion.
+    """
+    # Validation de l'existence de la session utilisateur avec les éléments nécessaires
     if 'prenom' in session and 'nom' in session:
         prenom = session['prenom']
         nom = session['nom']
@@ -149,7 +243,8 @@ def home() -> str | Response:
         # création d'une liste de niveaux d'habilitation
         habilitation_levels = list(map(int, str(habilitation)))
 
-        sections: List[Dict[str, Any]] = [
+        # définition des sections disponibles en fonction des habilitations
+        sections: List[Dict[str, str | int]] = [
             {
                 'classe': 1,
                 'titre': 'Gestion des droits',
@@ -201,314 +296,422 @@ def home() -> str | Response:
             }
         ]
 
+        # Retourne la page d'accueil avec les informations utilisateur et les sections disponibles
         return render_template('index.html', prenom=prenom, nom=nom, habilitation_levels=habilitation_levels, sections=sections)
     else:
         return redirect(url_for('login'))
 
 @peraudiere.route('/login', methods=['GET', 'POST'])
 def login() -> Response | str:
+    """
+    Route pour la page de connexion.
+    Gère l'affichage du formulaire de connexion et le traitement des informations de connexion.
+    Args:
+        None
+    Returns:
+        Response | str: La page de connexion ou une redirection vers la page d'accueil.
+    """
     message = request.args.get('message', '')
 
+    # === Gestion de la méthode POST (traitement du formulaire de connexion) ===
     if request.method == 'POST':
         try:
             # récupération du contenu du formulaire
-            user, username, password = get_user_from_credentials(request)
+            user, _, password = UsersMethods.get_user_from_credentials(request)
 
             # Vérifier si l'utilisateur existe et si le mot de passe est correct
-            if valid_authentication(user, password):
+            if UsersMethods.valid_authentication(user, password):
                 return redirect(url_for('home'))
-            
-            # Gestion de l'absence d'utilisateur
-            elif not user:
-                message = f'L\'utilisateur {username} semble inconnu'
             
             # Gestion des erreurs de mots de passe
             else:
-                message = generate_nb_false_pwd(user)
+                message = UsersMethods.generate_nb_false_pwd(user)
 
             # Rediriger vers la page de connexion avec le message approprié
             return redirect(url_for('login', message=message))
+        
         except Exception as e:
             # En cas d'erreur, retour sur la page de connexion après rollback
-            g.db_session.rollback()
             message = f'Erreur lors de la connexion, veuillez réessayer : {e}'
             return redirect(url_for('login', message=message))
 
-    # Gestion de la méthode GET (affichage de la page de connexion)
+    # === Gestion de la méthode GET (affichage de la page de connexion) ===
     else:
         return render_template('login.html', message=message)
 
-@peraudiere.route('/logout')
+@peraudiere.route('/logout', methods=['GET'])
 def logout() -> Response:
+    """
+    Route pour la déconnexion de l'utilisateur.
+    Gère la suppression de la session utilisateur.
+    Args:
+        None
+    Returns:
+        Response: Redirection vers la page de connexion.
+    """
     session.clear()
     return redirect(url_for('login'))
 
-@peraudiere.route('/gestion_droits')
+@peraudiere.route('/gestion_droits', methods=['GET'])
+@validate_habilitation(ADMINISTRATEUR)
 def gestion_droits() -> str | Response:
-    if '1' in str(session['habilitation']): 
-        users = g.db_session.query(User).all()
-        return render_template('gestion_droits.html', users=users)
-    else:
-        return redirect(url_for('logout'))
+    """
+    Route pour la gestion des droits des utilisateurs.
+    Gère l'affichage et la modification des droits des utilisateurs.
+    Args:
+        None
+    Returns:
+        Response: La page de gestion des droits ou une redirection vers la page de déconnexion.
+    """
+    users = g.db_session.query(User).all()
+    return render_template('gestion_droits.html', users=users)
 
-@peraudiere.route('/gestion_utilisateurs')
+@peraudiere.route('/gestion_utilisateurs', methods=['GET'])
+@validate_habilitation(GESTIONNAIRE)
 def gestion_utilisateurs() -> str | Response:
-    if '2' in str(session['habilitation']): 
-        users: list[User] = g.db_session.query(User).all()
-        users.sort(key=lambda x: (x.nom, x.prenom))
-        return render_template('gestion_utilisateurs.html', users=users)
-    else:
-        return redirect(url_for('logout'))
+    """
+    Route pour la gestion des utilisateurs.
+    Gère l'affichage et la modification des utilisateurs.
+    Args:
+        None
+    Returns:
+        Response: La page de gestion des utilisateurs ou une redirection vers la page de déconnexion.
+    """
+    users: list[User] = g.db_session.query(User).all()
+    users.sort(key=lambda x: (x.nom, x.prenom))
+    return render_template('gestion_utilisateurs.html', users=users)
 
 @peraudiere.route('/gestion_documents')
+@validate_habilitation(GESTIONNAIRE)
 def gestion_documents() -> str | Response:
-    if '2' in str(session['habilitation']):
-        return render_template('gestion_documents.html')
-    else:
-        return redirect(url_for('logout'))
+    """
+    Route pour la gestion des documents.
+    Gère l'affichage et la modification des documents.
+    Args:
+        None
+    Returns:
+        Response: La page de gestion des documents.
+    """
+    return render_template('gestion_documents.html')
 
 @peraudiere.route('/erpp')
+@validate_habilitation(PROFESSEURS_PRINCIPAUX)
 def erpp() -> str | Response:
-    if '3' in str(session['habilitation']):
-        return render_template('erpp.html')
-    else:
-        return redirect(url_for('logout'))
+    """
+    Route pour l'espace réservé aux professeurs principaux.
+    Gère l'affichage de l'espace réservé aux professeurs principaux.
+    Args:
+        None
+    Returns:
+        Response: La page de l'espace réservé aux professeurs principaux.
+    """
+    return render_template('erpp.html')
 
 @peraudiere.route('/erp')
+@validate_habilitation(PROFESSEURS)
 def erp() -> str | Response:
-    if '4' in str(session['habilitation']): 
-        return render_template('erp.html')
-    else:
-        return redirect(url_for('logout'))
+    """
+    Route pour l'espace réservé aux professeurs.
+    Gère l'affichage de l'espace réservé aux professeurs.
+    Args:
+        None
+    Returns:
+        Response: La page de l'espace réservé aux professeurs.
+    """
+    return render_template('erp.html')
 
 @peraudiere.route('/ei')
+@validate_habilitation(IMPRESSIONS)
 def ei() -> str | Response:
-    if '6' in str(session['habilitation']):
-        return render_template('ei.html')
-    else:
-        return redirect(url_for('logout'))
+    """
+    Route pour l'espace réservé aux impressions.
+    Gère l'affichage de l'espace réservé aux impressions.
+    Args:
+        None
+    Returns:
+        Response: La page de l'espace réservé aux impressions.
+    """
+    message = request.args.get('message', '')
+    return render_template('ei.html', message=message)
 
 @peraudiere.route('/print_doc', methods=['POST'])
+@validate_habilitation(IMPRESSIONS)
 def print_doc() -> Response:
-    if '6' in str(session['habilitation']):
-        binary_document: Any = request.files['document']
-        document = str(binary_document.filename)
-        extension: str = str(os.path.splitext(document))[1]
-        docname = document.split('.')[0]
-        username = session['prenom'] + ' ' + session['nom']
-        copies: str = str(request.form.get('copies'))
-        sides: str = request.form.get('recto_verso', '')
-        media: str = request.form.get('format', '')
-        orientation: str = request.form.get('orientation', '')
-        color: str = request.form.get('couleur', '')
+    """
+    Route pour l'impression d'un document.
+    Gère l'impression d'un document via SSH.
+    Args:
+        None
+    Returns:
+        Response: Redirection vers la page de l'espace réservé aux
+                  impressions avec un message de succès.
+    """
+    binary_document: Any = request.files['document']
+    document = str(binary_document.filename)
+    extension: str = str(os.path.splitext(document))[1]
+    docname = document.split('.')[0]
+    username = session['prenom'] + ' ' + session['nom']
+    copies: str = str(request.form.get('copies'))
+    sides: str = request.form.get('recto_verso', '')
+    media: str = request.form.get('format', '')
+    orientation: str = request.form.get('orientation', '')
+    color: str = request.form.get('couleur', '')
 
-        #Envoi du document à l'imprimante
-        docs.print_document(binary_document,docname, extension, copies, username, sides, media, orientation, color)
+    #Envoi du document à l'imprimante
+    docs.print_document(binary_document,docname, extension, copies, username, sides, media, orientation, color)
 
-        #Suppression du document sur le serveur
-        docs.delete_file(docname, extension)
+    #Suppression du document sur le serveur
+    docs.delete_file(docname, extension)
 
-        return redirect(url_for('ei', message='Impression envoyée'))
-    else:
-        return redirect(url_for('logout'))
+    return redirect(url_for('ei', message='Impression envoyée'))
 
 @peraudiere.route('/ere')
+@validate_habilitation(ELEVES)
 def ere() -> str | Response:
-    if '5' in str(session['habilitation']):
-        return render_template('ere.html')
-    else:
-        return redirect(url_for('logout'))
+    """
+    Route pour l'espace réservé aux élèves.
+    Gère l'affichage de l'espace réservé aux élèves.
+    Args:
+        None
+    Returns:
+        Response: La page de l'espace réservé aux élèves.
+    """
+    return render_template('ere.html')
 
 @peraudiere.route('/ajout_utilisateurs', methods=['POST'])
+@validate_habilitation(ADMINISTRATEUR)
 def ajout_utilisateurs() -> Response:
-    if '1' in str(session['habilitation']): 
-        try:
-            #Récupération des données du formulaire
-            prenom = request.form.get('prenom')
-            nom = request.form.get('nom')
-            mail = request.form.get('mail')
-            identifiant = request.form.get('identifiant')
-            mdp = request.form.get('mdp', '')
-            mdp = hashlib.sha256(mdp.encode()).hexdigest()
+    """
+    Route pour l'ajout d'un utilisateur.
+    Gère l'ajout d'un utilisateur à la base de données.
+    Args:
+        None
+    Returns:
+        Response: Redirection vers la page de gestion des utilisateurs.
+    """
+    try:
+        #Récupération des données du formulaire
+        prenom = request.form.get('prenom')
+        nom = request.form.get('nom')
+        mail = request.form.get('mail')
+        identifiant = request.form.get('identifiant')
+        mdp = request.form.get('mdp', '')
+        mdp = hashlib.sha256(mdp.encode()).hexdigest()
 
-            #Création du niveau d'habilitation
-            habilitation_values: List[str] = []
-            for key, value in request.form.items():
-                if key.startswith('habil'):
-                    habilitation_values.append(value)
-        
-            #Trier les valeurs d'habilitation
-            sorted_habil = sorted(habilitation_values, key=int)
+        #Création du niveau d'habilitation
+        habilitation_values: List[str] = []
+        for key, value in request.form.items():
+            if key.startswith('habil'):
+                habilitation_values.append(value)
+    
+        #Trier les valeurs d'habilitation
+        sorted_habil = sorted(habilitation_values, key=int)
 
-            #Concaténation des valeurs d'habilitation
-            habilitation = int(''.join(sorted_habil))
+        #Concaténation des valeurs d'habilitation
+        habilitation = int(''.join(sorted_habil))
 
-            user = User(prenom=prenom, nom=nom, identifiant=identifiant, mail=mail, habilitation=habilitation, shaMdp=mdp)
-            g.db_session.add(user)
-            g.db_session.commit()
+        user = User(prenom=prenom, nom=nom,
+                    identifiant=identifiant,
+                    mail=mail, habilitation=habilitation,
+                    shaMdp=mdp)
+        g.db_session.add(user)
+        g.db_session.commit()
 
-            return redirect(url_for('gestion_utilisateurs'))
-        except Exception:
-            g.db_session.rollback()
-            return redirect(url_for('gestion_utilisateurs'))
-    else: 
-        return redirect(url_for('logout'))
+        return redirect(url_for('gestion_utilisateurs'))
+    except Exception:
+        return redirect(url_for('gestion_utilisateurs'))
 
 @peraudiere.route('/suppr_utilisateurs', methods=['POST'])
+@validate_habilitation(ADMINISTRATEUR)
 def suppr_utilisateurs() -> Response:
-    if '1' in str(session['habilitation']): 
-        try:
-            identifiant = request.form.get('identifiant')
-            user = g.db_session.query(User).filter(User.identifiant == identifiant).first()
-            if user:
-                g.db_session.delete(user)
-                g.db_session.commit()
-            return redirect(url_for('gestion_utilisateurs'))
-        except Exception:
-            g.db_session.rollback()
-            return redirect(url_for('gestion_utilisateurs'))
-    else:
-        return redirect(url_for('logout'))
+    """
+    Route pour la suppression d'un utilisateur.
+    Gère la suppression d'un utilisateur de la base de données.
+    Args:
+        None
+    Returns:
+        Response: Redirection vers la page de gestion des utilisateurs.
+    """
+    try:
+        identifiant = request.form.get('identifiant')
+        user = g.db_session.query(User).filter(User.identifiant == identifiant).first()
+        if user:
+            g.db_session.delete(user)
+            g.db_session.commit()
+        return redirect(url_for('gestion_utilisateurs'))
+    except Exception:
+        return redirect(url_for('gestion_utilisateurs'))
 
 @peraudiere.route('/modif_utilisateurs', methods=['POST'])
+@validate_habilitation(ADMINISTRATEUR)
 def modif_utilisateurs() -> Response:
-    if '1' in str(session['habilitation']) or '2' in str(session['habilitation']): 
-        try:
-            prenom = request.form.get('prenom', '')
-            nom = request.form.get('nom', '')
-            mail = request.form.get('mail', '')
-            identifiant = request.form.get('identifiant', '')
-            mdp = request.form.get('mdp', '')
-            mdp = hashlib.sha256(mdp.encode()).hexdigest()
-            unlock = int(request.form.get('unlock', 0)) if request.form.get('unlock') == '1' else 0
+    """
+    Route pour la modification d'un utilisateur.
+    Gère la modification d'un utilisateur dans la base de données.
+    Args:
+        None
+    Returns:
+        Response: Redirection vers la page de gestion des utilisateurs.
+    """
+    try:
+        prenom = request.form.get('prenom', '')
+        nom = request.form.get('nom', '')
+        mail = request.form.get('mail', '')
+        identifiant = request.form.get('identifiant', '')
+        mdp = request.form.get('mdp', '')
+        mdp = hashlib.sha256(mdp.encode()).hexdigest()
+        unlock = int(request.form.get('unlock', 0)) if request.form.get('unlock') == '1' else 0
 
-            #Création du niveau d'habilitation
-            habilitation_values: List[str] = []
-            habilitation_values.extend(value for key, value in request.form.items() if key.startswith('habil'))
+        #Création du niveau d'habilitation
+        habilitation_values: List[str] = []
+        habilitation_values.extend(value for key, value in request.form.items() if key.startswith('habil'))
 
-            #Trier les valeurs d'habilitation
-            sorted_habil = sorted(habilitation_values, key=int)
+        #Trier les valeurs d'habilitation
+        sorted_habil = sorted(habilitation_values, key=int)
 
-            #Concaténation des valeurs d'habilitation
-            habilitation = int(''.join(sorted_habil))
+        #Concaténation des valeurs d'habilitation
+        habilitation = int(''.join(sorted_habil))
 
-            #Récupération de l'utilisateur
-            user = g.db_session.query(User).filter(User.identifiant == identifiant).first()
+        #Récupération de l'utilisateur
+        user = g.db_session.query(User).filter(User.identifiant == identifiant).first()
 
-            if user:
-                # Modification des informations de l'utilisateur
-                user.prenom = prenom
-                user.nom = nom
-                user.mail = mail
-                user.identifiant = identifiant
-                user.shaMdp = mdp if mdp != '' else user.shaMdp
-                if unlock == 1:
-                    user.falseTest = 0
-                    user.locked = False
-                user.habilitation = habilitation
+        if user:
+            # Modification des informations de l'utilisateur
+            user.prenom = prenom
+            user.nom = nom
+            user.mail = mail
+            user.identifiant = identifiant
+            user.shaMdp = mdp if mdp != '' else user.shaMdp
+            if unlock == 1:
+                user.falseTest = 0
+                user.locked = False
+            user.habilitation = habilitation
 
-                g.db_session.commit()
+            g.db_session.commit()
 
-            return redirect(url_for('gestion_utilisateurs'))
-        except Exception:
-            g.db_session.rollback()
-            return redirect(url_for('gestion_utilisateurs'))
-    else:
-        return redirect(url_for('logout'))
+        return redirect(url_for('gestion_utilisateurs'))
+    except Exception:
+        return redirect(url_for('gestion_utilisateurs'))
 
 @peraudiere.route('/gestion_droits', methods=['POST'])
+@validate_habilitation([ADMINISTRATEUR, GESTIONNAIRE])
 def gestion_droits_post() -> Response:
-    if '1' in str(session['habilitation']) or '2' in str(session['habilitation']): 
-        try:
-            identifiant = request.form.get('identifiant', '')
-            mdp = request.form.get('mdp', '')
-            mdp = hashlib.sha256(mdp.encode()).hexdigest()
-            
-            #Création du niveau d'habilitation
-            habilitation_values: List[str] = []
-            habilitation_values.extend(value for key, value in request.form.items() if key.startswith('habil'))
-            
-            #Trier les valeurs d'habilitation
-            sorted_habil = sorted(habilitation_values, key=int)
+    """
+    Route pour la gestion des droits d'un utilisateur.
+    Gère la modification des droits d'un utilisateur dans la base de données.
+    Args:
+        None
+    Returns:
+        Response: Redirection vers la page de gestion des droits.
+    """
+    try:
+        identifiant = request.form.get('identifiant', '')
+        mdp = request.form.get('mdp', '')
+        mdp = hashlib.sha256(mdp.encode()).hexdigest()
+        
+        #Création du niveau d'habilitation
+        habilitation_values: List[str] = []
+        habilitation_values.extend(value for key, value in request.form.items() if key.startswith('habil'))
+        
+        #Trier les valeurs d'habilitation
+        sorted_habil = sorted(habilitation_values, key=int)
 
-            #Concaténation des valeurs d'habilitation
-            habilitation = int(''.join(sorted_habil))
+        #Concaténation des valeurs d'habilitation
+        habilitation = int(''.join(sorted_habil))
 
-            user = g.db_session.query(User).filter(User.identifiant == identifiant).first()
-            if user:
-                user.shaMdp = mdp if mdp != '' else user.shaMdp
-                user.habilitation = habilitation
-                g.db_session.commit()
+        user = g.db_session.query(User).filter(User.identifiant == identifiant).first()
+        if user:
+            user.shaMdp = mdp if mdp != '' else user.shaMdp
+            user.habilitation = habilitation
+            g.db_session.commit()
 
-            return redirect(url_for('gestion_droits'))
-        except Exception:
-            g.db_session.rollback()
-            return redirect(url_for('gestion_droits'))
-    else:
-        return redirect(url_for('logout'))
+        return redirect(url_for('gestion_droits'))
+    except Exception:
+        return redirect(url_for('gestion_droits'))
 
 @peraudiere.route('/contrats', methods=['GET', 'POST'])
+@validate_habilitation(GESTIONNAIRE)
 def contrats() -> ResponseReturnValue:
-    if '2' in str(session['habilitation']):
-        if request.method == 'GET':
-            contracts = g.db_session.query(Contract).all()
-            return render_template('contrats.html', contracts=contracts)
-        
-        elif request.method == 'POST':
-            try:
-                #Récupération des données du formulaire*
-                type_contrat = request.form.get('Type0', '')
-                sous_type_contrat = request.form.get('SType0', '')
-                entreprise = request.form.get('Entreprise', '')
-                num_contrat_externe = request.form.get('numContratExterne', '')
-                intitule = request.form.get('Intitule', '')
-                date_debut = request.form.get('dateDebut', '')
-                date_fin_preavis = request.form.get('dateFinPreavis', '')
-                date_fin = request.form.get('dateFin', '')
-                contract = Contract(Type = type_contrat,
-                                    SType = sous_type_contrat,
-                                    entreprise = entreprise,
-                                    numContratExterne = num_contrat_externe,
-                                    intitule = intitule,
-                                    dateDebut = date_debut,
-                                    dateFin = date_fin,
-                                    dateFinPreavis = date_fin_preavis
-                                    ) \
-                           if date_fin != '' \
-                           else \
-                           Contract(Type = type_contrat,
-                                    SType = sous_type_contrat,
-                                    entreprise = entreprise,
-                                    numContratExterne = num_contrat_externe,
-                                    intitule = intitule,
-                                    dateDebut = date_debut,
-                                    dateFinPreavis = date_fin_preavis)
+    """
+    Route pour la gestion des contrats.
+    Gère l'affichage et l'ajout de contrats.
+    Args:
+        None
+    Returns:
+        Response: La page de gestion des contrats ou une redirection vers la page de déconnexion
+    """
+    # === Gestion de la méthode GET (affichage de la liste des contrats) ===
+    if request.method == 'GET':
+        contracts = g.db_session.query(Contract).all()
+        return render_template('contrats.html', contracts=contracts)
+    
+    # === Gestion de la méthode POST (ajout d'un nouveau contrat) ===
+    elif request.method == 'POST':
+        try:
+            # Récupération des données du formulaire
+            type_contrat = request.form.get('Type0', '')
+            sous_type_contrat = request.form.get('SType0', '')
+            entreprise = request.form.get('Entreprise', '')
+            num_contrat_externe = request.form.get('numContratExterne', '')
+            intitule = request.form.get('Intitule', '')
+            date_debut = request.form.get('dateDebut', '')
+            date_fin_preavis = request.form.get('dateFinPreavis', '')
+            date_fin = request.form.get('dateFin', '')
+            contract = Contract(Type = type_contrat,
+                                SType = sous_type_contrat,
+                                entreprise = entreprise,
+                                numContratExterne = num_contrat_externe,
+                                intitule = intitule,
+                                dateDebut = date_debut,
+                                dateFin = date_fin,
+                                dateFinPreavis = date_fin_preavis
+                                ) \
+                        if date_fin != '' \
+                        else \
+                        Contract(Type = type_contrat,
+                                SType = sous_type_contrat,
+                                entreprise = entreprise,
+                                numContratExterne = num_contrat_externe,
+                                intitule = intitule,
+                                dateDebut = date_debut,
+                                dateFinPreavis = date_fin_preavis)
 
-                g.db_session.add(contract)
-                g.db_session.commit()
+            g.db_session.add(contract)
+            g.db_session.commit()
 
-                return redirect(url_for('contrats'))
-            except Exception:
-                g.db_session.rollback()
-                return redirect(url_for('contrats'))
-        else:
+            return redirect(url_for('contrats'))
+        except Exception:
             return redirect(url_for('contrats'))
     else:
-        return redirect(url_for('logout'))
+        return redirect(url_for('contrats'))
 
 @peraudiere.route('/contrats/<int:numContrat>', methods=['GET', 'POST'])
+@validate_habilitation(GESTIONNAIRE)
 def contrats_by_num(numContrat: int) -> ResponseReturnValue:
+    """
+    Route pour le détail d'un contrat.
+    Gère l'affichage, la modification et la suppression d'un contrat.
+    Args:
+        numContrat (int): Le numéro du contrat à afficher/modifier/supprimer.
+    Returns:
+        Response: La page de détail du contrat ou une redirection vers la page de gestion des
+    """
     # alias pour conserver le style snake_case utilisé dans la suite du code
     num_contrat = numContrat
-    if request.method == 'GET': 
-        contract = g.db_session.query(Contract).filter(Contract.id == num_contrat).first()
+    contract = g.db_session.query(Contract).filter(Contract.id == num_contrat).first()
+
+    # === Gestion de la méthode GET (affichage du détail du contrat) ===
+    if request.method == 'GET':
+        # Récupération du contrat, des évènements et des documents associés
         events = g.db_session.query(Event).filter(Event.idContrat == num_contrat)
         documents = g.db_session.query(Document).filter(Document.idContrat == num_contrat)
 
+        # Affichage de la page de détail du contrat
         return render_template('contrat_detail.html', contract = contract, events = events, documents = documents)
+    
+    # === Gestion de la méthode POST (modification du contrat) ===
     elif request.method == 'POST' and request.form.get('_method') == 'PUT':
         try:
-            contract = g.db_session.query(Contract).filter(Contract.id == num_contrat).first()
             if contract:
                 contract.Type = request.form.get(f'Type{num_contrat}')
                 contract.SType = request.form.get(f'SType{num_contrat}')
@@ -524,123 +727,153 @@ def contrats_by_num(numContrat: int) -> ResponseReturnValue:
 
             return redirect(url_for('contrats'))
         except Exception:
-            g.db_session.rollback()
             return redirect(url_for('contrats'))
+        
+    # === Gestion de toute autre méthode ===
     else:
         return redirect(url_for('contrats'))
 
 @peraudiere.route('/contrats/<numContrat>/evenement', methods=['POST'])
+@validate_habilitation(GESTIONNAIRE)
 def add_contrats_event(numContrat: int) -> ResponseReturnValue:
+    """
+    Route pour l'ajout d'un évènement à un contrat.
+    Gère l'ajout d'un évènement à un contrat dans la base de données.
+    Args:
+        numContrat (int): Le numéro du contrat auquel ajouter l'évènement.
+    Returns:
+        Response: Redirection vers la page de détail du contrat.
+    """
     num_contrat = numContrat
-    if '2' in str(session['habilitation']):
-        if request.method == 'POST':
-            try:
-                #Récupération des données du formulaire*
-                id_contrat = request.form.get('idContratE')
-                date_evenement = request.form.get('dateEvenementE')
-                type_contrat = request.form.get('TypeE0')
-                stype_contrat = request.form.get('STypeE0')
-                descriptif = request.form.get('descriptifE')
+    if request.method == 'POST':
+        try:
+            # Récupération des données du formulaire
+            id_contrat = request.form.get('idContratE')
+            date_evenement = request.form.get('dateEvenementE')
+            type_contrat = request.form.get('TypeE0')
+            stype_contrat = request.form.get('STypeE0')
+            descriptif = request.form.get('descriptifE')
 
-                event = Event(idContrat = id_contrat, dateEvenement = date_evenement, Type = type_contrat, SType = stype_contrat, descriptif = descriptif)
-                
-                g.db_session.add(event)
-                g.db_session.commit()
+            event = Event(idContrat = id_contrat, dateEvenement = date_evenement, Type = type_contrat, SType = stype_contrat, descriptif = descriptif)
+            
+            g.db_session.add(event)
+            g.db_session.commit()
 
-                return redirect(url_for('contrats_by_num', numContrat=id_contrat))
-            except Exception:
-                g.db_session.rollback()
-                return redirect(url_for('contrats_by_num', numContrat=num_contrat))
-        else:
+            return redirect(url_for('contrats_by_num', numContrat=id_contrat))
+        except Exception:
             return redirect(url_for('contrats_by_num', numContrat=num_contrat))
     else:
-        return redirect(url_for('logout'))
+        return redirect(url_for('contrats_by_num', numContrat=num_contrat))
 
 @peraudiere.route('/contrats/<numContrat>/document', methods=['POST'])
+@validate_habilitation(GESTIONNAIRE)
 def add_contrats_document(numContrat: int) -> ResponseReturnValue:
+    """
+    Route pour l'ajout d'un document à un contrat.
+    Gère l'ajout d'un document à un contrat dans la base de données.
+    Args:
+        numContrat (int): Le numéro du contrat auquel ajouter le document.
+    Returns:
+        Response: Redirection vers la page de détail du contrat.
+    """
     num_contrat = numContrat
-    if '2' in str(session['habilitation']):
-        if request.method == 'POST':
-            try:
-                #Récupération du dernier élément
-                last_doc = g.db_session.query(Document).order_by(Document.id.desc()).first()
-                if last_doc:
-                    id_contrat = str(last_doc.id + 1)
-                else:
+
+    #=== Gestion de la méthode POST (ajout d'un nouveau document) ===
+    if request.method == 'POST':
+        try:
+            # Récupération du dernier élément
+            last_doc = g.db_session.query(Document).order_by(Document.id.desc()).first()
+            if last_doc:
+                id_contrat = str(last_doc.id + 1)
+            else:
                     id_contrat = '1'
 
-                #Récupération des données du formulaire
-                id_contrat = request.form.get('idContratD', '')
-                date_document = request.form.get('dateDocumentD', '')
-                type_document = request.form.get('TypeD0', '')
-                sous_type_document = request.form.get('STypeD0', '')
-                descriptif = request.form.get('descriptifD', '')
-                document_binaire: Any = request.files['documentD']
-                extention: str = os.path.splitext(str(document_binaire.filename))[1]
-                name = docs.create_name(date_document, id_contrat, id_contrat, sous_type_document)
-                lien_document = name + extention
+            # Récupération des données du formulaire
+            id_contrat = request.form.get('idContratD', '')
+            date_document = request.form.get('dateDocumentD', '')
+            type_document = request.form.get('TypeD0', '')
+            sous_type_document = request.form.get('STypeD0', '')
+            descriptif = request.form.get('descriptifD', '')
+            document_binaire: Any = request.files['documentD']
+            extention: str = os.path.splitext(str(document_binaire.filename))[1]
+            name = docs.create_name(date_document, id_contrat, id_contrat, sous_type_document)
+            lien_document = name + extention
 
-                #Création du document dans la base de données
-                document = Document(idContrat = id_contrat,
-                                    Type = type_document,
-                                    SType = sous_type_document,
-                                    descriptif = descriptif,
-                                    strLien = lien_document,
-                                    dateDocument = date_document,
-                                    name = name)
+            #Création du document dans la base de données
+            document = Document(idContrat = id_contrat,
+                                Type = type_document,
+                                SType = sous_type_document,
+                                descriptif = descriptif,
+                                strLien = lien_document,
+                                dateDocument = date_document,
+                                name = name)
 
-                #Ajout et Fermeture de la session
-                g.db_session.add(document)
-                g.db_session.commit()
+            #Ajout et Fermeture de la session
+            g.db_session.add(document)
+            g.db_session.commit()
 
-                #Enregistrement du fichier sur le serveur
-                docs.upload_file(document_binaire, name, extention)
+            #Enregistrement du fichier sur le serveur
+            docs.upload_file(document_binaire, name, extention)
 
-                #Retour du formulaire
-                return redirect(url_for('contrats_by_num', numContrat=id_contrat))
-            except Exception:
-                g.db_session.rollback()
-                return redirect(url_for('contrats_by_num', numContrat=num_contrat))
-        else:
+            #Retour du formulaire
+            return redirect(url_for('contrats_by_num', numContrat=id_contrat))
+        except Exception:
             return redirect(url_for('contrats_by_num', numContrat=num_contrat))
     else:
-        return redirect(url_for('logout'))
+        return redirect(url_for('contrats_by_num', numContrat=num_contrat))
 
-@peraudiere.route('/contrats/numContrat/<numContrat>/numEvenement/<numEvent>', methods=['POST'])
+@peraudiere.route('/contrats/numContrat/<int:numContrat>/numEvenement/<int:numEvent>', methods=['POST'])
+@validate_habilitation(GESTIONNAIRE)
 def modif_event_id(numEvent: int, numContrat: int) -> ResponseReturnValue:
+    """
+    Route pour la modification d'un évènement d'un contrat.
+    Gère la modification d'un évènement d'un contrat dans la base de données.
+    Args:
+        numEvent (int): Le numéro de l'évènement à modifier.
+        numContrat (int): Le numéro du contrat auquel l'évènement appartient.
+    Returns:
+        Response: Redirection vers la page de détail du contrat.
+    """
     num_event = numEvent
     num_contrat = numContrat
-    if '2' in str(session['habilitation']):
-        if request.method == 'POST' and request.form.get('_method') == 'PUT':
-            try:
-                #Récupération de l'évènement
-                event = g.db_session.query(Event).filter(Event.id == num_event).first()
+    if request.method == 'POST' and request.form.get('_method') == 'PUT':
+        try:
+            #Récupération de l'évènement
+            event = g.db_session.query(Event).filter(Event.id == num_event).first()
 
-                if event:
-                    #Récupération formulaire
-                    id_contrat = request.form.get(f'idContratE{num_event}')
-                    event.idContrat = request.form.get(f'idContratE{num_event}')
-                    event.dateEvenement = request.form.get(f'dateEvenementE{num_event}')
-                    event.Type = request.form.get(f'TypeE{num_event}')
-                    event.SType = request.form.get(f'STypeE{num_event}')
-                    event.descriptif = request.form.get(f'descriptifE{num_event}')
+            if event:
+                #Récupération formulaire
+                id_contrat = request.form.get(f'idContratE{num_event}')
+                event.idContrat = request.form.get(f'idContratE{num_event}')
+                event.dateEvenement = request.form.get(f'dateEvenementE{num_event}')
+                event.Type = request.form.get(f'TypeE{num_event}')
+                event.SType = request.form.get(f'STypeE{num_event}')
+                event.descriptif = request.form.get(f'descriptifE{num_event}')
 
-                    #Retour
-                    g.db_session.commit()
+                #Retour
+                g.db_session.commit()
 
-                    return redirect(url_for('contrats_by_num', numContrat = id_contrat))
-                else:
-                    return redirect(url_for('contrats_by_num', numContrat = num_contrat))
-            except Exception:
-                g.db_session.rollback()
+                return redirect(url_for('contrats_by_num', numContrat = id_contrat))
+            else:
                 return redirect(url_for('contrats_by_num', numContrat = num_contrat))
-        else:
+        except Exception:
+            g.db_session.rollback()
             return redirect(url_for('contrats_by_num', numContrat = num_contrat))
     else:
-        return redirect(url_for('logout'))
+        return redirect(url_for('contrats_by_num', numContrat = num_contrat))
 
 @peraudiere.route('/contrats/numContrat/<numContrat>/numDocument/<numDoc>', methods=['POST'])
+@validate_habilitation(GESTIONNAIRE)
 def modif_document_id(numDoc: int, numContrat: int) -> ResponseReturnValue:
+    """
+    Route pour la modification d'un document d'un contrat.
+    Gère la modification d'un document d'un contrat dans la base de données.
+    Args:
+        numDoc (int): Le numéro du document à modifier.
+        numContrat (int): Le numéro du contrat auquel le document appartient.
+    Returns:
+        Response: Redirection vers la page de détail du contrat.
+    """
     num_doc = numDoc
     num_contrat = numContrat
 
@@ -701,16 +934,26 @@ def modif_document_id(numDoc: int, numContrat: int) -> ResponseReturnValue:
         return redirect(url_for('logout'))
 
 @peraudiere.route('/contrats/numContrat/<numContrat>/numDocument/<numDoc>/download/<name>', methods=['GET'])
+@validate_habilitation(GESTIONNAIRE)
 def download_document(numDoc: int, numContrat: int, name: str):
-    if '2' in str(session['habilitation']):
-        extention = name.split('.')[1]
-        name = name.split('.')[0]
-        return docs.download_file(file_name=name, extension=extention)
-    else:
-        return redirect(url_for('logout'))
+    """
+    Route pour le téléchargement d'un document.
+    Gère le téléchargement d'un document depuis le serveur.
+    """
+    extention = name.split('.')[1]
+    name = name.split('.')[0]
+    return docs.download_file(file_name=name, extension=extention)
 
 @peraudiere.route('/rapport-contrats', methods=['POST'])
 def rapport_contrats() -> Response:
+    """
+    Route pour l'envoi du rapport des contrats à renégocier.
+    Gère l'envoi du rapport des contrats à renégocier par email.
+    Args:
+        None
+    Returns:
+        Response: Un message JSON indiquant le résultat de l'opération.
+    """
     email: str = request.args.get('email', '')
     try:
         from rapport_echeances import envoi_contrats_renego
@@ -718,3 +961,4 @@ def rapport_contrats() -> Response:
         return jsonify(f"Rapport envoyé à {email}", 200)
     except Exception as e:
         return jsonify(f"Erreur lors de l'envoi du rapport à {email} : {e}", 500)
+    
