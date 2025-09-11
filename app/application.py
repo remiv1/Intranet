@@ -111,6 +111,8 @@ def valid_authentication(user: User, password: str) -> bool:
     return False
 
 def generate_nb_false_pwd(user: User) -> str:
+    if not user.falseTest:
+        user.falseTest = 0
     if user.falseTest < 2:
         user.falseTest += 1
         reste = 3 - user.falseTest
@@ -125,7 +127,6 @@ def generate_nb_false_pwd(user: User) -> str:
         g.db_session.rollback()
         message = f'Erreur lors de la mise à jour du compteur d\'essais : {e}'
     return message
-
 
 @peraudiere.before_request
 def before_request() -> None:
