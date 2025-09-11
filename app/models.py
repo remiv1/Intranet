@@ -3,7 +3,6 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import mapped_column
 from sqlalchemy.sql import func
 
-
 Base = declarative_base()
 
 class User(Base):
@@ -71,3 +70,4 @@ class Event(Base):
     def __repr__(self): 
         return (f"<Event(id={self.id}, idContrat={self.idContrat}, dateEvenement={self.dateEvenement}, "
         f"Type='{self.Type}', SType='{self.SType}', descriptif='{self.descriptif}')>")
+    

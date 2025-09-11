@@ -1,6 +1,7 @@
 import os
 from dotenv import load_dotenv
 from typing import TypedDict
+from datetime import timedelta
 
 # Création du chemin absolu du répertoire racine du projet
 env_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '.env'))
@@ -15,8 +16,10 @@ class Config:
     DB_PASSWORD: str = os.getenv('DB_PASSWORD', '')
     DB_HOST: str = os.getenv('DB_HOST', '')
     DB_NAME: str = os.getenv('DB_NAME', '')
+    PERMANENT_SESSION_LIFETIME: timedelta = timedelta(minutes=30)
     #Gestion SSH
     UPLOAD_FOLDER: str = os.getenv('FILES_DOCKER_PATH', '')
+    UPLOAD_EXTENSIONS = ['.jpg', '.png', '.gif', '.jpeg', '.tif', '.tiff', '.pdf']
     SSH_PORT: int = int(os.getenv('SSH_PORT', 22))
     SSH_HOST: str = os.getenv('SSH_HOST', 'localhost')
     SSH_USER: str = os.getenv('SSH_USER', 'user')
