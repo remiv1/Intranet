@@ -496,8 +496,10 @@ def contrats() -> ResponseReturnValue:
     else:
         return redirect(url_for('logout'))
 
-@peraudiere.route('/contrats/<numContrat>', methods=['GET', 'POST'])
-def contrats_by_num(num_contrat: int) -> ResponseReturnValue:
+@peraudiere.route('/contrats/<int:numContrat>', methods=['GET', 'POST'])
+def contrats_by_num(numContrat: int) -> ResponseReturnValue:
+    # alias pour conserver le style snake_case utilisé dans la suite du code
+    num_contrat = numContrat
     if request.method == 'GET': 
         contract = g.db_session.query(Contract).filter(Contract.id == num_contrat).first()
         events = g.db_session.query(Event).filter(Event.idContrat == num_contrat)
@@ -528,7 +530,8 @@ def contrats_by_num(num_contrat: int) -> ResponseReturnValue:
         return redirect(url_for('contrats'))
 
 @peraudiere.route('/contrats/<numContrat>/evenement', methods=['POST'])
-def add_contrats_event(num_contrat: int) -> ResponseReturnValue:
+def add_contrats_event(numContrat: int) -> ResponseReturnValue:
+    num_contrat = numContrat
     if '2' in str(session['habilitation']):
         if request.method == 'POST':
             try:
@@ -554,7 +557,8 @@ def add_contrats_event(num_contrat: int) -> ResponseReturnValue:
         return redirect(url_for('logout'))
 
 @peraudiere.route('/contrats/<numContrat>/document', methods=['POST'])
-def add_contrats_document(num_contrat: int) -> ResponseReturnValue:
+def add_contrats_document(numContrat: int) -> ResponseReturnValue:
+    num_contrat = numContrat
     if '2' in str(session['habilitation']):
         if request.method == 'POST':
             try:
@@ -603,7 +607,9 @@ def add_contrats_document(num_contrat: int) -> ResponseReturnValue:
         return redirect(url_for('logout'))
 
 @peraudiere.route('/contrats/numContrat/<numContrat>/numEvenement/<numEvent>', methods=['POST'])
-def modif_event_id(num_event: int, num_contrat: int) -> ResponseReturnValue:
+def modif_event_id(numEvent: int, numContrat: int) -> ResponseReturnValue:
+    num_event = numEvent
+    num_contrat = numContrat
     if '2' in str(session['habilitation']):
         if request.method == 'POST' and request.form.get('_method') == 'PUT':
             try:
@@ -634,7 +640,9 @@ def modif_event_id(num_event: int, num_contrat: int) -> ResponseReturnValue:
         return redirect(url_for('logout'))
 
 @peraudiere.route('/contrats/numContrat/<numContrat>/numDocument/<numDoc>', methods=['POST'])
-def modif_document_id(num_doc: int, num_contrat: int) -> ResponseReturnValue:
+def modif_document_id(numDoc: int, numContrat: int) -> ResponseReturnValue:
+    num_doc = numDoc
+    num_contrat = numContrat
 
     def _fonction_modif_doc(document: Document, req: Request, num_doc: int) -> int:
         doc_id = document.id
@@ -693,7 +701,7 @@ def modif_document_id(num_doc: int, num_contrat: int) -> ResponseReturnValue:
         return redirect(url_for('logout'))
 
 @peraudiere.route('/contrats/numContrat/<numContrat>/numDocument/<numDoc>/download/<name>', methods=['GET'])
-def download_document(num_doc: int, num_contrat: int, name: str):
+def download_document(numDoc: int, numContrat: int, name: str):
     if '2' in str(session['habilitation']):
         extention = name.split('.')[1]
         name = name.split('.')[0]
