@@ -4,6 +4,9 @@ import os, io, datetime
 from config import ConfigDict
 from typing import cast
 from impression import print_file
+from logging import getLogger
+
+logger = getLogger(__name__)
 
 def get_config() -> ConfigDict:
     """Import tardif pour éviter l'import circulaire"""
@@ -11,18 +14,6 @@ def get_config() -> ConfigDict:
     return cast(ConfigDict, peraudiere.config)
 
 # Définition des variables de gestion (évaluées lors de la première utilisation)
-def _get_hostname() -> str:
-    return get_config().get("SSH_HOST", 'localhost')
-
-def _get_port() -> int:
-    return int(get_config().get("SSH_PORT", 22))
-
-def _get_username() -> str:
-    return get_config().get("SSH_USER", 'user')
-
-def _get_password() -> str:
-    return get_config().get("SSH_PASSWORD", 'password')
-
 def _get_folder() -> str:
     return get_config().get("UPLOAD_FOLDER", '/uploads')
 
@@ -118,16 +109,21 @@ def print_document(file: io.BytesIO, file_name: str, extension: str, copies: str
         #Création du chemin du fichier sur le serveur
         file_name = secure_filename(file_name) + '.' + extension
         file_path = os.path.join(_get_print_folder(), file_name)
+        logger.info(f"Preparing to print file: {file_path}")
         
         #Transfert du fichier vers le serveur
         with open(file_path, 'wb') as f:
             f.write(file.read())
+            logger.info(f"File {file_path} written to print directory")
         
         #Impression du fichier
         print_file(file_path, username, 'Intranet' , copies, sides, media, orientation, color)
+        logger.info(f"Print command sent for file: {file_path}")
         os.remove(file_path)
+        logger.info(f"File {file_path} removed from print directory after printing")
         
         return jsonify({'message': 'Document imprimé avec succès'})
     
     except Exception as e:
         return jsonify({'erreur': f'Erreur lors de l\'impression : {e}'})
+    

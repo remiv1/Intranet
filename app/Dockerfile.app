@@ -4,6 +4,7 @@ WORKDIR /app
 
 RUN apt-get update && apt-get install -y \
     build-essential \
+    cups-client \
     libcups2-dev \
     libffi-dev \
     libssl-dev \

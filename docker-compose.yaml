@@ -15,8 +15,12 @@ services:
       - .env
     restart: always
     entrypoint: ["sh", "app/entrypoint.sh"]
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     networks:
-      - intranet_net
+      intranet_net:
+      cups_network:
+        ipv4_address: 192.168.100.10
 
   nginx:
     image: nginx:latest
@@ -63,3 +67,8 @@ networks:
       config:
         - subnet: 172.20.0.0/16
           gateway: 172.20.0.1
+  cups_network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 192.168.100.0/24
