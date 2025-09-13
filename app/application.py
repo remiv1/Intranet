@@ -157,7 +157,7 @@ class UsersMethods:
         Returns:
             bool: True si l'authentification est réussie, False sinon.
         """
-        if user and user.shaMdp == password:
+        if user and user.sha_mdp == password:
             session['identifiant'] = user.identifiant
             session['prenom'] = user.prenom
             session['nom'] = user.nom
@@ -165,7 +165,7 @@ class UsersMethods:
             session['habilitation'] = str(user.habilitation)
             try:
                 # Stocker les informations de l'utilisateur dans la session
-                user.falseTest=0
+                user.false_test=0
                 g.db_session.commit()
                 return True
             except Exception:
@@ -181,13 +181,13 @@ class UsersMethods:
         Returns:
             str: Un message indiquant le résultat de l'opération.
         """
-        if user.falseTest < 2:
-            user.falseTest += 1
-            reste = 3 - user.falseTest
+        if user.false_test < 2:
+            user.false_test += 1
+            reste = 3 - user.false_test
             message = f'Erreur d\'identifiant ou de mot de passe, il vous reste {reste} essais.'
         else:
             user.locked = True
-            user.falseTest = 3
+            user.false_test = 3
             message = f'Utilisateur {user.nom} vérouillé, merci de contacter votre administrateur.'
         try:
             g.db_session.commit()
@@ -513,7 +513,7 @@ def ajout_utilisateurs() -> Response:
         user = User(prenom=prenom, nom=nom,
                     identifiant=identifiant,
                     mail=mail, habilitation=habilitation,
-                    shaMdp=mdp)
+                    sha_mdp=mdp)
         g.db_session.add(user)
         g.db_session.commit()
 
@@ -581,9 +581,9 @@ def modif_utilisateurs() -> Response:
             user.nom = nom
             user.mail = mail
             user.identifiant = identifiant
-            user.shaMdp = mdp if mdp != '' else user.shaMdp
+            user.sha_mdp = mdp if mdp != '' else user.sha_mdp
             if unlock == 1:
-                user.falseTest = 0
+                user.false_test = 0
                 user.locked = False
             user.habilitation = habilitation
 
@@ -621,7 +621,7 @@ def gestion_droits_post() -> Response:
 
         user = g.db_session.query(User).filter(User.identifiant == identifiant).first()
         if user:
-            user.shaMdp = mdp if mdp != '' else user.shaMdp
+            user.sha_mdp = mdp if mdp != '' else user.sha_mdp
             user.habilitation = habilitation
             g.db_session.commit()
 
@@ -657,24 +657,24 @@ def contrats() -> ResponseReturnValue:
             date_debut = request.form.get('dateDebut', '')
             date_fin_preavis = request.form.get('dateFinPreavis', '')
             date_fin = request.form.get('dateFin', '')
-            contract = Contract(Type = type_contrat,
-                                SType = sous_type_contrat,
+            contract = Contract(type_contrat = type_contrat,
+                                sous_type_contrat = sous_type_contrat,
                                 entreprise = entreprise,
-                                numContratExterne = num_contrat_externe,
+                                id_externe_contrat = num_contrat_externe,
                                 intitule = intitule,
-                                dateDebut = date_debut,
-                                dateFin = date_fin,
-                                dateFinPreavis = date_fin_preavis
+                                date_debut = date_debut,
+                                date_fin = date_fin,
+                                date_fin_preavis = date_fin_preavis
                                 ) \
                         if date_fin != '' \
                         else \
-                        Contract(Type = type_contrat,
-                                SType = sous_type_contrat,
+                        Contract(type_contrat = type_contrat,
+                                sous_type_contrat = sous_type_contrat,
                                 entreprise = entreprise,
-                                numContratExterne = num_contrat_externe,
+                                id_externe_contrat = num_contrat_externe,
                                 intitule = intitule,
-                                dateDebut = date_debut,
-                                dateFinPreavis = date_fin_preavis)
+                                date_debut = date_debut,
+                                date_fin_preavis = date_fin_preavis)
 
             g.db_session.add(contract)
             g.db_session.commit()
@@ -702,8 +702,8 @@ def contrats_by_num(num_contrat: int) -> ResponseReturnValue:
     # === Gestion de la méthode GET (affichage du détail du contrat) ===
     if request.method == 'GET':
         # Récupération du contrat, des évènements et des documents associés
-        events = g.db_session.query(Event).filter(Event.idContrat == num_contrat)
-        documents = g.db_session.query(Document).filter(Document.idContrat == num_contrat)
+        events = g.db_session.query(Event).filter(Event.id_contrat == num_contrat)
+        documents = g.db_session.query(Document).filter(Document.id_contrat == num_contrat)
 
         # Affichage de la page de détail du contrat
         return render_template('contrat_detail.html', contract = contract, events = events, documents = documents)
@@ -712,15 +712,15 @@ def contrats_by_num(num_contrat: int) -> ResponseReturnValue:
     elif request.method == 'POST' and request.form.get('_method') == 'PUT':
         try:
             if contract:
-                contract.Type = request.form.get(f'Type{num_contrat}')
-                contract.SType = request.form.get(f'SType{num_contrat}')
+                contract.type_contrat = request.form.get(f'Type{num_contrat}')
+                contract.sous_type_contrat = request.form.get(f'SType{num_contrat}')
                 contract.Entreprise = request.form.get(f'Entreprise{num_contrat}')
-                contract.numContratExterne = request.form.get(f'numContratExterne{num_contrat}')
+                contract.id_externe_contrat = request.form.get(f'numContratExterne{num_contrat}')
                 contract.Intitule = request.form.get(f'Intitule{num_contrat}')
-                contract.dateDebut = request.form.get(f'dateDebut{num_contrat}')
-                contract.dateFinPreavis = request.form.get(f'dateFinPreavis{num_contrat}')
+                contract.date_debut = request.form.get(f'dateDebut{num_contrat}')
+                contract.date_fin_preavis = request.form.get(f'dateFinPreavis{num_contrat}')
                 if request.form.get(f'dateFin{num_contrat}') != '':
-                    contract.dateFin = request.form.get(f'dateFin{num_contrat}')
+                    contract.date_fin = request.form.get(f'dateFin{num_contrat}')
             
                 g.db_session.commit()
 
@@ -748,11 +748,11 @@ def add_contrats_event(num_contrat: int) -> ResponseReturnValue:
             # Récupération des données du formulaire
             id_contrat = request.form.get('idContratE')
             date_evenement = request.form.get('dateEvenementE')
-            type_contrat = request.form.get('TypeE0')
-            stype_contrat = request.form.get('STypeE0')
+            type_evenement = request.form.get('TypeE0')
+            sous_type_evenement = request.form.get('STypeE0')
             descriptif = request.form.get('descriptifE')
 
-            event = Event(idContrat = id_contrat, dateEvenement = date_evenement, Type = type_contrat, SType = stype_contrat, descriptif = descriptif)
+            event = Event(id_contrat = id_contrat, date_evenement = date_evenement, type_evenement = type_evenement, sous_type_evenement = sous_type_evenement, descriptif = descriptif)
             
             g.db_session.add(event)
             g.db_session.commit()
@@ -796,12 +796,12 @@ def add_contrats_document(num_contrat: int) -> ResponseReturnValue:
             lien_document = name + extention
 
             #Création du document dans la base de données
-            document = Document(idContrat = id_contrat,
-                                Type = type_document,
-                                SType = sous_type_document,
+            document = Document(id_contrat = id_contrat,
+                                type_document = type_document,
+                                sous_type_document = sous_type_document,
                                 descriptif = descriptif,
-                                strLien = lien_document,
-                                dateDocument = date_document,
+                                str_lien = lien_document,
+                                date_document = date_document,
                                 name = name)
 
             #Ajout et Fermeture de la session
@@ -838,10 +838,10 @@ def modif_event_id(num_event: int, num_contrat: int) -> ResponseReturnValue:
             if event:
                 #Récupération formulaire
                 id_contrat = request.form.get(f'idContratE{num_event}')
-                event.idContrat = request.form.get(f'idContratE{num_event}')
-                event.dateEvenement = request.form.get(f'dateEvenementE{num_event}')
-                event.Type = request.form.get(f'TypeE{num_event}')
-                event.SType = request.form.get(f'STypeE{num_event}')
+                event.id_contrat = request.form.get(f'idContratE{num_event}')
+                event.date_evenement = request.form.get(f'dateEvenementE{num_event}')
+                event.type_evenement = request.form.get(f'type_evenement{num_event}')
+                event.sous_type_evenement = request.form.get(f'STypeE{num_event}')
                 event.descriptif = request.form.get(f'descriptifE{num_event}')
 
                 #Retour
@@ -872,31 +872,31 @@ def modif_document_id(num_doc: int, num_contrat: int) -> ResponseReturnValue:
         doc_id = document.id
         id_contrat = req.form.get(f'idContratD{num_doc}', '')
         date_document = req.form.get(f'dateDocumentD{num_doc}', '')
-        document.dateDocument = date_document
-        type_document = req.form.get(f'TypeD{num_doc}', '')
-        document.Type = type_document
-        stype_document = req.form.get(f'STypeD{num_doc}', '')
-        document.SType = stype_document
+        document.date_document = date_document
+        type_document = req.form.get(f'type_document{num_doc}', '')
+        document.type_document = type_document
+        sous_type_document = req.form.get(f'STypeD{num_doc}', '')
+        document.sous_type_document = sous_type_document
         document.descriptif = req.form.get(f'descriptifD{num_doc}', '')
         if req.files[f'documentD{num_doc}']:
             document_binaire = req.files[f'documentD{num_doc}']
-            name = docs.create_name(date_document, id_contrat, doc_id, stype_document)
+            name = docs.create_name(date_document, id_contrat, doc_id, sous_type_document)
             extention = os.path.splitext(str(document_binaire.filename))[1]
         else:
             str_lien = req.form.get(f'strLienD{num_doc}', '')
             complet_name = str_lien.split('_')[3]
-            name = docs.create_name(date_document, id_contrat, doc_id, stype_document)
+            name = docs.create_name(date_document, id_contrat, doc_id, sous_type_document)
             extention = complet_name.split('.')[1]
         lien_document = name + extention
-        document.strLien = lien_document
+        document.str_lien = lien_document
 
         # création d'un nom de document
         date_date = datetime.datetime.strptime(date_document, '%Y-%m-%d').date()
         str_date = date_date.strftime('%y%m%d')
         str_id_contrat = str(id_contrat).zfill(6)
         str_id_document = str(doc_id).zfill(6)
-        str_stype = stype_document[:5]
-        name = f"{str_date}_{str_id_contrat}_{str_id_document}_{str_stype}"
+        str_sous_type_document = sous_type_document[:5]
+        name = f"{str_date}_{str_id_contrat}_{str_id_document}_{str_sous_type_document}"
 
         #Gestion automatique du nom de document
         document.name = name

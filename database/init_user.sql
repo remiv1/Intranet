@@ -5,14 +5,14 @@ CREATE TABLE IF NOT EXISTS 99_users (
     nom VARCHAR(255) NOT NULL,
     mail VARCHAR(255) NOT NULL,
     identifiant VARCHAR(25),
-    shaMdp VARCHAR(255) NOT NULL,
+    sha_mdp VARCHAR(255) NOT NULL,
     habilitation INT,
     debut DATE DEFAULT CURRENT_DATE(),
     fin DATE,
-    falseTest INT DEFAULT 0,
+    false_test INT DEFAULT 0,
     locked BOOLEAN DEFAULT FALSE
 );
 
 -- Insertion d'un utilisateur par défaut
-INSERT INTO 99_users (prenom, nom, mail, identifiant, shaMdp, habilitation, debut, locked)
+INSERT INTO 99_users (prenom, nom, mail, identifiant, sha_mdp, habilitation, debut, locked)
 VALUES ('Admin', 'Initial', 'admin@localhost', 'admin', '8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918', '1', CURRENT_DATE(), FALSE);

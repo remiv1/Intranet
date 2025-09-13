@@ -35,13 +35,13 @@ def _ensure_folder_exists():
 # _ensure_folder_exists() - Retiré pour éviter l'import circulaire
 
 #Création d'un nom de docment
-def create_name(doc_date: str, id_contrat: str, id_document: str, stype: str):
+def create_name(doc_date: str, id_contrat: str, id_document: str, sous_type_document: str):
     date_date = datetime.datetime.strptime(doc_date, '%Y-%m-%d')
     str_date = date_date.strftime('%d%m%Y')
     id_contrat = str(id_contrat).zfill(3)
     id_document = str(id_document).zfill(4)
-    stype = stype[:5]
-    retour = f'{str_date}_{id_contrat}_{id_document}_{stype}'
+    sous_type_document = sous_type_document[:5]
+    retour = f'{str_date}_{id_contrat}_{id_document}_{sous_type_document}'
     return retour
 
 #Téléchargement du fichier vers le serveur

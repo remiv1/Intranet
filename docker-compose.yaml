@@ -10,7 +10,7 @@ services:
       - ${FILES_LOCAL_PATH}:${FILES_DOCKER_PATH}  # Persistance des fichiers de contrats
       - ${PRINT_LOCAL_PATH}:${PRINT_DOCKER_PATH}
     environment:
-      - DATABASE_URL=${DB_URL}
+      - DB_URL=${DB_URL}
     env_file:
       - .env
     restart: always

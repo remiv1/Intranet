@@ -93,20 +93,20 @@
                     </thead>
                     <tbody>
                         {% for contract in contracts %}
-                            <tr data-type="{{ contract['Type'] }}" data-stype="{{ contract['SType'] }}">
+                            <tr data-type="{{ contract['type_contrat'] }}" data-stype="{{ contract['sous_type_contrat'] }}">
                                 <td class="align-middle">
                                     <a href="{{ url_for('contrats_by_num', num_contrat=contract['id']) }}">
                                         {{ contract['id'] }}
                                     </a>
                                 </td>
-                                <td class="align-middle">{{ contract['Type'] }}</td>
-                                <td class="align-middle">{{ contract['SType'] }}</td>
+                                <td class="align-middle">{{ contract['type_contrat'] }}</td>
+                                <td class="align-middle">{{ contract['sous_type_contrat'] }}</td>
                                 <td class="align-middle">{{ contract['entreprise'] }}</td>
-                                <td class="align-middle">{{ contract['numContratExterne'] }}</td>
+                                <td class="align-middle">{{ contract['id_externe_contrat'] }}</td>
                                 <td class="align-middle">{{ contract['intitule'] }}</td>
-                                <td class="align-middle">{{ contract['dateDebut'] }}</td>
-                                <td class="align-middle">{{ contract['dateFinPreavis'] }}</td>
-                                <td class="align-middle">{{ contract['dateFin'] }}</td>
+                                <td class="align-middle">{{ contract['date_debut'] }}</td>
+                                <td class="align-middle">{{ contract['date_fin_preavis'] }}</td>
+                                <td class="align-middle">{{ contract['date_fin'] }}</td>
                                 <td class="align-middle">
                                     <button type="button" class="button" data-bs-toggle="modal" data-bs-target="#modalModif{{ contract['id'] }}">
                                         Modifier
@@ -182,7 +182,7 @@
             <div class="modal-dialog">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h5 class="modal-title" id="modalModifLabel{{ contract['id'] }}">Modifier contrat {{ contract['entreprise'] }} {{ contract['numContratExterne'] }}</h5>
+                        <h5 class="modal-title" id="modalModifLabel{{ contract['id'] }}">Modifier contrat {{ contract['entreprise'] }} {{ contract['id_externe_contrat'] }}</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div class="modal-body">
@@ -203,7 +203,7 @@
                             <div class="mb-3">
                                 <label for="SType{{ contract['id'] }}" class="form-label">Sous-Type *</label>
                                 <select name="SType{{ contract['id'] }}" class="form-control" id="SType{{ contract['id'] }}" data-contract-id="{{ contract['id'] }}" onfocus="updateSousMenu(this)" required>
-                                    <option value="{{ contract['SType'] }}" selected>{{ contract['SType'] }}</option>
+                                    <option value="{{ contract['SType'] }}" selected>{{ contract['sous_type_contrat'] }}</option>
                                 </select>
                             </div>
                             <div class="mb-3">
@@ -212,7 +212,7 @@
                             </div>
                             <div class="mb-3">
                                 <label for="numContratExterne{{ contract['id'] }}" class="form-label">N° Contrat *</label>
-                                <input type="text" class="form-control" id="numContratExterne{{ contract['id'] }}" name="numContratExterne{{ contract['id'] }}" value="{{ contract['numContratExterne'] }}" required>
+                                <input type="text" class="form-control" id="numContratExterne{{ contract['id'] }}" name="numContratExterne{{ contract['id'] }}" value="{{ contract['id_externe_contrat'] }}" required>
                             </div>
                             <div class="mb3">
                                 <label for="Intitule{{ contract['id'] }}" class="form-label">Intitulé *</label>
@@ -220,15 +220,15 @@
                             </div>
                             <div class="mb-3">
                                 <label for="dateDebut{{ contract['id'] }}" class="form-label">Début *</label>
-                                <input type="date" class="form-control" id="dateDebut{{ contract['id'] }}" name="dateDebut{{ contract['id'] }}" value="{{ contract['dateDebut'] }}" required>
+                                <input type="date" class="form-control" id="dateDebut{{ contract['id'] }}" name="dateDebut{{ contract['id'] }}" value="{{ contract['date_debut'] }}" required>
                             </div>
                             <div class="mb-3">
                                 <label for="dateFinPreavis{{ contract['id'] }}" class="form-label">Fin de préavis *</label>
-                                <input type="date" class="form-control" id="dateFinPreavis{{ contract['id'] }}" name="dateFinPreavis{{ contract['id'] }}" value="{{ contract['dateFinPreavis'] }}" required>
+                                <input type="date" class="form-control" id="dateFinPreavis{{ contract['id'] }}" name="dateFinPreavis{{ contract['id'] }}" value="{{ contract['datedate_fin_preavisFinPreavis'] }}" required>
                             </div>
                             <div class="mb-3">
                                 <label for="dateFin{{ contract['id'] }}" class="form-label">Fin</label>
-                                <input type="date" class="form-control" id="dateFin{{ contract['id'] }}" name="dateFin{{ contract['id'] }}" value="{{ contract['dateFin'] }}">
+                                <input type="date" class="form-control" id="dateFin{{ contract['id'] }}" name="dateFin{{ contract['id'] }}" value="{{ contract['date_fin'] }}">
                             </div>
                             <button type="submit" class="btn btn-primary">Modifier</button>
                         </form>

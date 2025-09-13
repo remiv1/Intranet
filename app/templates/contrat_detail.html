@@ -78,12 +78,12 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                {% for event in events|sort(attribute='dateEvenement', reverse=True) %}
+                                {% for event in events|sort(attribute='date_evenement', reverse=True) %}
                                 <tr>
                                     <td class="align-middle">{{ event['id'] }}</td>
-                                    <td class="align-middle">{{ event['dateEvenement'] }}</td>
-                                    <td class="align-middle">{{ event['Type'] }}</td>
-                                    <td class="align-middle">{{ event['SType'] }}</td>
+                                    <td class="align-middle">{{ event['date_evenement'] }}</td>
+                                    <td class="align-middle">{{ event['type_evenement'] }}</td>
+                                    <td class="align-middle">{{ event['sous_type_evenement'] }}</td>
                                     <td class="align-middle">{{ event['descriptif'] }}</td>
                                     <td class="align-middle">
                                         <button type="button" class="button" data-bs-toggle="modal" data-bs-target="#modalModifEvent{{ event['id'] }}">
@@ -123,18 +123,18 @@
                             </thead>
                             <!-- Corps -->
                             <tbody>
-                                {% for document in documents|sort(attribute='dateDocument', reverse=True) %}
+                                {% for document in documents|sort(attribute='date_document', reverse=True) %}
                                 <tr>
                                     <td class="align-middle">{{ document['id'] }}</td>
-                                    <td class="align-middle">{{ document['Type'] }}</td>
-                                    <td class="align-middle">{{ document['SType'] }}</td>
+                                    <td class="align-middle">{{ document['type_document'] }}</td>
+                                    <td class="align-middle">{{ document['sous_type_document'] }}</td>
                                     <td class="align-middle">{{ document['descriptif'] }}</td>
                                     <td class="align-middle">
-                                        <a href="{{ url_for('download_document', num_doc=document['id'], num_contrat=document['idContrat'], name=document['strLien']) }}" target="_blank">
-                                            {{ document['strLien'] }}
+                                        <a href="{{ url_for('download_document', num_doc=document['id'], num_contrat=document['id_contrat'], name=document['str_lien']) }}" target="_blank">
+                                            {{ document['str_lien'] }}
                                         </a>
                                     </td>
-                                    <td class="align-middle">{{ document['dateDocument'] }}</td>
+                                    <td class="align-middle">{{ document['date_document'] }}</td>
                                     <td class="align-middle">{{ document['name'] }}</td>
                                     <td class="align-middle">
                                         <button type="button" class="button" data-bs-toggle="modal" data-bs-target="#modalModifDoc{{ document['id'] }}">
@@ -260,37 +260,37 @@
             <div class="modal-dialog">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h5 class="modal-title" id="modalModif{{ event['id'] }}Label">Modifier évènement du {{ event['dateEvenement'] }}</h5>
+                        <h5 class="modal-title" id="modalModif{{ event['id'] }}Label">Modifier évènement du {{ event['date_evenement'] }}</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div class="modal-body">
-                        <form action="{{ url_for('modif_event_id', num_contrat=event['idContrat'], num_event=event['id']) }}" method="post">
+                        <form action="{{ url_for('modif_event_id', num_contrat=event['id_contrat'], num_event=event['id']) }}" method="post">
                             <input type="hidden" name="_method" value="PUT">
                             <!-- id Contrat -->
                             <div class="mb-3 d-none">
-                                <input type="text" name="idContratE{{ event['id'] }}" id="idContratE{{ event['id'] }}" value="{{ event['idContrat'] }}">
+                                <input type="text" name="idContratE{{ event['id'] }}" id="idContratE{{ event['id'] }}" value="{{ event['id_contrat'] }}">
                             </div>
                             <!-- Date d'évènement -->
                             <div class="mb-3">
                                 <label for="dateEvenementE{{ event['id'] }}" class="form-label">Date *</label>
-                                <input type="date" class="form-control" name="dateEvenementE{{ event['id'] }}" id="dateEvenementE{{ event['id'] }}" value="{{ event['dateEvenement'] }}">
+                                <input type="date" class="form-control" name="dateEvenementE{{ event['id'] }}" id="dateEvenementE{{ event['id'] }}" value="{{ event['date_evenement'] }}">
                             </div>
                             <!-- Type du document -->
                             <div class="mb-3">
                                 <label for="TypeE{{ event['id'] }}" class="form-label">Type *</label>
                                 <select name="TypeE{{ event['id'] }}" class="form-control" id="TypeE{{ event['id'] }}" data-event-id="{{ event['id'] }}" onchange="updateSousMenuEvent(this)" data-contract-id="0" required>
-                                    <option value="" {% if event['Type'] == "" %}selected{% endif %}></option>
-                                    <option value="Gestion" {% if event['Type'] == "Gestion" %}selected{% endif %}>Gestion</option>
-                                    <option value="Contact" {% if event['Type'] == "Contact" %}selected{% endif %}>Contact</option>
-                                    <option value="Contrat" {% if event['Type'] == "Contrat" %}selected{% endif %}>Contrat</option>
-                                    <option value="Autre" {% if event['Type'] == "Autre" %}selected{% endif %}>Autre</option>
+                                    <option value="" {% if event['type_evenement'] == "" %}selected{% endif %}></option>
+                                    <option value="Gestion" {% if event['type_evenement'] == "Gestion" %}selected{% endif %}>Gestion</option>
+                                    <option value="Contact" {% if event['type_evenement'] == "Contact" %}selected{% endif %}>Contact</option>
+                                    <option value="Contrat" {% if event['type_evenement'] == "Contrat" %}selected{% endif %}>Contrat</option>
+                                    <option value="Autre" {% if event['type_evenement'] == "Autre" %}selected{% endif %}>Autre</option>
                                 </select>
                             </div>
                             <!-- Sous-Type du document -->
                             <div class="mb-3">
                                 <label for="STypeE{{ event['id'] }}" class="form-label">Sous-Type *</label>
                                 <select name="STypeE{{ event['id'] }}" class="form-control" id="STypeE{{ event['id'] }}" required>
-                                    <option value="{{ event['SType'] }}" selected>{{ event['SType'] }}</option>
+                                    <option value="{{ event['sous_type_evenement'] }}" selected>{{ event['sous_type_evenement'] }}</option>
                                 </select>
                             </div>
                             <!-- Descriptif du document -->
@@ -312,21 +312,21 @@
                 <div class="modal-content">
                     <!-- Titre du modal -->
                     <div class="modal-header">
-                        <h5 class="modal-title" id="modalModif{{ document['id'] }}Label">Modifier document du {{ document['dateDocument'] }}</h5>
+                        <h5 class="modal-title" id="modalModif{{ document['id'] }}Label">Modifier document du {{ document['date_document'] }}</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <!-- Contenu du modal -->
                     <div class="modal-body">
-                        <form action="{{ url_for('modif_document_id', num_contrat=document['idContrat'], num_doc=document['id']) }}" method="post" enctype="multipart/form-data">
+                        <form action="{{ url_for('modif_document_id', num_contrat=document['id_contrat'], num_doc=document['id']) }}" method="post" enctype="multipart/form-data">
                             <input type="hidden" name="_method" value="PUT">
                             <!-- Identifiant du contrat -->
                             <div class="mb-3 d-none">
-                                <input type="text" name="idContratD{{ document['id'] }}" id="idContratD{{ document['id'] }}" value="{{ document['idContrat'] }}">
+                                <input type="text" name="idContratD{{ document['id'] }}" id="idContratD{{ document['id'] }}" value="{{ document['id_contrat'] }}">
                             </div>
                             <!-- Date du document -->
                             <div class="mb-3">
                                 <label for="dateDocumentD{{ document['id'] }}" class="form-label">Date *</label>
-                                <input type="date" class="form-control" name="dateDocumentD{{ document['id'] }}" id="dateDocumentD" value="{{ document['dateDocument'] }}">
+                                <input type="date" class="form-control" name="dateDocumentD{{ document['id'] }}" id="dateDocumentD" value="{{ document['date_document'] }}">
                             </div>
                             <!-- Type du document -->
                             <div class="mb-3">
@@ -342,7 +342,7 @@
                             <div class="mb-3">
                                 <label for="STypeD{{ document['id'] }}" class="form-label">Sous-Type *</label>
                                 <select name="STypeD{{ document['id'] }}" class="form-control" id="STypeD{{ document['id'] }}" required>
-                                    <option value="{{ document['SType'] }}" selected>{{ document['SType'] }}</option>
+                                    <option value="{{ document['sous_type_document'] }}" selected>{{ document['sous_type_document'] }}</option>
                                 </select>
                             </div>
                             <!-- Descriptif du document -->
@@ -358,7 +358,7 @@
                             <!-- Lien du document -->
                             <div class="mb-3 d-none">
                                 <label for="strLienD{{ document['id'] }}" class="form-label">Lien *</label>
-                                <input type="text" class="form-control" name="strLienD{{ document['id'] }}" id="strLienD{{ document['id'] }}" value="{{ document['strLien'] }}">
+                                <input type="text" class="form-control" name="strLienD{{ document['id'] }}" id="strLienD{{ document['id'] }}" value="{{ document['str_lien'] }}">
                             </div>
                             <button type="submit" class="btn btn-primary">Modifier</button>
                         </form>

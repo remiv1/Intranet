@@ -4,8 +4,8 @@
 
 - Mise à jour des champs de tables pour être en format snake_case :
   - `99_users` :
-    - `shaMdp` --> `sha_mdp`
-    - `falseTest` en `false_test`
+    - `sha_mdp` --> `sha_mdp`
+    - `false_test` en `false_test`
   - `01_contrats` :
     - `Type` --> `type_contrat`
     - `SType` --> `sous_type_contrat`

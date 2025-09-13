@@ -14,10 +14,16 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt && \
-    pip install waitress
+RUN pip install --no-cache-dir -r requirements.txt
 
-COPY . .
+COPY .env ./ 
+COPY alembic.ini ./ 
+COPY alembic/ ./alembic/
+COPY app/ ./app/
+
+# Copie des fichiers Alembic pour les migrations
+COPY alembic.ini ./
+COPY alembic/ ./alembic/
 
 ENV FLASK_APP=app/run.py
 ENV FLASK_ENV=production
