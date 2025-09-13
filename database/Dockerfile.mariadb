@@ -1,0 +1,7 @@
+# Dockerfile pour initialisation MariaDB avec création de table et utilisateur
+FROM mariadb:12.0.2
+
+# Copie du script SQL d'initialisation
+COPY init_user.sql /docker-entrypoint-initdb.d/
+
+# Les scripts dans /docker-entrypoint-initdb.d/ sont exécutés automatiquement au premier démarrage

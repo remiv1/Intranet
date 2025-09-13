@@ -22,6 +22,9 @@ Version : 1.1
 from functools import wraps
 from typing import Callable, Any, List
 from flask import session, redirect, url_for
+from logging import getLogger
+
+logger = getLogger(__name__)
 
 # Définition des niveaux d'habilitation
 ADMINISTRATEUR = '1'
@@ -45,22 +48,24 @@ def validate_habilitation(required_habilitation: str | List[str]) -> Callable[[C
         @wraps(function)
         def wrapper(*args: Any, **kwargs: Any) -> Any:
             # Vérifie si l'utilisateur est connecté et possède une habilitation
-            habilitations = session.get('habilitations', '')  # Exemple : '123'
+            habilitations = str(session.get('habilitation', ''))  # Exemple : '123'
             validate_habilitation = False
 
             # Si l'habilitation requise est une chaîne de caractères, la convertir en liste
-            required_habilitation_list: List[str] = (
-                [required_habilitation]
-                if isinstance(required_habilitation, str)
-                else required_habilitation
-            )
+            required_habilitation_list: List[str] = [required_habilitation] \
+                                                    if isinstance(required_habilitation, str) \
+                                                    else required_habilitation
 
             for rh in required_habilitation_list:
+                logger.debug(f"Vérification de l'habilitation requise : {rh}")
                 for habilitation in habilitations:
+                    logger.debug(f"Comparaison avec l'habilitation utilisateur : {habilitation}")
                     if habilitation == rh:
+                        logger.debug(f"Habilitation valide trouvée : {habilitation}")
                         validate_habilitation = True
                         break
             if not validate_habilitation:
+                logger.warning(f"Habilitation manquante. Requise : {required_habilitation}, Possédée : {habilitations}")
                 return redirect(url_for('logout'))
             return function(*args, **kwargs)
         return wrapper

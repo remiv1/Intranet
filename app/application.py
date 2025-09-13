@@ -162,7 +162,7 @@ class UsersMethods:
             session['prenom'] = user.prenom
             session['nom'] = user.nom
             session['mail'] = user.mail
-            session['habilitation'] = user.habilitation
+            session['habilitation'] = str(user.habilitation)
             try:
                 # Stocker les informations de l'utilisateur dans la session
                 user.falseTest=0
