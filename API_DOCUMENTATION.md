@@ -143,7 +143,7 @@
 - **Réponse :** Redirection vers `/contrats`
 
 ### 📄 Détail d'un contrat
-**Route :** `GET /contrats/<numContrat>`
+**Route :** `GET /contrats/<num_contrat>`
 - **Description :** Affichage des détails d'un contrat avec ses événements et documents
 - **Authentification :** Requise
 - **Habilitations :** Niveau 2
@@ -152,7 +152,7 @@
 - **Réponse :** Template `contrat_detail.html` avec contrat, événements et documents
 
 ### ✏️ Modification de contrat
-**Route :** `POST /contrats/<numContrat>`
+**Route :** `POST /contrats/<num_contrat>`
 - **Description :** Modification d'un contrat existant (méthode PUT simulée)
 - **Authentification :** Requise
 - **Habilitations :** Niveau 2
@@ -174,7 +174,7 @@
 ## Gestion des Événements
 
 ### ➕ Ajout d'événement à un contrat
-**Route :** `POST /contrats/<numContrat>/evenement`
+**Route :** `POST /contrats/<num_contrat>/evenement`
 - **Description :** Ajout d'un événement lié à un contrat
 - **Authentification :** Requise
 - **Habilitations :** Niveau 2
@@ -185,30 +185,30 @@
   - `TypeE0` (string, requis) - Type principal de l'événement
   - `STypeE0` (string, requis) - Sous-type de l'événement
   - `descriptifE` (string, requis) - Description de l'événement
-- **Réponse :** Redirection vers `/contrats/<numContrat>`
+- **Réponse :** Redirection vers `/contrats/<num_contrat>`
 
 ### ✏️ Modification d'événement
-**Route :** `POST /contrats/numContrat/<numContrat>/numEvenement/<numEvent>`
+**Route :** `POST /contrats/numContrat/<num_contrat>/numEvenement/<num_event>`
 - **Description :** Modification d'un événement existant
 - **Authentification :** Requise
 - **Habilitations :** Niveau 2
 - **Paramètres :**
   - `numContrat` (int, URL) - ID du contrat
-  - `numEvent` (int, URL) - ID de l'événement
+  - `num_event` (int, URL) - ID de l'événement
   - `_method` (string, requis) - Doit être "PUT"
-  - `idContratE{numEvent}` (int, requis) - ID du contrat
-  - `dateEvenementE{numEvent}` (date, requis) - Date de l'événement
-  - `TypeE{numEvent}` (string, requis) - Type principal
-  - `STypeE{numEvent}` (string, requis) - Sous-type
-  - `descriptifE{numEvent}` (string, requis) - Description
-- **Réponse :** Redirection vers `/contrats/<numContrat>`
+  - `idContratE{num_event}` (int, requis) - ID du contrat
+  - `dateEvenementE{num_event}` (date, requis) - Date de l'événement
+  - `TypeE{num_event}` (string, requis) - Type principal
+  - `STypeE{num_event}` (string, requis) - Sous-type
+  - `descriptifE{num_event}` (string, requis) - Description
+- **Réponse :** Redirection vers `/contrats/<num_contrat>`
 
 ---
 
 ## Gestion des Documents
 
 ### ➕ Ajout de document à un contrat
-**Route :** `POST /contrats/<numContrat>/document`
+**Route :** `POST /contrats/<num_contrat>/document`
 - **Description :** Upload et ajout d'un document lié à un contrat
 - **Authentification :** Requise
 - **Habilitations :** Niveau 2
@@ -224,34 +224,34 @@
   - Génération du nom : `{YYMMDD}_{idContrat}_{idDocument}_{sousType}.{extension}`
   - Sauvegarde sur le serveur
   - Enregistrement en base de données
-- **Réponse :** Redirection vers `/contrats/<numContrat>`
+- **Réponse :** Redirection vers `/contrats/<num_contrat>`
 
 ### ✏️ Modification de document
-**Route :** `POST /contrats/numContrat/<numContrat>/numDocument/<numDoc>`
+**Route :** `POST /contrats/numContrat/<num_contrat>/num_document/<num_doc>`
 - **Description :** Modification d'un document existant
 - **Authentification :** Requise
 - **Habilitations :** Niveau 2
 - **Paramètres :**
   - `numContrat` (int, URL) - ID du contrat
-  - `numDoc` (int, URL) - ID du document
+  - `num_doc` (int, URL) - ID du document
   - `_method` (string, requis) - Doit être "PUT"
-  - `idContratD{numDoc}` (int, requis) - ID du contrat
-  - `dateDocumentD{numDoc}` (date, requis) - Date du document
-  - `TypeD{numDoc}` (string, requis) - Type principal
-  - `STypeD{numDoc}` (string, requis) - Sous-type
-  - `descriptifD{numDoc}` (string, requis) - Description
-  - `documentD{numDoc}` (file, optionnel) - Nouveau fichier
-  - `strLienD{numDoc}` (string, conditionnel) - Lien existant si pas de nouveau fichier
-- **Réponse :** Redirection vers `/contrats/<numContrat>`
+  - `idContratD{num_doc}` (int, requis) - ID du contrat
+  - `dateDocumentD{num_doc}` (date, requis) - Date du document
+  - `TypeD{num_doc}` (string, requis) - Type principal
+  - `STypeD{num_doc}` (string, requis) - Sous-type
+  - `descriptifD{num_doc}` (string, requis) - Description
+  - `documentD{num_doc}` (file, optionnel) - Nouveau fichier
+  - `strLienD{num_doc}` (string, conditionnel) - Lien existant si pas de nouveau fichier
+- **Réponse :** Redirection vers `/contrats/<num_contrat>`
 
 ### 📥 Téléchargement de document
-**Route :** `GET /contrats/numContrat/<numContrat>/numDocument/<numDoc>/download/<name>`
+**Route :** `GET /contrats/numContrat/<num_contrat>/num_document/<num_doc>/download/<name>`
 - **Description :** Téléchargement d'un document
 - **Authentification :** Requise
 - **Habilitations :** Niveau 2
 - **Paramètres :**
   - `numContrat` (int, URL) - ID du contrat
-  - `numDoc` (int, URL) - ID du document
+  - `num_doc` (int, URL) - ID du document
   - `name` (string, URL) - Nom complet du fichier avec extension
 - **Réponse :** Fichier en téléchargement
 

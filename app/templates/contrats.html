@@ -95,7 +95,7 @@
                         {% for contract in contracts %}
                             <tr data-type="{{ contract['Type'] }}" data-stype="{{ contract['SType'] }}">
                                 <td class="align-middle">
-                                    <a href="{{ url_for('contrats_by_num', numContrat=contract['id']) }}">
+                                    <a href="{{ url_for('contrats_by_num', num_contrat=contract['id']) }}">
                                         {{ contract['id'] }}
                                     </a>
                                 </td>
@@ -186,7 +186,7 @@
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div class="modal-body">
-                        <form action="{{ url_for('contrats_by_num', numContrat=contract['id']) }}" method="POST">
+                        <form action="{{ url_for('contrats_by_num', num_contrat=contract['id']) }}" method="POST">
                             <input type="hidden" name="_method" value="PUT">
                             <div class="mb-3">
                                 <label for="Type{{ contract['id'] }}" class="form-label">Type</label>

@@ -27,12 +27,12 @@ Routes disponibles :
 - '/modif_utilisateurs' : Modification d'un utilisateur
 - '/gestion_droits' (POST) : Modification des droits d'un utilisateur
 - '/contrats' : Gestion des contrats
-- '/contrats/<int:numContrat>' : Détail d'un contrat
-- '/contrats/<numContrat>/evenement' : Ajout d'un évènement à un contrat
-- '/contrats/<numContrat>/document' : Ajout d'un document à un contrat
-- '/contrats/numContrat/<numContrat>/numEvenement/<numEvent>' : Modification d'un évènement
-- '/contrats/numContrat/<numContrat>/numDocument/<numDoc>' : Modification d'un document
-- '/contrats/numContrat/<numContrat>/numDocument/<numDoc>/download' : Téléchargement d'un document
+- '/contrats/<int:num_contrat>' : Détail d'un contrat
+- '/contrats/<num_contrat>/evenement' : Ajout d'un évènement à un contrat
+- '/contrats/<num_contrat>/document' : Ajout d'un document à un contrat
+- '/contrats/numContrat/<num_contrat>/numEvenement/<num_event>' : Modification d'un évènement
+- '/contrats/numContrat/<num_contrat>/num_document/<num_doc>' : Modification d'un document
+- '/contrats/numContrat/<num_contrat>/num_document/<num_doc>/download' : Téléchargement d'un document
 - '/rapport-contrats' : Rapport des contrats arrivant à échéance entre m-6 et m-3
 
 """
@@ -685,19 +685,18 @@ def contrats() -> ResponseReturnValue:
     else:
         return redirect(url_for('contrats'))
 
-@peraudiere.route('/contrats/<int:numContrat>', methods=['GET', 'POST'])
+@peraudiere.route('/contrats/<int:num_contrat>', methods=['GET', 'POST'])
 @validate_habilitation(GESTIONNAIRE)
-def contrats_by_num(numContrat: int) -> ResponseReturnValue:
+def contrats_by_num(num_contrat: int) -> ResponseReturnValue:
     """
     Route pour le détail d'un contrat.
     Gère l'affichage, la modification et la suppression d'un contrat.
     Args:
-        numContrat (int): Le numéro du contrat à afficher/modifier/supprimer.
+        num_contrat (int): Le numéro du contrat à afficher/modifier/supprimer.
     Returns:
         Response: La page de détail du contrat ou une redirection vers la page de gestion des
     """
     # alias pour conserver le style snake_case utilisé dans la suite du code
-    num_contrat = numContrat
     contract = g.db_session.query(Contract).filter(Contract.id == num_contrat).first()
 
     # === Gestion de la méthode GET (affichage du détail du contrat) ===
@@ -733,18 +732,17 @@ def contrats_by_num(numContrat: int) -> ResponseReturnValue:
     else:
         return redirect(url_for('contrats'))
 
-@peraudiere.route('/contrats/<numContrat>/evenement', methods=['POST'])
+@peraudiere.route('/contrats/<num_contrat>/evenement', methods=['POST'])
 @validate_habilitation(GESTIONNAIRE)
-def add_contrats_event(numContrat: int) -> ResponseReturnValue:
+def add_contrats_event(num_contrat: int) -> ResponseReturnValue:
     """
     Route pour l'ajout d'un évènement à un contrat.
     Gère l'ajout d'un évènement à un contrat dans la base de données.
     Args:
-        numContrat (int): Le numéro du contrat auquel ajouter l'évènement.
+        num_contrat (int): Le numéro du contrat auquel ajouter l'évènement.
     Returns:
         Response: Redirection vers la page de détail du contrat.
     """
-    num_contrat = numContrat
     if request.method == 'POST':
         try:
             # Récupération des données du formulaire
@@ -759,25 +757,23 @@ def add_contrats_event(numContrat: int) -> ResponseReturnValue:
             g.db_session.add(event)
             g.db_session.commit()
 
-            return redirect(url_for('contrats_by_num', numContrat=id_contrat))
+            return redirect(url_for('contrats_by_num', num_contrat=id_contrat))
         except Exception:
-            return redirect(url_for('contrats_by_num', numContrat=num_contrat))
+            return redirect(url_for('contrats_by_num', num_contrat=num_contrat))
     else:
-        return redirect(url_for('contrats_by_num', numContrat=num_contrat))
+        return redirect(url_for('contrats_by_num', num_contrat=num_contrat))
 
-@peraudiere.route('/contrats/<numContrat>/document', methods=['POST'])
+@peraudiere.route('/contrats/<num_contrat>/document', methods=['POST'])
 @validate_habilitation(GESTIONNAIRE)
-def add_contrats_document(numContrat: int) -> ResponseReturnValue:
+def add_contrats_document(num_contrat: int) -> ResponseReturnValue:
     """
     Route pour l'ajout d'un document à un contrat.
     Gère l'ajout d'un document à un contrat dans la base de données.
     Args:
-        numContrat (int): Le numéro du contrat auquel ajouter le document.
+        num_contrat (int): Le numéro du contrat auquel ajouter le document.
     Returns:
         Response: Redirection vers la page de détail du contrat.
     """
-    num_contrat = numContrat
-
     #=== Gestion de la méthode POST (ajout d'un nouveau document) ===
     if request.method == 'POST':
         try:
@@ -816,26 +812,24 @@ def add_contrats_document(numContrat: int) -> ResponseReturnValue:
             docs.upload_file(document_binaire, name, extention)
 
             #Retour du formulaire
-            return redirect(url_for('contrats_by_num', numContrat=id_contrat))
+            return redirect(url_for('contrats_by_num', num_contrat=id_contrat))
         except Exception:
-            return redirect(url_for('contrats_by_num', numContrat=num_contrat))
+            return redirect(url_for('contrats_by_num', num_contrat=num_contrat))
     else:
-        return redirect(url_for('contrats_by_num', numContrat=num_contrat))
+        return redirect(url_for('contrats_by_num', num_contrat=num_contrat))
 
-@peraudiere.route('/contrats/numContrat/<int:numContrat>/numEvenement/<int:numEvent>', methods=['POST'])
+@peraudiere.route('/contrats/contrat/<int:num_contrat>/numEvenement/<int:num_event>', methods=['POST'])
 @validate_habilitation(GESTIONNAIRE)
-def modif_event_id(numEvent: int, numContrat: int) -> ResponseReturnValue:
+def modif_event_id(num_event: int, num_contrat: int) -> ResponseReturnValue:
     """
     Route pour la modification d'un évènement d'un contrat.
     Gère la modification d'un évènement d'un contrat dans la base de données.
     Args:
-        numEvent (int): Le numéro de l'évènement à modifier.
-        numContrat (int): Le numéro du contrat auquel l'évènement appartient.
+        num_event (int): Le numéro de l'évènement à modifier.
+        num_contrat (int): Le numéro du contrat auquel l'évènement appartient.
     Returns:
         Response: Redirection vers la page de détail du contrat.
     """
-    num_event = numEvent
-    num_contrat = numContrat
     if request.method == 'POST' and request.form.get('_method') == 'PUT':
         try:
             #Récupération de l'évènement
@@ -853,30 +847,27 @@ def modif_event_id(numEvent: int, numContrat: int) -> ResponseReturnValue:
                 #Retour
                 g.db_session.commit()
 
-                return redirect(url_for('contrats_by_num', numContrat = id_contrat))
+                return redirect(url_for('contrats_by_num', num_contrat = id_contrat))
             else:
-                return redirect(url_for('contrats_by_num', numContrat = num_contrat))
+                return redirect(url_for('contrats_by_num', num_contrat = num_contrat))
         except Exception:
             g.db_session.rollback()
-            return redirect(url_for('contrats_by_num', numContrat = num_contrat))
+            return redirect(url_for('contrats_by_num', num_contrat = num_contrat))
     else:
-        return redirect(url_for('contrats_by_num', numContrat = num_contrat))
+        return redirect(url_for('contrats_by_num', num_contrat = num_contrat))
 
-@peraudiere.route('/contrats/numContrat/<numContrat>/numDocument/<numDoc>', methods=['POST'])
+@peraudiere.route('/contrats/contrat/<num_contrat>/document/<num_doc>', methods=['POST'])
 @validate_habilitation(GESTIONNAIRE)
-def modif_document_id(numDoc: int, numContrat: int) -> ResponseReturnValue:
+def modif_document_id(num_doc: int, num_contrat: int) -> ResponseReturnValue:
     """
     Route pour la modification d'un document d'un contrat.
     Gère la modification d'un document d'un contrat dans la base de données.
     Args:
-        numDoc (int): Le numéro du document à modifier.
-        numContrat (int): Le numéro du contrat auquel le document appartient.
+        num_doc (int): Le numéro du document à modifier.
+        num_contrat (int): Le numéro du contrat auquel le document appartient.
     Returns:
         Response: Redirection vers la page de détail du contrat.
     """
-    num_doc = numDoc
-    num_contrat = numContrat
-
     def _fonction_modif_doc(document: Document, req: Request, num_doc: int) -> int:
         doc_id = document.id
         id_contrat = req.form.get(f'idContratD{num_doc}', '')
@@ -923,19 +914,19 @@ def modif_document_id(numDoc: int, numContrat: int) -> ResponseReturnValue:
 
                 # Création du document et récupération de son id
                 id_contrat = _fonction_modif_doc(document, request, num_doc)
-                return redirect(url_for('contrats_by_num', numContrat = id_contrat))
+                return redirect(url_for('contrats_by_num', num_contrat = id_contrat))
 
             except Exception:
                 g.db_session.rollback()
-                return redirect(url_for('contrats_by_num', numContrat = num_contrat))
+                return redirect(url_for('contrats_by_num', num_contrat = num_contrat))
         else:
-            return redirect(url_for('contrats_by_num', numContrat = num_contrat))
+            return redirect(url_for('contrats_by_num', num_contrat = num_contrat))
     else:
         return redirect(url_for('logout'))
 
-@peraudiere.route('/contrats/numContrat/<numContrat>/numDocument/<numDoc>/download/<name>', methods=['GET'])
+@peraudiere.route('/contrats/numContrat/<num_contrat>/num_document/<num_doc>/download/<name>', methods=['GET'])
 @validate_habilitation(GESTIONNAIRE)
-def download_document(numDoc: int, numContrat: int, name: str):
+def download_document(num_doc: int, num_contrat: int, name: str):
     """
     Route pour le téléchargement d'un document.
     Gère le téléchargement d'un document depuis le serveur.

@@ -130,7 +130,7 @@
                                     <td class="align-middle">{{ document['SType'] }}</td>
                                     <td class="align-middle">{{ document['descriptif'] }}</td>
                                     <td class="align-middle">
-                                        <a href="{{ url_for('download_document', numDoc=document['id'], numContrat=document['idContrat'], name=document['strLien']) }}" target="_blank">
+                                        <a href="{{ url_for('download_document', num_doc=document['id'], num_contrat=document['idContrat'], name=document['strLien']) }}" target="_blank">
                                             {{ document['strLien'] }}
                                         </a>
                                     </td>
@@ -158,7 +158,7 @@
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div class="modal-body">
-                        <form action="{{ url_for('add_contrats_event', numContrat=contract['id']) }}" method="post">
+                        <form action="{{ url_for('add_contrats_event', num_contrat=contract['id']) }}" method="post">
                             <!-- id Contrat -->
                             <div class="mb-3 d-none">
                                 <input type="text" name="idContratE" id="idContrat" value="{{ contract['id'] }}">
@@ -206,7 +206,7 @@
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div class="modal-body">
-                        <form action="{{ url_for('add_contrats_document', numContrat=contract['id']) }}" method="post" enctype="multipart/form-data">
+                        <form action="{{ url_for('add_contrats_document', num_contrat=contract['id']) }}" method="post" enctype="multipart/form-data">
                             <!-- id Contrat -->
                             <div class="mb-3 d-none">
                                 <input type="text" name="idContratD" id="idContratD" value="{{ contract['id'] }}">
@@ -264,7 +264,7 @@
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div class="modal-body">
-                        <form action="{{ url_for('modif_event_id', numContrat=event['idContrat'], numEvent=event['id']) }}" method="post">
+                        <form action="{{ url_for('modif_event_id', num_contrat=event['idContrat'], num_event=event['id']) }}" method="post">
                             <input type="hidden" name="_method" value="PUT">
                             <!-- id Contrat -->
                             <div class="mb-3 d-none">
@@ -317,7 +317,7 @@
                     </div>
                     <!-- Contenu du modal -->
                     <div class="modal-body">
-                        <form action="{{ url_for('modif_document_id', numContrat=document['idContrat'], numDoc=document['id']) }}" method="post" enctype="multipart/form-data">
+                        <form action="{{ url_for('modif_document_id', num_contrat=document['idContrat'], num_doc=document['id']) }}" method="post" enctype="multipart/form-data">
                             <input type="hidden" name="_method" value="PUT">
                             <!-- Identifiant du contrat -->
                             <div class="mb-3 d-none">
