@@ -95,7 +95,7 @@
                         {% for contract in contracts %}
                             <tr data-type="{{ contract['type_contrat'] }}" data-stype="{{ contract['sous_type_contrat'] }}">
                                 <td class="align-middle">
-                                    <a href="{{ url_for('contrats_by_num', num_contrat=contract['id']) }}">
+                                    <a href="{{ url_for('contrats_by_num', id_contrat=contract['id']) }}">
                                         {{ contract['id'] }}
                                     </a>
                                 </td>
@@ -178,57 +178,67 @@
         </div>
         <!-- Modaux de modifications de contrats-->
         {% for contract in contracts %}
-        <div class="modal fade" id="modalModif{{ contract['id'] }}" tabindex="-1" aria-labelledby="modalModifLabel" aria-hidden="true">
+        <div class="modal fade" id="modalModif{{ contract['id'] }}" tabindex="-1" aria-labelledby="modalModifLabel"
+             aria-hidden="true">
             <div class="modal-dialog">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h5 class="modal-title" id="modalModifLabel{{ contract['id'] }}">Modifier contrat {{ contract['entreprise'] }} {{ contract['id_externe_contrat'] }}</h5>
+                        <h5 class="modal-title" id="modalModifLabel{{ contract['id'] }}">
+                            Modifier contrat {{ contract['entreprise'] }} {{ contract['id_externe_contrat'] }}
+                        </h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div class="modal-body">
-                        <form action="{{ url_for('contrats_by_num', num_contrat=contract['id']) }}" method="POST">
+                        <form action="{{ url_for('contrats_by_num', id_contrat=contract['id']) }}" method="POST">
                             <input type="hidden" name="_method" value="PUT">
                             <div class="mb-3">
                                 <label for="Type{{ contract['id'] }}" class="form-label">Type</label>
-                                <select name="Type{{ contract['id'] }}" class="form-control" id="Type{{ contract['id'] }}" data-contract-id="{{ contract['id'] }}" onchange="updateSousMenu(this)" required>
-                                    <option value="" {% if contract['Type'] == "" %}selected{% endif %}></option>
-                                    <option value="Finance" {% if contract['Type'] == "Finance" %}selected{% endif %}>Finance</option>
-                                    <option value="Juridique" {% if contract['Type'] == "Juridique" %}selected{% endif %}>Juridique</option>
-                                    <option value="RH" {% if contract['Type'] == "RH" %}selected{% endif %}>Ressources Humaines</option>
-                                    <option value="Materiel" {% if contract['Type'] == "Materiel" %}selected{% endif %}>Matériel</option>
-                                    <option value="Services" {% if contract['Type'] == "Services" %}selected{% endif %}>Services</option>
-                                    <option value="Autre" {% if contract['Type'] == "Autre" %}selected{% endif %}>Autre</option>
+                                <select name="Type{{ contract['id'] }}" class="form-control" id="Type{{ contract['id'] }}"
+                                        data-contract-id="{{ contract['id'] }}" onchange="updateSousMenu(this)" required>
+                                    <option value="" {% if contract['type_contrat'] == "" %}selected{% endif %}></option>
+                                    <option value="Finance" {% if contract['type_contrat'] == "Finance" %}selected{% endif %}>Finance</option>
+                                    <option value="Juridique" {% if contract['type_contrat'] == "Juridique" %}selected{% endif %}>Juridique</option>
+                                    <option value="RH" {% if contract['type_contrat'] == "RH" %}selected{% endif %}>Ressources Humaines</option>
+                                    <option value="Materiel" {% if contract['type_contrat'] == "Materiel" %}selected{% endif %}>Matériel</option>
+                                    <option value="Services" {% if contract['type_contrat'] == "Services" %}selected{% endif %}>Services</option>
+                                    <option value="Autre" {% if contract['type_contrat'] == "Autre" %}selected{% endif %}>Autre</option>
                                 </select>
                             </div>
                             <div class="mb-3">
                                 <label for="SType{{ contract['id'] }}" class="form-label">Sous-Type *</label>
                                 <select name="SType{{ contract['id'] }}" class="form-control" id="SType{{ contract['id'] }}" data-contract-id="{{ contract['id'] }}" onfocus="updateSousMenu(this)" required>
-                                    <option value="{{ contract['SType'] }}" selected>{{ contract['sous_type_contrat'] }}</option>
+                                    <option value="{{ contract['sous_type_contrat'] }}" selected>{{ contract['sous_type_contrat'] }}</option>
                                 </select>
                             </div>
                             <div class="mb-3">
                                 <label for="Entreprise{{ contract['id'] }}" class="form-label">Entreprise *</label>
-                                <input type="text" class="form-control" id="Entreprise{{ contract['id'] }}" name="Entreprise{{ contract['id'] }}" value="{{ contract['entreprise'] }}" required>
+                                <input type="text" class="form-control" id="Entreprise{{ contract['id'] }}"
+                                       name="Entreprise{{ contract['id'] }}" value="{{ contract['entreprise'] }}" required>
                             </div>
                             <div class="mb-3">
                                 <label for="numContratExterne{{ contract['id'] }}" class="form-label">N° Contrat *</label>
-                                <input type="text" class="form-control" id="numContratExterne{{ contract['id'] }}" name="numContratExterne{{ contract['id'] }}" value="{{ contract['id_externe_contrat'] }}" required>
+                                <input type="text" class="form-control" id="numContratExterne{{ contract['id'] }}"
+                                       name="numContratExterne{{ contract['id'] }}" value="{{ contract['id_externe_contrat'] }}" required>
                             </div>
                             <div class="mb3">
                                 <label for="Intitule{{ contract['id'] }}" class="form-label">Intitulé *</label>
-                                <input type="text" class="form-control" id="Intitule{{ contract['id'] }}" name="Intitule{{ contract['id'] }}" value="{{ contract['intitule'] }}" required>
+                                <input type="text" class="form-control" id="Intitule{{ contract['id'] }}"
+                                       name="Intitule{{ contract['id'] }}" value="{{ contract['intitule'] }}" required>
                             </div>
                             <div class="mb-3">
                                 <label for="dateDebut{{ contract['id'] }}" class="form-label">Début *</label>
-                                <input type="date" class="form-control" id="dateDebut{{ contract['id'] }}" name="dateDebut{{ contract['id'] }}" value="{{ contract['date_debut'] }}" required>
+                                <input type="date" class="form-control" id="dateDebut{{ contract['id'] }}"
+                                       name="dateDebut{{ contract['id'] }}" value="{{ contract['date_debut'] }}" required>
                             </div>
                             <div class="mb-3">
                                 <label for="dateFinPreavis{{ contract['id'] }}" class="form-label">Fin de préavis *</label>
-                                <input type="date" class="form-control" id="dateFinPreavis{{ contract['id'] }}" name="dateFinPreavis{{ contract['id'] }}" value="{{ contract['datedate_fin_preavisFinPreavis'] }}" required>
+                                <input type="date" class="form-control" id="dateFinPreavis{{ contract['id'] }}"
+                                       name="dateFinPreavis{{ contract['id'] }}" value="{{ contract['date_fin_preavis'] }}" required>
                             </div>
                             <div class="mb-3">
                                 <label for="dateFin{{ contract['id'] }}" class="form-label">Fin</label>
-                                <input type="date" class="form-control" id="dateFin{{ contract['id'] }}" name="dateFin{{ contract['id'] }}" value="{{ contract['date_fin'] }}">
+                                <input type="date" class="form-control" id="dateFin{{ contract['id'] }}"
+                                       name="dateFin{{ contract['id'] }}" value="{{ contract['date_fin'] }}">
                             </div>
                             <button type="submit" class="btn btn-primary">Modifier</button>
                         </form>

@@ -214,7 +214,7 @@ L'application utilise **MariaDB** avec 4 tables principales interconnectées :
 │ ├─ id (PK)      │    │ ├─ id (PK)      │ ◄──┤ ├─ id_contrat(FK)│
 │ ├─ identifiant  │    │ ├─ type_contrat │    │ ├─ type_document│
 │ ├─ sha_mdp      │    │ ├─ Stype        │    │ ├─ Descriptif   │
-│ ├─ habilitation │    │ ├─ Entreprise   │    │ ├─ str_lien     │
+│ ├─ habilitation │    │ ├─ entreprise   │    │ ├─ str_lien     │
 │ └─ Locked       │    │ ├─ date_debut   │    │ └─ date_document│
 └─────────────────┘    │ └─ date_fin     │    └─────────────────┘
                        └─────────────────┘
@@ -252,9 +252,9 @@ L'application utilise **MariaDB** avec 4 tables principales interconnectées :
 | `id`                | INT(11) PK   | Identifiant unique        |
 | `type_contrat`      | VARCHAR(50)  | Type de contrat           |
 | `Stype`             | VARCHAR(50)  | Sous-type de contrat      |
-| `Entreprise`        | VARCHAR(255) | Nom de l'entreprise       |
+| `entreprise`        | VARCHAR(255) | Nom de l'entreprise       |
 | `id_externe_contrat`| VARCHAR(50)  | Numéro de contrat externe |
-| `Intitule`          | VARCHAR(255) | Intitulé du contrat       |
+| `intitule`          | VARCHAR(255) | Intitulé du contrat       |
 | `date_debut`        | DATE         | Date de début             |
 | `date_fin_preavis`  | DATE         | Date de fin de préavis    |
 | `dateFin`           | DATE         | Date de fin de contrat    |

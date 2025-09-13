@@ -23,7 +23,7 @@ def upgrade() -> None:
     op.alter_column('99_users', 'falseTest', new_column_name='false_test', existing_type=sa.Integer())
 
     # Table 01_contrats
-    op.alter_column('01_contrats', 'type_contrat', new_column_name='type_contrat', existing_type=sa.String(50))
+    op.alter_column('01_contrats', 'Type', new_column_name='type_contrat', existing_type=sa.String(50))
     op.alter_column('01_contrats', 'SType', new_column_name='sous_type_contrat', existing_type=sa.String(50))
     op.alter_column('01_contrats', 'numContratExterne', new_column_name='id_externe_contrat', existing_type=sa.String(50))
     op.alter_column('01_contrats', 'dateDebut', new_column_name='date_debut', existing_type=sa.Date())
@@ -32,7 +32,7 @@ def upgrade() -> None:
 
     # Table 11_documents
     op.alter_column('11_documents', 'idContrat', new_column_name='id_contrat', existing_type=sa.Integer())
-    op.alter_column('11_documents', 'type_document', new_column_name='type_document', existing_type=sa.String(50))
+    op.alter_column('11_documents', 'Type', new_column_name='type_document', existing_type=sa.String(50))
     op.alter_column('11_documents', 'SType', new_column_name='sous_type_document', existing_type=sa.String(50))
     op.alter_column('11_documents', 'strLien', new_column_name='str_lien', existing_type=sa.String(255))
     op.alter_column('11_documents', 'dateDocument', new_column_name='date_document', existing_type=sa.Date())
@@ -40,7 +40,7 @@ def upgrade() -> None:
     # Table 12_evenements
     op.alter_column('12_evenements', 'idContrat', new_column_name='id_contrat', existing_type=sa.Integer())
     op.alter_column('12_evenements', 'dateEvenement', new_column_name='date_evenement', existing_type=sa.Date())
-    op.alter_column('12_evenements', 'type_evenement', new_column_name='type_evenement', existing_type=sa.String(50))
+    op.alter_column('12_evenements', 'Type', new_column_name='type_evenement', existing_type=sa.String(50))
     op.alter_column('12_evenements', 'SType', new_column_name='sous_type_evenement', existing_type=sa.String(50))
 
     # Ajout des clés étrangères sur id_contrat

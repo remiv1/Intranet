@@ -166,7 +166,7 @@
 
 ### 📄 Détail d'un contrat
 
-**Route :** `GET /contrats/<num_contrat>`
+**Route :** `GET /contrats/<id_contrat>`
 
 - **Description :** Affichage des détails d'un contrat avec ses événements et documents
 - **Authentification :** Requise
@@ -177,7 +177,7 @@
 
 ### ✏️ Modification de contrat
 
-**Route :** `POST /contrats/<num_contrat>`
+**Route :** `POST /contrats/<id_contrat>`
 
 - **Description :** Modification d'un contrat existant (méthode PUT simulée)
 - **Authentification :** Requise
@@ -201,7 +201,7 @@
 
 ### ➕ Ajout d'événement à un contrat
 
-**Route :** `POST /contrats/<num_contrat>/evenement`
+**Route :** `POST /contrats/<id_contrat>/evenement`
 
 - **Description :** Ajout d'un événement lié à un contrat
 - **Authentification :** Requise
@@ -213,25 +213,25 @@
   - `type_contrat_e0` (string, requis) - Type principal de l'événement
   - `STypeE0` (string, requis) - Sous-type de l'événement
   - `descriptifE` (string, requis) - Description de l'événement
-- **Réponse :** Redirection vers `/contrats/<num_contrat>`
+- **Réponse :** Redirection vers `/contrats/<id_contrat>`
 
 ### ✏️ Modification d'événement
 
-**Route :** `POST /contrats/numContrat/<num_contrat>/numEvenement/<num_event>`
+**Route :** `POST /contrats/numContrat/<id_contrat>/numEvenement/<id_event>`
 
 - **Description :** Modification d'un événement existant
 - **Authentification :** Requise
 - **Habilitations :** Niveau 2
 - **Paramètres :**
   - `numContrat` (int, URL) - ID du contrat
-  - `num_event` (int, URL) - ID de l'événement
+  - `id_event` (int, URL) - ID de l'événement
   - `_method` (string, requis) - Doit être "PUT"
-  - `idContratE{num_event}` (int, requis) - ID du contrat
-  - `dateEvenementE{num_event}` (date, requis) - Date de l'événement
-  - `type_contrat_E{num_event}` (string, requis) - Type principal
-  - `STypeE{num_event}` (string, requis) - Sous-type
-  - `descriptifE{num_event}` (string, requis) - Description
-- **Réponse :** Redirection vers `/contrats/<num_contrat>`
+  - `idContratE{id_event}` (int, requis) - ID du contrat
+  - `dateEvenementE{id_event}` (date, requis) - Date de l'événement
+  - `type_contrat_E{id_event}` (string, requis) - Type principal
+  - `STypeE{id_event}` (string, requis) - Sous-type
+  - `descriptifE{id_event}` (string, requis) - Description
+- **Réponse :** Redirection vers `/contrats/<id_contrat>`
 
 ---
 
@@ -239,7 +239,7 @@
 
 ### ➕ Ajout de document à un contrat
 
-**Route :** `POST /contrats/<num_contrat>/document`
+**Route :** `POST /contrats/<id_contrat>/document`
 
 - **Description :** Upload et ajout d'un document lié à un contrat
 - **Authentification :** Requise
@@ -256,11 +256,11 @@
   - Génération du nom : `{YYMMDD}_{idContrat}_{idDocument}_{sousType}.{extension}`
   - Sauvegarde sur le serveur
   - Enregistrement en base de données
-- **Réponse :** Redirection vers `/contrats/<num_contrat>`
+- **Réponse :** Redirection vers `/contrats/<id_contrat>`
 
 ### ✏️ Modification de document
 
-**Route :** `POST /contrats/numContrat/<num_contrat>/num_document/<num_doc>`
+**Route :** `POST /contrats/numContrat/<id_contrat>/num_document/<num_doc>`
 
 - **Description :** Modification d'un document existant
 - **Authentification :** Requise
@@ -276,11 +276,11 @@
   - `descriptifD{num_doc}` (string, requis) - Description
   - `documentD{num_doc}` (file, optionnel) - Nouveau fichier
   - `strLienD{num_doc}` (string, conditionnel) - Lien existant si pas de nouveau fichier
-- **Réponse :** Redirection vers `/contrats/<num_contrat>`
+- **Réponse :** Redirection vers `/contrats/<id_contrat>`
 
 ### 📥 Téléchargement de document
 
-**Route :** `GET /contrats/numContrat/<num_contrat>/num_document/<num_doc>/download/<name>`
+**Route :** `GET /contrats/numContrat/<id_contrat>/num_document/<num_doc>/download/<name>`
 
 - **Description :** Téléchargement d'un document
 - **Authentification :** Requise

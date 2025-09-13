@@ -26,9 +26,9 @@ def envoi_contrats_renego(mail: str):
                 'id' : contract.id,
                 'type_contrat': contract.type_contrat,
                 'sous_type_contrat': contract.sous_type_contrat,
-                'Entreprise': contract.entreprise,
+                'entreprise': contract.entreprise,
                 'id_externe_contrat': contract.id_externe_contrat,
-                'Intitule': contract.intitule,
+                'intitule': contract.intitule,
                 'date_debut': contract.date_debut,
                 'date_fin_preavis': contract.date_fin_preavis,
                 'date_fin': contract.date_fin
