@@ -225,7 +225,8 @@ def teardown_request(exception: Optional[BaseException]) -> None:
         db_session.close()
 
 @peraudiere.route('/')
-def home() -> str | Response:
+def home(message: Optional[str] = None, success_message: Optional[str] = None,
+         error_message: Optional[str] = None) -> str | Response:
     """
     Route pour la page d'accueil.
     Si l'utilisateur est connecté, affiche la page d'accueil avec les informations utilisateur et les sections disponibles.
@@ -298,12 +299,15 @@ def home() -> str | Response:
         ]
 
         # Retourne la page d'accueil avec les informations utilisateur et les sections disponibles
-        return render_template('index.html', prenom=prenom, nom=nom, habilitation_levels=habilitation_levels, sections=sections)
+        return render_template('index.html', prenom=prenom, nom=nom, habilitation_levels=habilitation_levels,
+                               sections=sections, message=message, success_message=success_message,
+                               error_message=error_message)
     else:
-        return redirect(url_for('login'))
+        return redirect(url_for('login', error_message='Merci de vous connecter pour accéder à la ressource'))
 
 @peraudiere.route('/login', methods=['GET', 'POST'])
-def login() -> Response | str:
+def login(message: Optional[str] = None, success_message: Optional[str] = None,
+          error_message: Optional[str] = None) -> str | Response:
     """
     Route pour la page de connexion.
     Gère l'affichage du formulaire de connexion et le traitement des informations de connexion.
@@ -312,8 +316,6 @@ def login() -> Response | str:
     Returns:
         Response | str: La page de connexion ou une redirection vers la page d'accueil.
     """
-    message = request.args.get('message', '')
-
     # === Gestion de la méthode POST (traitement du formulaire de connexion) ===
     if request.method == 'POST':
         try:
@@ -322,26 +324,28 @@ def login() -> Response | str:
 
             # Vérifier si l'utilisateur existe et si le mot de passe est correct
             if UsersMethods.valid_authentication(user, password):
-                return redirect(url_for('home'))
+                return redirect(url_for('home', success_message='Connexion réussie'))
             
             # Gestion des erreurs de mots de passe
             else:
                 message = UsersMethods.generate_nb_false_pwd(user)
 
             # Rediriger vers la page de connexion avec le message approprié
-            return redirect(url_for('login', message=message))
-        
+            return redirect(url_for('login', error_message=message))
+
         except Exception as e:
             # En cas d'erreur, retour sur la page de connexion après rollback
             message = f'Erreur lors de la connexion, veuillez réessayer : {e}'
-            return redirect(url_for('login', message=message))
+            return redirect(url_for('login', error_message=message))
 
     # === Gestion de la méthode GET (affichage de la page de connexion) ===
     else:
-        return render_template('login.html', message=message)
+        return render_template('login.html', message=message, success_message=success_message,
+                               error_message=error_message)
 
 @peraudiere.route('/logout', methods=['GET'])
-def logout() -> Response:
+def logout(message: Optional[str] = None, success_message: Optional[str] = None,
+              error_message: Optional[str] = None) -> Response:
     """
     Route pour la déconnexion de l'utilisateur.
     Gère la suppression de la session utilisateur.
@@ -351,11 +355,13 @@ def logout() -> Response:
         Response: Redirection vers la page de connexion.
     """
     session.clear()
-    return redirect(url_for('login'))
+    return redirect(url_for('login', message='Vous avez été déconnecté', success_message=success_message,
+                            error_message=error_message))
 
 @peraudiere.route('/gestion-droits', methods=['GET'])
 @validate_habilitation(ADMINISTRATEUR)
-def gestion_droits() -> str | Response:
+def gestion_droits(message: Optional[str] = None, success_message: Optional[str] = None,
+                   error_message: Optional[str] = None) -> str | Response:
     """
     Route pour la gestion des droits des utilisateurs.
     Gère l'affichage et la modification des droits des utilisateurs.
@@ -365,11 +371,13 @@ def gestion_droits() -> str | Response:
         Response: La page de gestion des droits ou une redirection vers la page de déconnexion.
     """
     users = g.db_session.query(User).all()
-    return render_template('gestion_droits.html', users=users)
+    return render_template('gestion_droits.html', users=users, message=message,
+                           success_message=success_message, error_message=error_message)
 
 @peraudiere.route('/gestion-utilisateurs', methods=['GET'])
 @validate_habilitation(GESTIONNAIRE)
-def gestion_utilisateurs() -> str | Response:
+def gestion_utilisateurs(message: Optional[str] = None, success_message: Optional[str] = None,
+                         error_message: Optional[str] = None) -> str | Response:
     """
     Route pour la gestion des utilisateurs.
     Gère l'affichage et la modification des utilisateurs.
@@ -380,11 +388,13 @@ def gestion_utilisateurs() -> str | Response:
     """
     users: list[User] = g.db_session.query(User).all()
     users.sort(key=lambda x: (x.nom, x.prenom))
-    return render_template('gestion_utilisateurs.html', users=users)
+    return render_template('gestion_utilisateurs.html', users=users, message=message,
+                           success_message=success_message, error_message=error_message)
 
 @peraudiere.route('/gestion-documents')
 @validate_habilitation(GESTIONNAIRE)
-def gestion_documents() -> str | Response:
+def gestion_documents(message: Optional[str] = None, success_message: Optional[str] = None,
+                     error_message: Optional[str] = None) -> str | Response:
     """
     Route pour la gestion des documents.
     Gère l'affichage et la modification des documents.
@@ -393,11 +403,13 @@ def gestion_documents() -> str | Response:
     Returns:
         Response: La page de gestion des documents.
     """
-    return render_template('gestion_documents.html')
+    return render_template('gestion_documents.html', message=message, success_message=success_message,
+                           error_message=error_message)
 
 @peraudiere.route('/erpp')
 @validate_habilitation(PROFESSEURS_PRINCIPAUX)
-def erpp() -> str | Response:
+def erpp(message: Optional[str] = None, success_message: Optional[str] = None,
+          error_message: Optional[str] = None) -> str | Response:
     """
     Route pour l'espace réservé aux professeurs principaux.
     Gère l'affichage de l'espace réservé aux professeurs principaux.
@@ -406,11 +418,13 @@ def erpp() -> str | Response:
     Returns:
         Response: La page de l'espace réservé aux professeurs principaux.
     """
-    return render_template('erpp.html')
+    return render_template('erpp.html', message=message, success_message=success_message,
+                           error_message=error_message)
 
 @peraudiere.route('/erp')
 @validate_habilitation(PROFESSEURS)
-def erp() -> str | Response:
+def erp(message: Optional[str] = None, success_message: Optional[str] = None,
+         error_message: Optional[str] = None) -> str | Response:
     """
     Route pour l'espace réservé aux professeurs.
     Gère l'affichage de l'espace réservé aux professeurs.
@@ -419,11 +433,13 @@ def erp() -> str | Response:
     Returns:
         Response: La page de l'espace réservé aux professeurs.
     """
-    return render_template('erp.html')
+    return render_template('erp.html', message=message, success_message=success_message,
+                           error_message=error_message)
 
 @peraudiere.route('/ei')
 @validate_habilitation(IMPRESSIONS)
-def ei() -> str | Response:
+def ei(message: Optional[str] = None, success_message: Optional[str] = None,
+        error_message: Optional[str] = None) -> str | Response:
     """
     Route pour l'espace réservé aux impressions.
     Gère l'affichage de l'espace réservé aux impressions.
@@ -432,8 +448,8 @@ def ei() -> str | Response:
     Returns:
         Response: La page de l'espace réservé aux impressions.
     """
-    message = request.args.get('message', '')
-    return render_template('ei.html', message=message)
+    return render_template('ei.html', message=message, success_message=success_message,
+                           error_message=error_message)
 
 @peraudiere.route('/print-doc', methods=['POST'])
 @validate_habilitation(IMPRESSIONS)
@@ -447,28 +463,32 @@ def print_doc() -> Response:
         Response: Redirection vers la page de l'espace réservé aux
                   impressions avec un message de succès.
     """
-    binary_document: Any = request.files['document']
-    document = str(binary_document.filename)
-    extension: str = str(os.path.splitext(document))[1]
-    docname = document.split('.')[0]
-    username = session['prenom'] + ' ' + session['nom']
-    copies: str = str(request.form.get('copies'))
-    sides: str = request.form.get('recto_verso', '')
-    media: str = request.form.get('format', '')
-    orientation: str = request.form.get('orientation', '')
-    color: str = request.form.get('couleur', '')
+    try:
+        binary_document: Any = request.files['document']
+        document = str(binary_document.filename)
+        extension: str = str(os.path.splitext(document))[1]
+        docname = document.split('.')[0]
+        username = session['prenom'] + ' ' + session['nom']
+        copies: str = str(request.form.get('copies'))
+        sides: str = request.form.get('recto_verso', '')
+        media: str = request.form.get('format', '')
+        orientation: str = request.form.get('orientation', '')
+        color: str = request.form.get('couleur', '')
 
-    #Envoi du document à l'imprimante
-    docs.print_document(binary_document,docname, extension, copies, username, sides, media, orientation, color)
+        #Envoi du document à l'imprimante
+        docs.print_document(binary_document,docname, extension, copies, username, sides, media, orientation, color)
 
-    #Suppression du document sur le serveur
-    docs.delete_file(docname, extension)
+        #Suppression du document sur le serveur
+        docs.delete_file(docname, extension)
 
-    return redirect(url_for('ei', message='Impression envoyée'))
+        return redirect(url_for('ei', success_message='Impression envoyée'))
+    except Exception:
+        return redirect(url_for('ei', error_message='Erreur lors de l\'impression, veuillez réessayer'))
 
 @peraudiere.route('/ere')
 @validate_habilitation(ELEVES)
-def ere() -> str | Response:
+def ere(message: Optional[str] = None, success_message: Optional[str] = None,
+         error_message: Optional[str] = None) -> str | Response:
     """
     Route pour l'espace réservé aux élèves.
     Gère l'affichage de l'espace réservé aux élèves.
@@ -477,11 +497,13 @@ def ere() -> str | Response:
     Returns:
         Response: La page de l'espace réservé aux élèves.
     """
-    return render_template('ere.html')
+    return render_template('ere.html', message=message, success_message=success_message,
+                           error_message=error_message)
 
 @peraudiere.route('/ajout-utilisateurs', methods=['POST'])
 @validate_habilitation(ADMINISTRATEUR)
-def ajout_utilisateurs() -> Response:
+def ajout_utilisateurs(message: Optional[str] = None, success_message: Optional[str] = None,
+                       error_message: Optional[str] = None) -> Response:
     """
     Route pour l'ajout d'un utilisateur.
     Gère l'ajout d'un utilisateur à la base de données.
@@ -518,13 +540,14 @@ def ajout_utilisateurs() -> Response:
         g.db_session.add(user)
         g.db_session.commit()
 
-        return redirect(url_for('gestion_utilisateurs'))
+        return redirect(url_for('gestion_utilisateurs'), success_message='Utilisateur ajouté avec succès')
     except Exception:
-        return redirect(url_for('gestion_utilisateurs'))
+        return redirect(url_for('gestion_utilisateurs'), error_message='Erreur lors de l\'ajout de l\'utilisateur :\n' + str(e))
 
 @peraudiere.route('/suppr-utilisateurs', methods=['POST'])
 @validate_habilitation(ADMINISTRATEUR)
-def suppr_utilisateurs() -> Response:
+def suppr_utilisateurs(message: Optional[str] = None, success_message: Optional[str] = None,
+                       error_message: Optional[str] = None) -> Response:
     """
     Route pour la suppression d'un utilisateur.
     Gère la suppression d'un utilisateur de la base de données.
@@ -539,13 +562,14 @@ def suppr_utilisateurs() -> Response:
         if user:
             g.db_session.delete(user)
             g.db_session.commit()
-        return redirect(url_for('gestion_utilisateurs'))
-    except Exception:
-        return redirect(url_for('gestion_utilisateurs'))
+        return redirect(url_for('gestion_utilisateurs'), success_message='Utilisateur supprimé avec succès')
+    except Exception as e:
+        return redirect(url_for('gestion_utilisateurs'), error_message='Erreur lors de la suppression de l\'utilisateur :\n' + str(e))
 
 @peraudiere.route('/modif-utilisateurs', methods=['POST'])
 @validate_habilitation(ADMINISTRATEUR)
-def modif_utilisateurs() -> Response:
+def modif_utilisateurs(message: Optional[str] = None, success_message: Optional[str] = None,
+                       error_message: Optional[str] = None) -> Response:
     """
     Route pour la modification d'un utilisateur.
     Gère la modification d'un utilisateur dans la base de données.
@@ -590,9 +614,9 @@ def modif_utilisateurs() -> Response:
 
             g.db_session.commit()
 
-        return redirect(url_for('gestion_utilisateurs'))
-    except Exception:
-        return redirect(url_for('gestion_utilisateurs'))
+        return redirect(url_for('gestion_utilisateurs'), success_message='Utilisateur modifié avec succès')
+    except Exception as e:
+        return redirect(url_for('gestion_utilisateurs'), error_message='Erreur lors de la modification de l\'utilisateur :\n' + str(e))
 
 @peraudiere.route('/gestion-droits', methods=['POST'])
 @validate_habilitation([ADMINISTRATEUR, GESTIONNAIRE])
@@ -626,13 +650,14 @@ def gestion_droits_post() -> Response:
             user.habilitation = habilitation
             g.db_session.commit()
 
-        return redirect(url_for('gestion_droits'))
-    except Exception:
-        return redirect(url_for('gestion_droits'))
+        return redirect(url_for('gestion_droits', success_message='Droits modifiés avec succès'))
+    except Exception as e:
+        return redirect(url_for('gestion_droits', error_message='Erreur lors de la modification des droits :\n' + str(e)))
 
 @peraudiere.route('/contrats', methods=['GET', 'POST'])
 @validate_habilitation(GESTIONNAIRE)
-def contrats() -> ResponseReturnValue:
+def contrats(message: Optional[str] = None, success_message: Optional[str] = None,
+             error_message: Optional[str] = None) -> ResponseReturnValue:
     """
     Route pour la gestion des contrats.
     Gère l'affichage et l'ajout de contrats.
@@ -644,7 +669,8 @@ def contrats() -> ResponseReturnValue:
     # === Gestion de la méthode GET (affichage de la liste des contrats) ===
     if request.method == 'GET':
         contracts = g.db_session.query(Contract).all()
-        return render_template('contrats.html', contracts=contracts)
+        return render_template('contrats.html', contracts=contracts, message=message,
+                               success_message=success_message, error_message=error_message)
     
     # === Gestion de la méthode POST (ajout d'un nouveau contrat) ===
     elif request.method == 'POST':
@@ -657,38 +683,29 @@ def contrats() -> ResponseReturnValue:
             intitule = request.form.get('Intitule', '')
             date_debut = request.form.get('dateDebut', '')
             date_fin_preavis = request.form.get('dateFinPreavis', '')
-            date_fin = request.form.get('dateFin', '')
+            date_fin = request.form.get('dateFin', None)
             contract = Contract(type_contrat = type_contrat,
                                 sous_type_contrat = sous_type_contrat,
                                 entreprise = entreprise,
                                 id_externe_contrat = id_contrat_externe,
                                 intitule = intitule,
                                 date_debut = date_debut,
-                                date_fin = date_fin,
+                                date_fin = date_fin if date_fin else None,
                                 date_fin_preavis = date_fin_preavis
-                                ) \
-                        if date_fin != '' \
-                        else \
-                        Contract(type_contrat = type_contrat,
-                                sous_type_contrat = sous_type_contrat,
-                                entreprise = entreprise,
-                                id_externe_contrat = id_contrat_externe,
-                                intitule = intitule,
-                                date_debut = date_debut,
-                                date_fin_preavis = date_fin_preavis)
-
+                                )
             g.db_session.add(contract)
             g.db_session.commit()
 
-            return redirect(url_for('contrats'))
-        except Exception:
-            return redirect(url_for('contrats'))
+            return redirect(url_for('contrats', success_message='Contrat ajouté avec succès'))
+        except Exception as e:
+            return redirect(url_for('contrats', error_message='Erreur lors de l\'ajout du contrat :\n' + str(e)))
     else:
-        return redirect(url_for('contrats'))
+        return redirect(url_for('contrats', error_message='Méthode non autorisée'))
 
 @peraudiere.route('/contrats/contrat-<int:id_contrat>', methods=['GET', 'POST'])
 @validate_habilitation(GESTIONNAIRE)
-def contrats_by_num(id_contrat: int) -> ResponseReturnValue:
+def contrats_by_num(id_contrat: int, message: Optional[str] = None, success_message: Optional[str] = None,
+                    error_message: Optional[str] = None) -> ResponseReturnValue:
     """
     Route pour le détail d'un contrat.
     Gère l'affichage, la modification et la suppression d'un contrat.
@@ -707,7 +724,8 @@ def contrats_by_num(id_contrat: int) -> ResponseReturnValue:
         documents = g.db_session.query(Document).filter(Document.id_contrat == id_contrat)
 
         # Affichage de la page de détail du contrat
-        return render_template('contrat_detail.html', contract = contract, events = events, documents = documents)
+        return render_template('contrat_detail.html', contract = contract, events = events, documents = documents,
+                               message = message, success_message = success_message, error_message = error_message)
     
     # === Gestion de la méthode POST (modification du contrat) ===
     elif request.method == 'POST' and request.form.get('_method') == 'PUT':
@@ -725,13 +743,13 @@ def contrats_by_num(id_contrat: int) -> ResponseReturnValue:
             
                 g.db_session.commit()
 
-            return redirect(url_for('contrats'))
-        except Exception:
-            return redirect(url_for('contrats'))
-        
+            return redirect(url_for('contrats', success_message='Contrat modifié avec succès'))
+        except Exception as e:
+            return redirect(url_for('contrats', error_message='Erreur lors de la modification du contrat :\n' + str(e)))
+
     # === Gestion de toute autre méthode ===
     else:
-        return redirect(url_for('contrats'))
+        return redirect(url_for('contrats', error_message='Méthode non autorisée'))
 
 @peraudiere.route('/contrats/contrat-<int:id_contrat>/evenement', methods=['POST'])
 @validate_habilitation(GESTIONNAIRE)
@@ -758,11 +776,11 @@ def add_contrats_event(id_contrat: int) -> ResponseReturnValue:
             g.db_session.add(event)
             g.db_session.commit()
 
-            return redirect(url_for('contrats_by_num', id_contrat=id_contrat))
-        except Exception:
-            return redirect(url_for('contrats_by_num', id_contrat=id_contrat))
+            return redirect(url_for('contrats_by_num', id_contrat=id_contrat, success_message='Évènement ajouté avec succès'))
+        except Exception as e:
+            return redirect(url_for('contrats_by_num', id_contrat=id_contrat, error_message='Erreur lors de l\'ajout de l\'évènement :\n' + str(e)))
     else:
-        return redirect(url_for('contrats_by_num', id_contrat=id_contrat))
+        return redirect(url_for('contrats_by_num', id_contrat=id_contrat, error_message='Méthode non autorisée'))
 
 @peraudiere.route('/contrats/contrat-<int:id_contrat>/document', methods=['POST'])
 @validate_habilitation(GESTIONNAIRE)
@@ -813,11 +831,11 @@ def add_contrats_document(id_contrat: int) -> ResponseReturnValue:
             docs.upload_file(document_binaire, name, extention)
 
             #Retour du formulaire
-            return redirect(url_for('contrats_by_num', id_contrat=id_contrat))
-        except Exception:
-            return redirect(url_for('contrats_by_num', id_contrat=id_contrat))
+            return redirect(url_for('contrats_by_num', id_contrat=id_contrat, success_message='Document ajouté avec succès'))
+        except Exception as e:
+            return redirect(url_for('contrats_by_num', id_contrat=id_contrat, error_message='Erreur lors de l\'ajout du document :\n' + str(e)))
     else:
-        return redirect(url_for('contrats_by_num', id_contrat=id_contrat))
+        return redirect(url_for('contrats_by_num', id_contrat=id_contrat, error_message='Méthode non autorisée'))
 
 @peraudiere.route('/contrats/contrat-<int:id_contrat>/evenement-<int:id_event>', methods=['POST'])
 @validate_habilitation(GESTIONNAIRE)
@@ -838,24 +856,23 @@ def modif_event_id(id_event: int, id_contrat: int) -> ResponseReturnValue:
 
             if event:
                 #Récupération formulaire
-                id_contrat = int(request.form.get(f'idContratE{id_event}', 0))
-                event.id_contrat = request.form.get(f'idContratE{id_event}')
+                event.id_contrat = id_contrat
                 event.date_evenement = request.form.get(f'dateEvenementE{id_event}')
-                event.type_evenement = request.form.get(f'type_evenement{id_event}')
+                event.type_evenement = request.form.get(f'TypeE{id_event}')
                 event.sous_type_evenement = request.form.get(f'STypeE{id_event}')
                 event.descriptif = request.form.get(f'descriptifE{id_event}')
 
                 #Retour
                 g.db_session.commit()
 
-                return redirect(url_for('contrats_by_num', id_contrat = id_contrat))
+                return redirect(url_for('contrats_by_num', id_contrat = id_contrat, success_message='Évènement modifié avec succès'))
             else:
-                return redirect(url_for('contrats_by_num', id_contrat = id_contrat))
+                return redirect(url_for('contrats_by_num', id_contrat = id_contrat, error_message='Évènement non trouvé'))
         except Exception:
             g.db_session.rollback()
-            return redirect(url_for('contrats_by_num', id_contrat = id_contrat))
+            return redirect(url_for('contrats_by_num', id_contrat = id_contrat, error_message='Erreur lors de la modification de l\'évènement'))
     else:
-        return redirect(url_for('contrats_by_num', id_contrat = id_contrat))
+        return redirect(url_for('contrats_by_num', id_contrat = id_contrat, error_message='Méthode non autorisée'))
 
 @peraudiere.route('/contrats/contrat-<int:id_contrat>/document-<int:num_doc>', methods=['POST'])
 @validate_habilitation(GESTIONNAIRE)
@@ -914,12 +931,12 @@ def modif_document_id(num_doc: int, id_contrat: int) -> ResponseReturnValue:
 
             # Création du document et récupération de son id
             id_contrat = _fonction_modif_doc(document, request, num_doc)
-            return redirect(url_for('contrats_by_num', id_contrat = id_contrat))
+            return redirect(url_for('contrats_by_num', id_contrat = id_contrat, success_message='Document modifié avec succès'))
 
-        except Exception:
-            return redirect(url_for('contrats_by_num', id_contrat = id_contrat))
+        except Exception as e:
+            return redirect(url_for('contrats_by_num', id_contrat = id_contrat, error_message='Erreur lors de la modification du document :\n' + str(e)))
     else:
-        return redirect(url_for('contrats_by_num', id_contrat = id_contrat))
+        return redirect(url_for('contrats_by_num', id_contrat = id_contrat, error_message='Méthode non autorisée'))
 
 @peraudiere.route('/contrats/numContrat-<int:id_contrat>/num_document-<int:num_doc>/download/<name>', methods=['GET'])
 @validate_habilitation(GESTIONNAIRE)

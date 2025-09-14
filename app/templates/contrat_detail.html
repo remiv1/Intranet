@@ -27,6 +27,24 @@
 <body>
     <header>
         <h1>Accès Contrat</h1>
+        {% if message %}
+        <div class="alert alert-info alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close">X</button>
+        </div>
+        {% endif %}
+        {% if error_message %}
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            {{ error_message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close">X</button>
+        </div>
+        {% endif %}
+        {% if success_message %}
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            {{ success_message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close">X</button>
+        </div>
+        {% endif %}
     </header>
     <main>
         <!-- Fil d'Ariane -->
@@ -149,6 +167,7 @@
                 </div>
             </div>
         </div>
+        <!-- TODO: Onglet de facture à prévoir -->
         <!-- Modal d'ajout d'évènement -->
         <div class="modal fade" id="modalAjoutEvenement" tabindex="-1" aria-labelledby="modalAjoutLabel" aria-hidden="true">
             <div class="modal-dialog">

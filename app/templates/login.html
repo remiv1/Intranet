@@ -20,15 +20,30 @@
 <body>
     <header>
         <h1>Connexion</h1>
+        {% if message %}
+        <div class="alert alert-info alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close">X</button>
+        </div>
+        {% endif %}
+        {% if error_message %}
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            {{ error_message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close">X</button>
+        </div>
+        {% endif %}
+        {% if success_message %}
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            {{ success_message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close">X</button>
+        </div>
+        {% endif %}
     </header>
     <body>
         <div class="container">
             <div class="drop-zone" id="drop-zone">
                 <p>Merci de vous connecter pour accéder au contenu personnalisé.<br>
                     Si vous n'avez pas de compte, veuillez contacter l'administrateur.</p>
-                {% if message %}
-                    <p style="color: red;font-weight: bolder;font-size: 130%;">{{ message }}</p>
-                {% endif %}
                 <form method="post" action="{{ url_for('login') }}">
                     <div class="form-group">
                         <div class="etiquette">
