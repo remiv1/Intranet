@@ -88,6 +88,10 @@ engine = create_engine(db_url,
                         connect_args={'connect_timeout': 10},
                         echo=False)
 
+# Création des variables et constantes
+NOT_ALLOWED = 'Accès non autorisé'
+RESERVED_SPACE = 'Espace réservé'
+
 # Créer les tables de la base de données (avec retry en cas d'erreur de connexion)
 def initialize_database(max_retries: int = 10, retry_delay: int = 2) -> bool | None:
     import time
@@ -105,9 +109,6 @@ def initialize_database(max_retries: int = 10, retry_delay: int = 2) -> bool | N
 
 # Créer une session de base de données sans ouverture de celle-ci
 Session = sessionmaker(bind=engine)
-
-# Création des constantes
-RESERVED_SPACE = 'Espace réservé'
 
 # Initialiser la base de données avec retry
 initialize_database()
@@ -700,7 +701,7 @@ def contrats(message: Optional[str] = None, success_message: Optional[str] = Non
         except Exception as e:
             return redirect(url_for('contrats', error_message='Erreur lors de l\'ajout du contrat :\n' + str(e)))
     else:
-        return redirect(url_for('contrats', error_message='Méthode non autorisée'))
+        return redirect(url_for('contrats', error_message=NOT_ALLOWED))
 
 @peraudiere.route('/contrats/contrat-<int:id_contrat>', methods=['GET', 'POST'])
 @validate_habilitation(GESTIONNAIRE)
@@ -749,7 +750,7 @@ def contrats_by_num(id_contrat: int, message: Optional[str] = None, success_mess
 
     # === Gestion de toute autre méthode ===
     else:
-        return redirect(url_for('contrats', error_message='Méthode non autorisée'))
+        return redirect(url_for('contrats', error_message=NOT_ALLOWED))
 
 @peraudiere.route('/contrats/contrat-<int:id_contrat>/evenement', methods=['POST'])
 @validate_habilitation(GESTIONNAIRE)
@@ -780,7 +781,7 @@ def add_contrats_event(id_contrat: int) -> ResponseReturnValue:
         except Exception as e:
             return redirect(url_for('contrats_by_num', id_contrat=id_contrat, error_message='Erreur lors de l\'ajout de l\'évènement :\n' + str(e)))
     else:
-        return redirect(url_for('contrats_by_num', id_contrat=id_contrat, error_message='Méthode non autorisée'))
+        return redirect(url_for('contrats_by_num', id_contrat=id_contrat, error_message=NOT_ALLOWED))
 
 @peraudiere.route('/contrats/contrat-<int:id_contrat>/document', methods=['POST'])
 @validate_habilitation(GESTIONNAIRE)
@@ -835,7 +836,7 @@ def add_contrats_document(id_contrat: int) -> ResponseReturnValue:
         except Exception as e:
             return redirect(url_for('contrats_by_num', id_contrat=id_contrat, error_message='Erreur lors de l\'ajout du document :\n' + str(e)))
     else:
-        return redirect(url_for('contrats_by_num', id_contrat=id_contrat, error_message='Méthode non autorisée'))
+        return redirect(url_for('contrats_by_num', id_contrat=id_contrat, error_message=NOT_ALLOWED))
 
 @peraudiere.route('/contrats/contrat-<int:id_contrat>/evenement-<int:id_event>', methods=['POST'])
 @validate_habilitation(GESTIONNAIRE)
@@ -872,7 +873,7 @@ def modif_event_id(id_event: int, id_contrat: int) -> ResponseReturnValue:
             g.db_session.rollback()
             return redirect(url_for('contrats_by_num', id_contrat = id_contrat, error_message='Erreur lors de la modification de l\'évènement'))
     else:
-        return redirect(url_for('contrats_by_num', id_contrat = id_contrat, error_message='Méthode non autorisée'))
+        return redirect(url_for('contrats_by_num', id_contrat = id_contrat, error_message=NOT_ALLOWED))
 
 @peraudiere.route('/contrats/contrat-<int:id_contrat>/document-<int:num_doc>', methods=['POST'])
 @validate_habilitation(GESTIONNAIRE)
@@ -936,7 +937,7 @@ def modif_document_id(num_doc: int, id_contrat: int) -> ResponseReturnValue:
         except Exception as e:
             return redirect(url_for('contrats_by_num', id_contrat = id_contrat, error_message='Erreur lors de la modification du document :\n' + str(e)))
     else:
-        return redirect(url_for('contrats_by_num', id_contrat = id_contrat, error_message='Méthode non autorisée'))
+        return redirect(url_for('contrats_by_num', id_contrat = id_contrat, error_message=NOT_ALLOWED))
 
 @peraudiere.route('/contrats/numContrat-<int:id_contrat>/num_document-<int:num_doc>/download/<name>', methods=['GET'])
 @validate_habilitation(GESTIONNAIRE)

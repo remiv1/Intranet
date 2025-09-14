@@ -115,7 +115,7 @@
                     </div>
                 </div>
             </div>
-            <!-- Conteneur du deuxième onglet -->
+            <!-- Conteneur du deuxième onglet (Documents) -->
             <div style="display: none;" id="Documents" class="tabcontent">
                 <!-- Contenu -->
                 <div id="collapseTwo" class="show" aria-labelledby="headingTwo" data-parent="#accordion">
@@ -351,10 +351,10 @@
                             <div class="mb-3">
                                 <label for="TypeD{{ document['id'] }}" class="form-label">Type *</label>
                                 <select name="TypeD{{ document['id'] }}" class="form-control" id="TypeD{{ document['id'] }}" data-event-id="{{ document['id'] }}" onchange="updateSousMenuDocument(this)" data-contract-id="0" required>
-                                    <option value="" {% if document['Type'] == "" %}selected{% endif %}></option>
-                                    <option value="Contact" {% if document['Type'] == "Contact" %}selected{% endif %}>Contact</option>
-                                    <option value="Contrat" {% if document['Type'] == "Contrat" %}selected{% endif %}>Contrat</option>
-                                    <option value="Autre" {% if document['Type'] == "Autre" %}selected{% endif %}>Autre</option>
+                                    <option value="" {% if document['type_document'] == "" %}selected{% endif %}></option>
+                                    <option value="Contact" {% if document['type_document'] == "Contact" %}selected{% endif %}>Contact</option>
+                                    <option value="Contrat" {% if document['type_document'] == "Contrat" %}selected{% endif %}>Contrat</option>
+                                    <option value="Autre" {% if document['type_document'] == "Autre" %}selected{% endif %}>Autre</option>
                                 </select>
                             </div>
                             <!-- Sous-Type du document -->
