@@ -14,27 +14,26 @@ Routes disponibles :
 - '/' : Page d'accueil
 - '/login' : Page de connexion
 - '/logout' : Déconnexion de l'utilisateur
-- '/gestion_droits' : Gestion des droits des utilisateurs
-- '/gestion_utilisateurs' : Gestion des utilisateurs
-- '/gestion_documents' : Gestion des documents
-- '/erpp' : Espace réservé pour les professeurs principaux
-- '/erp' : Espace réservé pour les professeurs
-- '/ei' : Espace impressions
-- '/print_doc' : Impression d'un document
-- '/ere' : Espace réservé pour les élèves
-- '/ajout_utilisateurs' : Ajout d'un utilisateur
-- '/suppr_utilisateurs' : Suppression d'un utilisateur
-- '/modif_utilisateurs' : Modification d'un utilisateur
-- '/gestion_droits' (POST) : Modification des droits d'un utilisateur
-- '/contrats' : Gestion des contrats
-- '/contrats/<int:id_contrat>' : Détail d'un contrat
-- '/contrats/<id_contrat>/evenement' : Ajout d'un évènement à un contrat
-- '/contrats/<id_contrat>/document' : Ajout d'un document à un contrat
-- '/contrats/numContrat/<id_contrat>/numEvenement/<id_event>' : Modification d'un évènement
-- '/contrats/numContrat/<id_contrat>/num_document/<id_document>' : Modification d'un document
-- '/contrats/numContrat/<id_contrat>/num_document/<id_document>/download' : Téléchargement d'un document
-- '/rapport-contrats' : Rapport des contrats arrivant à échéance entre m-6 et m-3
-
+- '/gestion-droits' [GET] : Gestion des droits des utilisateurs
+- '/gestion-droits' [POST] : Modification des droits d'un utilisateur
+- '/gestion-utilisateurs' [GET] : Gestion des utilisateurs
+- '/gestion-documents' [GET] : Gestion des documents
+- '/erpp' [GET] : Espace réservé pour les professeurs principaux
+- '/erp' [GET] : Espace réservé pour les professeurs
+- '/ei' [GET] : Espace impressions
+- '/print-doc' [POST] : Impression d'un document
+- '/ere' [GET] : Espace réservé pour les élèves
+- '/ajout-utilisateurs' [POST] : Ajout d'un utilisateur
+- '/suppr-utilisateurs' [POST] : Suppression d'un utilisateur
+- '/modif-utilisateurs' [POST] : Modification d'un utilisateur
+- '/contrats' [GET, POST] : Gestion des contrats
+- '/contrats/contrat-<int:id_contrat>' [GET, POST] : Détail et modification d'un contrat
+- '/contrats/contrat-<int:id_contrat>/evenement' [POST] : Ajout d'un évènement à un contrat
+- '/contrats/contrat-<int:id_contrat>/document' [POST] : Ajout d'un document à un contrat
+- '/contrats/contrat-<int:id_contrat>/evenement-<int:id_event>' [POST] : Modification d'un évènement
+- '/contrats/contrat-<int:id_contrat>/document-<int:id_document>' [POST] : Modification d'un document
+- '/contrats/download/<name>' [GET] : Téléchargement d'un document
+- '/rapport-contrats' [POST] : Rapport des contrats arrivant à échéance entre m-6 et m-3
 """
 # Imports liés à Flask et SQLAlchemy
 from flask import Flask, jsonify, render_template, Request, request, redirect, url_for, session, g
