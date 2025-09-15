@@ -18,7 +18,7 @@ def envoi_contrats_renego(mail: str):
     date_4_mois = (datetime.now() + timedelta(days=4*30)).strftime('%Y-%m-%d')
     date_6_mois = (datetime.now() + timedelta(days=6*30)).strftime('%Y-%m-%d')
 
-    #Extraction des contrats
+    # Extraction des contrats
     contracts = conn.query(Contract).filter(and_(Contract.date_fin_preavis >= date_4_mois, Contract.date_fin_preavis <= date_6_mois)).all()
     if contracts:
         data = [

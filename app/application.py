@@ -1,7 +1,7 @@
 """
-#==================================================
+# ==================================================
 # Application principale de l'Intranet API'Raudière
-#==================================================
+# ==================================================
 Fichier de l'application principale de l'Intranet API'Raudière.
 
 Le projet doit être pleinement refactorisé pour une meilleure maintenabilité.
@@ -31,8 +31,8 @@ Routes disponibles :
 - '/contrats/<id_contrat>/evenement' : Ajout d'un évènement à un contrat
 - '/contrats/<id_contrat>/document' : Ajout d'un document à un contrat
 - '/contrats/numContrat/<id_contrat>/numEvenement/<id_event>' : Modification d'un évènement
-- '/contrats/numContrat/<id_contrat>/num_document/<num_doc>' : Modification d'un document
-- '/contrats/numContrat/<id_contrat>/num_document/<num_doc>/download' : Téléchargement d'un document
+- '/contrats/numContrat/<id_contrat>/num_document/<id_document>' : Modification d'un document
+- '/contrats/numContrat/<id_contrat>/num_document/<id_document>/download' : Téléchargement d'un document
 - '/rapport-contrats' : Rapport des contrats arrivant à échéance entre m-6 et m-3
 
 """
@@ -50,14 +50,26 @@ from habilitations import (validate_habilitation, ADMINISTRATEUR, GESTIONNAIRE, 
 # Imports liés à l'application
 from config import Config
 from models import Base
-import docs
+from docs import print_document, delete_file, create_name, upload_file, download_file
 from models import User, Contract, Event, Document
+from rapport_echeances import envoi_contrats_renego
 
 # Imports standards
 from typing import List, Dict, Any, cast, Optional, Tuple
-import hashlib
-import datetime
-import os
+from hashlib import sha256
+from os.path import splitext
+import logging
+
+# Configuration du logger
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s %(levelname)s %(name)s %(message)s',
+    handlers=[
+        logging.FileHandler("application.log"),
+        logging.StreamHandler()
+    ]
+)
+logger = logging.getLogger("peraudiere")
 
 # Initialisation de l'application Flask
 peraudiere = Flask(__name__)
@@ -136,7 +148,7 @@ class UsersMethods:
         # Récupération du credential
         username = request.form.get('username', '')
         password = request.form.get('password', '')
-        password = hashlib.sha256(password.encode()).hexdigest()
+        password = sha256(password.encode()).hexdigest()
 
         try:
             # Recherche de l'utilisateur dans la base de données
@@ -198,7 +210,7 @@ class UsersMethods:
         return message
 
 @peraudiere.before_request
-def before_request() -> None:
+def before_request() -> Any:
     """
     Fonction exécutée avant chaque requête.
     Initialise une session de base de données et la stocke dans l'objet `g`.
@@ -207,7 +219,16 @@ def before_request() -> None:
     Returns:
         None
     """
-    g.db_session = Session()
+    if 'db_session' not in g:
+        g.db_session = Session()
+    # Autoriser l'accès aux fichiers CSS et autres fichiers statiques
+    if (
+        ('prenom' not in session and 'nom' not in session and request.endpoint != 'login')
+        and not (request.endpoint == 'static' and request.path.endswith('.css'))
+    ):
+        session.clear()
+        error_message = 'Merci de vous connecter pour accéder à cette ressource'
+        return redirect(url_for('login', error_message=error_message))
 
 @peraudiere.teardown_appcontext
 def teardown_request(exception: Optional[BaseException]) -> None:
@@ -226,8 +247,7 @@ def teardown_request(exception: Optional[BaseException]) -> None:
         db_session.close()
 
 @peraudiere.route('/')
-def home(message: Optional[str] = None, success_message: Optional[str] = None,
-         error_message: Optional[str] = None) -> str | Response:
+def home() -> str | Response:
     """
     Route pour la page d'accueil.
     Si l'utilisateur est connecté, affiche la page d'accueil avec les informations utilisateur et les sections disponibles.
@@ -237,6 +257,11 @@ def home(message: Optional[str] = None, success_message: Optional[str] = None,
     Returns:
         str | Response: La page d'accueil ou une redirection vers la page de connexion.
     """
+    # Récupération des messages passés en paramètres GET
+    message = request.args.get('message', None)
+    success_message = request.args.get('success_message', None)
+    error_message = request.args.get('error_message', None)
+
     # Validation de l'existence de la session utilisateur avec les éléments nécessaires
     if 'prenom' in session and 'nom' in session:
         prenom = session['prenom']
@@ -304,11 +329,11 @@ def home(message: Optional[str] = None, success_message: Optional[str] = None,
                                sections=sections, message=message, success_message=success_message,
                                error_message=error_message)
     else:
-        return redirect(url_for('login', error_message='Merci de vous connecter pour accéder à la ressource'))
+        error_message = 'Merci de vous connecter pour accéder à cette ressource'
+        return redirect(url_for('login', error_message=error_message))
 
 @peraudiere.route('/login', methods=['GET', 'POST'])
-def login(message: Optional[str] = None, success_message: Optional[str] = None,
-          error_message: Optional[str] = None) -> str | Response:
+def login() -> str | Response:
     """
     Route pour la page de connexion.
     Gère l'affichage du formulaire de connexion et le traitement des informations de connexion.
@@ -317,6 +342,11 @@ def login(message: Optional[str] = None, success_message: Optional[str] = None,
     Returns:
         Response | str: La page de connexion ou une redirection vers la page d'accueil.
     """
+    # Récupération des messages passés en paramètres GET
+    message = request.args.get('message', None)
+    success_message = request.args.get('success_message', None)
+    error_message = request.args.get('error_message', None)
+
     # === Gestion de la méthode POST (traitement du formulaire de connexion) ===
     if request.method == 'POST':
         try:
@@ -345,8 +375,7 @@ def login(message: Optional[str] = None, success_message: Optional[str] = None,
                                error_message=error_message)
 
 @peraudiere.route('/logout', methods=['GET'])
-def logout(message: Optional[str] = None, success_message: Optional[str] = None,
-              error_message: Optional[str] = None) -> Response:
+def logout() -> Response:
     """
     Route pour la déconnexion de l'utilisateur.
     Gère la suppression de la session utilisateur.
@@ -355,14 +384,15 @@ def logout(message: Optional[str] = None, success_message: Optional[str] = None,
     Returns:
         Response: Redirection vers la page de connexion.
     """
+    success_message = request.args.get('success_message', None)
+    error_message = request.args.get('error_message', None)
     session.clear()
     return redirect(url_for('login', message='Vous avez été déconnecté', success_message=success_message,
                             error_message=error_message))
 
 @peraudiere.route('/gestion-droits', methods=['GET'])
 @validate_habilitation(ADMINISTRATEUR)
-def gestion_droits(message: Optional[str] = None, success_message: Optional[str] = None,
-                   error_message: Optional[str] = None) -> str | Response:
+def gestion_droits() -> str | Response:
     """
     Route pour la gestion des droits des utilisateurs.
     Gère l'affichage et la modification des droits des utilisateurs.
@@ -371,6 +401,9 @@ def gestion_droits(message: Optional[str] = None, success_message: Optional[str]
     Returns:
         Response: La page de gestion des droits ou une redirection vers la page de déconnexion.
     """
+    message = request.args.get('message', None)
+    success_message = request.args.get('success_message', None)
+    error_message = request.args.get('error_message', None)
     users = g.db_session.query(User).all()
     return render_template('gestion_droits.html', users=users, message=message,
                            success_message=success_message, error_message=error_message)
@@ -467,7 +500,7 @@ def print_doc() -> Response:
     try:
         binary_document: Any = request.files['document']
         document = str(binary_document.filename)
-        extension: str = str(os.path.splitext(document))[1]
+        extension: str = str(splitext(document))[1]
         docname = document.split('.')[0]
         username = session['prenom'] + ' ' + session['nom']
         copies: str = str(request.form.get('copies'))
@@ -476,11 +509,11 @@ def print_doc() -> Response:
         orientation: str = request.form.get('orientation', '')
         color: str = request.form.get('couleur', '')
 
-        #Envoi du document à l'imprimante
-        docs.print_document(binary_document,docname, extension, copies, username, sides, media, orientation, color)
+        # Envoi du document à l'imprimante
+        print_document(binary_document,docname, extension, copies, username, sides, media, orientation, color)
 
-        #Suppression du document sur le serveur
-        docs.delete_file(docname, extension)
+        # Suppression du document sur le serveur
+        delete_file(docname, extension)
 
         return redirect(url_for('ei', success_message='Impression envoyée'))
     except Exception:
@@ -513,24 +546,24 @@ def ajout_utilisateurs() -> Response:
         Response: Redirection vers la page de gestion des utilisateurs.
     """
     try:
-        #Récupération des données du formulaire
+        # Récupération des données du formulaire
         prenom = request.form.get('prenom')
         nom = request.form.get('nom')
         mail = request.form.get('mail')
         identifiant = request.form.get('identifiant')
         mdp = request.form.get('mdp', '')
-        mdp = hashlib.sha256(mdp.encode()).hexdigest()
+        mdp = sha256(mdp.encode()).hexdigest()
 
-        #Création du niveau d'habilitation
+        # Création du niveau d'habilitation
         habilitation_values: List[str] = []
         for key, value in request.form.items():
             if key.startswith('habil'):
                 habilitation_values.append(value)
     
-        #Trier les valeurs d'habilitation
+        # Trier les valeurs d'habilitation
         sorted_habil = sorted(habilitation_values, key=int)
 
-        #Concaténation des valeurs d'habilitation
+        # Concaténation des valeurs d'habilitation
         habilitation = int(''.join(sorted_habil))
 
         user = User(prenom=prenom, nom=nom,
@@ -546,8 +579,7 @@ def ajout_utilisateurs() -> Response:
 
 @peraudiere.route('/suppr-utilisateurs', methods=['POST'])
 @validate_habilitation(ADMINISTRATEUR)
-def suppr_utilisateurs(message: Optional[str] = None, success_message: Optional[str] = None,
-                       error_message: Optional[str] = None) -> Response:
+def suppr_utilisateurs() -> Response:
     """
     Route pour la suppression d'un utilisateur.
     Gère la suppression d'un utilisateur de la base de données.
@@ -556,20 +588,21 @@ def suppr_utilisateurs(message: Optional[str] = None, success_message: Optional[
     Returns:
         Response: Redirection vers la page de gestion des utilisateurs.
     """
+    identifiant = request.form.get('identifiant', '')
     try:
-        identifiant = request.form.get('identifiant')
         user = g.db_session.query(User).filter(User.identifiant == identifiant).first()
         if user:
             g.db_session.delete(user)
             g.db_session.commit()
-        return redirect(url_for('gestion_utilisateurs', success_message='Utilisateur supprimé avec succès'))
+        message = f'Utilisateur {identifiant} supprimé avec succès'
+        return redirect(url_for('gestion_utilisateurs', success_message=message))
     except Exception as e:
-        return redirect(url_for('gestion_utilisateurs', error_message='Erreur lors de la suppression de l\'utilisateur :\n' + str(e)))
+        message = f'Erreur lors de la suppression de l\'utilisateur {identifiant} : {e}'
+        return redirect(url_for('gestion_utilisateurs', error_message=message))
 
 @peraudiere.route('/modif-utilisateurs', methods=['POST'])
 @validate_habilitation(ADMINISTRATEUR)
-def modif_utilisateurs(message: Optional[str] = None, success_message: Optional[str] = None,
-                       error_message: Optional[str] = None) -> Response:
+def modif_utilisateurs() -> Response:
     """
     Route pour la modification d'un utilisateur.
     Gère la modification d'un utilisateur dans la base de données.
@@ -578,30 +611,27 @@ def modif_utilisateurs(message: Optional[str] = None, success_message: Optional[
     Returns:
         Response: Redirection vers la page de gestion des utilisateurs.
     """
+    prenom = request.form.get('prenom', '')
+    nom = request.form.get('nom', '')
+    mail = request.form.get('mail', '')
+    identifiant = request.form.get('identifiant', '')
+    mdp = request.form.get('mdp', '')
+    unlock = int(request.form.get('unlock', 0)) if request.form.get('unlock') == '1' else 0
     try:
-        prenom = request.form.get('prenom', '')
-        nom = request.form.get('nom', '')
-        mail = request.form.get('mail', '')
-        identifiant = request.form.get('identifiant', '')
-        mdp = request.form.get('mdp', '')
-        mdp = hashlib.sha256(mdp.encode()).hexdigest()
-        unlock = int(request.form.get('unlock', 0)) if request.form.get('unlock') == '1' else 0
+        # Hachage du mot de passe
+        mdp = sha256(mdp.encode()).hexdigest()
 
-        #Création du niveau d'habilitation
+        # Création du niveau d'habilitation
         habilitation_values: List[str] = []
         habilitation_values.extend(value for key, value in request.form.items() if key.startswith('habil'))
+        sorted_habil = sorted(habilitation_values, key=int)     # Trier les valeurs d'habilitation
+        habilitation = int(''.join(sorted_habil))               # Concaténation des valeurs d'habilitation
 
-        #Trier les valeurs d'habilitation
-        sorted_habil = sorted(habilitation_values, key=int)
-
-        #Concaténation des valeurs d'habilitation
-        habilitation = int(''.join(sorted_habil))
-
-        #Récupération de l'utilisateur
+        # Récupération de l'utilisateur
         user = g.db_session.query(User).filter(User.identifiant == identifiant).first()
 
+        # Modification des informations de l'utilisateur
         if user:
-            # Modification des informations de l'utilisateur
             user.prenom = prenom
             user.nom = nom
             user.mail = mail
@@ -612,11 +642,16 @@ def modif_utilisateurs(message: Optional[str] = None, success_message: Optional[
                 user.locked = False
             user.habilitation = habilitation
 
+            # Commit des modifications
             g.db_session.commit()
 
-        return redirect(url_for('gestion_utilisateurs', success_message='Utilisateur modifié avec succès'))
+        # Message de succès et redirection
+        message = f'Utilisateur {identifiant} modifié avec succès'
+        return redirect(url_for('gestion_utilisateurs', success_message=message))
     except Exception as e:
-        return redirect(url_for('gestion_utilisateurs', error_message='Erreur lors de la modification de l\'utilisateur :\n' + str(e)))
+        # Message d'erreur et redirection
+        message = f'Erreur lors de la modification de l\'utilisateur {identifiant} : {e}'
+        return redirect(url_for('gestion_utilisateurs', error_message=message))
 
 @peraudiere.route('/gestion-droits', methods=['POST'])
 @validate_habilitation([ADMINISTRATEUR, GESTIONNAIRE])
@@ -629,35 +664,38 @@ def gestion_droits_post() -> Response:
     Returns:
         Response: Redirection vers la page de gestion des droits.
     """
+    # Récupération des données du formulaire
+    identifiant = request.form.get('identifiant', '')
+    mdp = request.form.get('mdp', '')
+
     try:
-        identifiant = request.form.get('identifiant', '')
-        mdp = request.form.get('mdp', '')
-        mdp = hashlib.sha256(mdp.encode()).hexdigest()
-        
-        #Création du niveau d'habilitation
-        habilitation_values: List[str] = []
+        # Hachage du mot de passe
+        mdp = sha256(mdp.encode()).hexdigest()
+        habilitation_values: List[str] = []  # Création du niveau d'habilitation
         habilitation_values.extend(value for key, value in request.form.items() if key.startswith('habil'))
-        
-        #Trier les valeurs d'habilitation
-        sorted_habil = sorted(habilitation_values, key=int)
+        sorted_habil = sorted(habilitation_values, key=int)     # Tri des valeurs d'habilitation
+        habilitation = int(''.join(sorted_habil))               # Concaténation des valeurs d'habilitation
 
-        #Concaténation des valeurs d'habilitation
-        habilitation = int(''.join(sorted_habil))
-
+        # Récupération de l'utilisateur
         user = g.db_session.query(User).filter(User.identifiant == identifiant).first()
+
+        # Modification des informations de l'utilisateur
         if user:
             user.sha_mdp = mdp if mdp != '' else user.sha_mdp
             user.habilitation = habilitation
             g.db_session.commit()
 
-        return redirect(url_for('gestion_droits', success_message='Droits modifiés avec succès'))
+        # Message de succès et redirection
+        message = f'Droits de l\'utilisateur {identifiant} modifiés avec succès'
+        return redirect(url_for('gestion_droits', success_message=message))
     except Exception as e:
-        return redirect(url_for('gestion_droits', error_message='Erreur lors de la modification des droits :\n' + str(e)))
+        # Message d'erreur et redirection
+        message = f'Erreur lors de la modification des droits de l\'utilisateur {identifiant} : {e}'
+        return redirect(url_for('gestion_droits', error_message=message))
 
 @peraudiere.route('/contrats', methods=['GET', 'POST'])
 @validate_habilitation(GESTIONNAIRE)
-def contrats(message: Optional[str] = None, success_message: Optional[str] = None,
-             error_message: Optional[str] = None) -> ResponseReturnValue:
+def contrats() -> ResponseReturnValue:
     """
     Route pour la gestion des contrats.
     Gère l'affichage et l'ajout de contrats.
@@ -668,44 +706,54 @@ def contrats(message: Optional[str] = None, success_message: Optional[str] = Non
     """
     # === Gestion de la méthode GET (affichage de la liste des contrats) ===
     if request.method == 'GET':
+        # Récupération des messages passés en paramètres GET
+        message = request.args.get('message', None)
+        success_message = request.args.get('success_message', None)
+        error_message = request.args.get('error_message', None)
+
+        # Récupération de la liste des contrats
         contracts = g.db_session.query(Contract).all()
+
+        # Retourne la page de gestion des contrats et des messages éventuels
         return render_template('contrats.html', contracts=contracts, message=message,
                                success_message=success_message, error_message=error_message)
     
     # === Gestion de la méthode POST (ajout d'un nouveau contrat) ===
     elif request.method == 'POST':
+        # Récupération des données du formulaire
+        type_contrat = request.form.get('Type0', '')
+        sous_type_contrat = request.form.get('SType0', '')
+        entreprise = request.form.get('Entreprise', '')
+        id_contrat_externe = request.form.get('numContratExterne', '')
+        intitule = request.form.get('Intitule', '')
+        date_debut = request.form.get('dateDebut', '')
+        date_fin_preavis = request.form.get('dateFinPreavis', '')
+        date_fin = request.form.get('dateFin', None)
         try:
-            # Récupération des données du formulaire
-            type_contrat = request.form.get('Type0', '')
-            sous_type_contrat = request.form.get('SType0', '')
-            entreprise = request.form.get('Entreprise', '')
-            id_contrat_externe = request.form.get('numContratExterne', '')
-            intitule = request.form.get('Intitule', '')
-            date_debut = request.form.get('dateDebut', '')
-            date_fin_preavis = request.form.get('dateFinPreavis', '')
-            date_fin = request.form.get('dateFin', None)
-            contract = Contract(type_contrat = type_contrat,
-                                sous_type_contrat = sous_type_contrat,
-                                entreprise = entreprise,
-                                id_externe_contrat = id_contrat_externe,
-                                intitule = intitule,
-                                date_debut = date_debut,
-                                date_fin = date_fin if date_fin else None,
-                                date_fin_preavis = date_fin_preavis
-                                )
+            # Création et ajout du contrat à la base de données
+            contract = Contract(type_contrat=type_contrat,
+                                sous_type_contrat=sous_type_contrat,
+                                entreprise=entreprise,
+                                id_externe_contrat=id_contrat_externe,
+                                intitule=intitule,
+                                date_debut=date_debut,
+                                date_fin=date_fin if date_fin else None,
+                                date_fin_preavis=date_fin_preavis)
             g.db_session.add(contract)
             g.db_session.commit()
 
-            return redirect(url_for('contrats', success_message='Contrat ajouté avec succès'))
+            # Message de succès et redirection
+            message = f'Contrat ajouté avec succès : {contract.intitule}'
+            return redirect(url_for('contrats', success_message=message))
         except Exception as e:
-            return redirect(url_for('contrats', error_message='Erreur lors de l\'ajout du contrat :\n' + str(e)))
+            message = f'Erreur lors de l\'ajout du contrat {intitule} : {e}'
+            return redirect(url_for('contrats', error_message=message))
     else:
         return redirect(url_for('contrats', error_message=NOT_ALLOWED))
 
 @peraudiere.route('/contrats/contrat-<int:id_contrat>', methods=['GET', 'POST'])
 @validate_habilitation(GESTIONNAIRE)
-def contrats_by_num(id_contrat: int, message: Optional[str] = None, success_message: Optional[str] = None,
-                    error_message: Optional[str] = None) -> ResponseReturnValue:
+def contrats_by_num(id_contrat: int) -> ResponseReturnValue:
     """
     Route pour le détail d'un contrat.
     Gère l'affichage, la modification et la suppression d'un contrat.
@@ -714,38 +762,56 @@ def contrats_by_num(id_contrat: int, message: Optional[str] = None, success_mess
     Returns:
         Response: La page de détail du contrat ou une redirection vers la page de gestion des
     """
-    # alias pour conserver le style snake_case utilisé dans la suite du code
+    # Récupération du contrat
     contract = g.db_session.query(Contract).filter(Contract.id == id_contrat).first()
 
     # === Gestion de la méthode GET (affichage du détail du contrat) ===
     if request.method == 'GET':
+        # Récupération des messages passés en paramètres GET
+        message = request.args.get('message', None)
+        success_message = request.args.get('success_message', None)
+        error_message = request.args.get('error_message', None)
+
         # Récupération du contrat, des évènements et des documents associés
-        events = g.db_session.query(Event).filter(Event.id_contrat == id_contrat)
-        documents = g.db_session.query(Document).filter(Document.id_contrat == id_contrat)
+        events = list(g.db_session.query(Event).filter(Event.id_contrat == id_contrat))
+        documents = list(g.db_session.query(Document).filter(Document.id_contrat == id_contrat))
 
         # Affichage de la page de détail du contrat
-        return render_template('contrat_detail.html', contract = contract, events = events, documents = documents,
-                               message = message, success_message = success_message, error_message = error_message)
-    
+        return render_template('contrat_detail.html', contract=contract, events=events, documents=documents,
+                               message=message, success_message=success_message, error_message=error_message)
+
     # === Gestion de la méthode POST (modification du contrat) ===
     elif request.method == 'POST' and request.form.get('_method') == 'PUT':
+        # Récupération des données du formulaire
+        type_contrat = request.form.get(f'Type{id_contrat}', '')
+        sous_type_contrat = request.form.get(f'SType{id_contrat}', '')
+        entreprise = request.form.get(f'Entreprise{id_contrat}', '')
+        id_contrat_externe = request.form.get(f'numContratExterne{id_contrat}', '')
+        intitule = request.form.get(f'Intitule{id_contrat}', '')
+        date_debut = request.form.get(f'dateDebut{id_contrat}', '')
+        date_fin_preavis = request.form.get(f'dateFinPreavis{id_contrat}', '')
+        date_fin = request.form.get(f'dateFin{id_contrat}', None)
+
         try:
             if contract:
-                contract.type_contrat = request.form.get(f'Type{id_contrat}')
-                contract.sous_type_contrat = request.form.get(f'SType{id_contrat}')
-                contract.entreprise = request.form.get(f'Entreprise{id_contrat}')
-                contract.id_externe_contrat = request.form.get(f'numContratExterne{id_contrat}')
-                contract.intitule = request.form.get(f'Intitule{id_contrat}')
-                contract.date_debut = request.form.get(f'dateDebut{id_contrat}')
-                contract.date_fin_preavis = request.form.get(f'dateFinPreavis{id_contrat}')
-                if request.form.get(f'dateFin{id_contrat}') != '':
-                    contract.date_fin = request.form.get(f'dateFin{id_contrat}')
-            
+                # Modification des informations du contrat
+                contract.type_contrat = type_contrat
+                contract.sous_type_contrat = sous_type_contrat
+                contract.entreprise = entreprise
+                contract.id_externe_contrat = id_contrat_externe
+                contract.intitule = intitule
+                contract.date_debut = date_debut
+                contract.date_fin_preavis = date_fin_preavis
+                contract.date_fin = date_fin if date_fin != '' else None
                 g.db_session.commit()
 
-            return redirect(url_for('contrats', success_message='Contrat modifié avec succès'))
+            # Message de succès et redirection
+            message = f'Contrat {intitule} modifié avec succès'
+            return redirect(url_for('contrats', success_message=message))
         except Exception as e:
-            return redirect(url_for('contrats', error_message='Erreur lors de la modification du contrat :\n' + str(e)))
+            # Message d'erreur et redirection
+            message = f'Erreur lors de la modification du contrat {intitule} : {e}'
+            return redirect(url_for('contrats', error_message=message))
 
     # === Gestion de toute autre méthode ===
     else:
@@ -763,16 +829,21 @@ def add_contrats_event(id_contrat: int) -> ResponseReturnValue:
         Response: Redirection vers la page de détail du contrat.
     """
     if request.method == 'POST':
-        try:
-            # Récupération des données du formulaire
-            id_contrat = int(request.form.get('idContratE', 0))
-            date_evenement = request.form.get('dateEvenementE')
-            type_evenement = request.form.get('TypeE0')
-            sous_type_evenement = request.form.get('STypeE0')
-            descriptif = request.form.get('descriptifE')
+        # Récupération des données du formulaire
+        date_evenement = request.form.get('dateEvenementE')
+        type_evenement = request.form.get('TypeE0')
+        sous_type_evenement = request.form.get('STypeE0')
+        descriptif = request.form.get('descriptifE')
 
-            event = Event(id_contrat = id_contrat, date_evenement = date_evenement, type_evenement = type_evenement, sous_type_evenement = sous_type_evenement, descriptif = descriptif)
+        try:
+            # Création de l'évènement dans la base de données
+            event = Event(id_contrat = id_contrat,
+                          date_evenement = date_evenement,
+                          type_evenement = type_evenement,
+                          sous_type_evenement = sous_type_evenement,
+                          descriptif = descriptif)
             
+            # Ajout commit de la session
             g.db_session.add(event)
             g.db_session.commit()
 
@@ -793,7 +864,7 @@ def add_contrats_document(id_contrat: int) -> ResponseReturnValue:
     Returns:
         Response: Redirection vers la page de détail du contrat.
     """
-    #=== Gestion de la méthode POST (ajout d'un nouveau document) ===
+    # === Gestion de la méthode POST (ajout d'un nouveau document) ===
     if request.method == 'POST':
         try:
             # Récupération du dernier élément
@@ -810,11 +881,11 @@ def add_contrats_document(id_contrat: int) -> ResponseReturnValue:
             sous_type_document = request.form.get('STypeD0', '')
             descriptif = request.form.get('descriptifD', '')
             document_binaire: Any = request.files['documentD']
-            extention: str = os.path.splitext(str(document_binaire.filename))[1]
-            name = docs.create_name(date_document, str(id_contrat), str(id_contrat), sous_type_document)
+            extention: str = splitext(str(document_binaire.filename))[1]
+            name = create_name(date_document, str(id_contrat), str(id_contrat), sous_type_document)
             lien_document = name + extention
 
-            #Création du document dans la base de données
+            # Création du document dans la base de données
             document = Document(id_contrat = id_contrat,
                                 type_document = type_document,
                                 sous_type_document = sous_type_document,
@@ -823,14 +894,14 @@ def add_contrats_document(id_contrat: int) -> ResponseReturnValue:
                                 date_document = date_document,
                                 name = name)
 
-            #Ajout et Fermeture de la session
+            # Ajout et Fermeture de la session
             g.db_session.add(document)
             g.db_session.commit()
 
-            #Enregistrement du fichier sur le serveur
-            docs.upload_file(document_binaire, name, extention)
+            # Enregistrement du fichier sur le serveur
+            upload_file(document_binaire, name, extention)
 
-            #Retour du formulaire
+            # Retour du formulaire
             return redirect(url_for('contrats_by_num', id_contrat=id_contrat, success_message='Document ajouté avec succès'))
         except Exception as e:
             return redirect(url_for('contrats_by_num', id_contrat=id_contrat, error_message='Erreur lors de l\'ajout du document :\n' + str(e)))
@@ -851,18 +922,18 @@ def modif_event_id(id_event: int, id_contrat: int) -> ResponseReturnValue:
     """
     if request.method == 'POST' and request.form.get('_method') == 'PUT':
         try:
-            #Récupération de l'évènement
+            # Récupération de l'évènement
             event = g.db_session.query(Event).filter(Event.id == id_event).first()
 
             if event:
-                #Récupération formulaire
+                # Récupération formulaire
                 event.id_contrat = id_contrat
                 event.date_evenement = request.form.get(f'dateEvenementE{id_event}')
                 event.type_evenement = request.form.get(f'TypeE{id_event}')
                 event.sous_type_evenement = request.form.get(f'STypeE{id_event}')
                 event.descriptif = request.form.get(f'descriptifE{id_event}')
 
-                #Retour
+                # Retour
                 g.db_session.commit()
 
                 return redirect(url_for('contrats_by_num', id_contrat = id_contrat, success_message='Évènement modifié avec succès'))
@@ -874,64 +945,65 @@ def modif_event_id(id_event: int, id_contrat: int) -> ResponseReturnValue:
     else:
         return redirect(url_for('contrats_by_num', id_contrat = id_contrat, error_message=NOT_ALLOWED))
 
-@peraudiere.route('/contrats/contrat-<int:id_contrat>/document-<int:num_doc>', methods=['POST'])
+@peraudiere.route('/contrats/contrat-<int:id_contrat>/document-<int:id_document>', methods=['POST'])
 @validate_habilitation(GESTIONNAIRE)
-def modif_document_id(num_doc: int, id_contrat: int) -> ResponseReturnValue:
+def modif_document_id(id_document: int, id_contrat: int) -> ResponseReturnValue:
     """
     Route pour la modification d'un document d'un contrat.
     Gère la modification d'un document d'un contrat dans la base de données.
     Args:
-        num_doc (int): Le numéro du document à modifier.
+        id_document (int): Le numéro du document à modifier.
         id_contrat (int): Le numéro du contrat auquel le document appartient.
     Returns:
         Response: Redirection vers la page de détail du contrat.
     """
-    def _fonction_modif_doc(document: Document, req: Request, num_doc: int) -> int:
-        doc_id = document.id
-        id_contrat = req.form.get(f'idContratD{num_doc}', '')
-        date_document = req.form.get(f'dateDocumentD{num_doc}', '')
-        document.date_document = date_document
-        type_document = req.form.get(f'TypeD{num_doc}', '')
-        document.type_document = type_document
-        sous_type_document = req.form.get(f'STypeD{num_doc}', '')
-        document.sous_type_document = sous_type_document
-        document.descriptif = req.form.get(f'descriptifD{num_doc}', '')
-        if req.files[f'documentD{num_doc}']:
-            document_binaire = req.files[f'documentD{num_doc}']
-            name = docs.create_name(date_document, id_contrat, doc_id, sous_type_document)
-            extention = os.path.splitext(str(document_binaire.filename))[1]
+    def _fonction_modif_doc(document: Document, req: Request, id_document: int) -> None:
+        # Récupération du formulaire
+        id_contrat = req.form.get(f'idContratD{id_document}', '')
+        date_document = req.form.get(f'dateDocumentD{id_document}', '')
+        type_document = req.form.get(f'TypeD{id_document}', '')
+        sous_type_document = req.form.get(f'STypeD{id_document}', '')
+        document.descriptif = req.form.get(f'descriptifD{id_document}', '')
+        document_binaire: Any = req.files.get(f'documentD{id_document}', None)
+        logger.debug(f'type document_binaire : {type(document_binaire)}')
+        if document_binaire and document_binaire.filename != '':
+            name = create_name(date_document, str(id_contrat), str(id_document), sous_type_document)
+            extention = splitext(str(document_binaire.filename))[1]
             doc_to_delete_lien = document.str_lien
             doc_to_delete_name = document.name
+            logger.debug(f"Document à supprimer : {doc_to_delete_name}{splitext(doc_to_delete_lien)[1]}")
         else:
-            str_lien = req.form.get(f'strLienD{num_doc}', '')
+            str_lien = req.form.get(f'strLienD{id_document}', '')
             complet_name = str_lien.split('_')[3]
-            name = docs.create_name(date_document, id_contrat, doc_id, sous_type_document)
+            name = create_name(date_document, str(id_contrat), str(id_document), sous_type_document)
             extention = complet_name.split('.')[1]
             doc_to_delete_lien = None
             doc_to_delete_name = None
         lien_document = name + extention
-        document.str_lien = lien_document
 
-        # Gestion automatique du nom de document
+        # Mise à jour des informations du document
+        document.date_document = date_document
+        document.type_document = type_document
+        document.sous_type_document = sous_type_document
+        document.str_lien = lien_document
         document.name = name
 
-        # Retour
+        # Mise à jour du document dans la base de données
         g.db_session.commit()
 
         # Suppression de l'ancien document si un nouveau a été uploadé
         if doc_to_delete_lien and doc_to_delete_name:
-            docs.delete_file(doc_to_delete_name, os.path.splitext(doc_to_delete_lien)[1])
+            delete_file(doc_to_delete_name, splitext(doc_to_delete_lien)[1])
+            upload_file(document_binaire, name, extention)
 
-
-        return document.id
-
+    # === Gestion de la méthode POST (modification d'un document) ===
     if request.method == 'POST' and request.form.get('_method') == 'PUT':
         try:
-            #Récupération du document
-            document = g.db_session.query(Document).filter(Document.id == num_doc).first()
+            # Récupération du document
+            document = g.db_session.query(Document).filter(Document.id == id_document).first()
 
             # Création du document et récupération de son id
-            id_contrat = _fonction_modif_doc(document, request, num_doc)
+            _fonction_modif_doc(document, request, id_document)
             return redirect(url_for('contrats_by_num', id_contrat = id_contrat, success_message='Document modifié avec succès'))
 
         except Exception as e:
@@ -939,16 +1011,16 @@ def modif_document_id(num_doc: int, id_contrat: int) -> ResponseReturnValue:
     else:
         return redirect(url_for('contrats_by_num', id_contrat = id_contrat, error_message=NOT_ALLOWED))
 
-@peraudiere.route('/contrats/numContrat-<int:id_contrat>/num_document-<int:num_doc>/download/<name>', methods=['GET'])
+@peraudiere.route('/contrats/contrat-<int:id_contrat>/document-<int:id_document>/download/<name>', methods=['GET'])
 @validate_habilitation(GESTIONNAIRE)
-def download_document(num_doc: int, id_contrat: int, name: str) -> Any:
+def download_document(id_document: int, id_contrat: int, name: str) -> Any:
     """
     Route pour le téléchargement d'un document.
     Gère le téléchargement d'un document depuis le serveur.
     """
     extention = name.split('.')[1]
     name = name.split('.')[0]
-    return docs.download_file(file_name=name, extension=extention)
+    return download_file(file_name=name, extension=extention)
 
 @peraudiere.route('/rapport-contrats', methods=['POST'])
 def rapport_contrats() -> Response:
@@ -962,7 +1034,6 @@ def rapport_contrats() -> Response:
     """
     email: str = request.args.get('email', '')
     try:
-        from rapport_echeances import envoi_contrats_renego
         envoi_contrats_renego(email)
         return jsonify(f"Rapport envoyé à {email}", 200)
     except Exception as e:

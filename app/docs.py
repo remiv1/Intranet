@@ -34,7 +34,7 @@ def _ensure_folder_exists():
 # Ne plus créer le dossier lors de l'import
 # _ensure_folder_exists() - Retiré pour éviter l'import circulaire
 
-#Création d'un nom de docment
+# Création d'un nom de docment
 def create_name(doc_date: str, id_contrat: str, id_document: str, sous_type_document: str):
     date_date = datetime.datetime.strptime(doc_date, '%Y-%m-%d')
     str_date = date_date.strftime('%d%m%Y')
@@ -44,12 +44,12 @@ def create_name(doc_date: str, id_contrat: str, id_document: str, sous_type_docu
     retour = f'{str_date}_{id_contrat}_{id_document}_{sous_type_document}'
     return retour
 
-#Téléchargement du fichier vers le serveur
+# Téléchargement du fichier vers le serveur
 def upload_file(file: io.BytesIO, file_name: str, extension: str):
     _ensure_folder_exists()  # S'assurer que le dossier existe
     
     try:
-        #Création du chemin du fichier sur le serveur
+        # Création du chemin du fichier sur le serveur
         file_name = secure_filename(file_name) + extension
         file_path = os.path.join(_get_folder(), file_name)
         
@@ -62,19 +62,19 @@ def upload_file(file: io.BytesIO, file_name: str, extension: str):
     except Exception as e:
         return jsonify({'erreur': f'Erreur lors de la sauvegarde locale : {e}'})
     
-#Téléchargement du fichier depuis le serveur
+# Téléchargement du fichier depuis le serveur
 def download_file(file_name: str, extension: str):
     _ensure_folder_exists()  # S'assurer que le dossier existe
     
     try:
-        #Création du chemin du fichier sur le serveur
+        # Création du chemin du fichier sur le serveur
         remote_file_path = os.path.join(_get_folder(), secure_filename(file_name) + '.' + extension)
 
-        #Transfert du fichier depuis le serveur
+        # Transfert du fichier depuis le serveur
         with open(remote_file_path, 'rb') as f:
             file_data = f.read()
 
-        #Création d'un objet pour envoyer le fichier au client
+        # Création d'un objet pour envoyer le fichier au client
         file_stream = io.BytesIO(file_data)
         file_stream.seek(0)
 
@@ -89,11 +89,11 @@ def delete_file(file_name: str, extension: str):
     _ensure_folder_exists()  # S'assurer que le dossier existe
     
     try:
-        #Création du chemin du fichier sur le serveur
+        # Création du chemin du fichier sur le serveur
         file_name = secure_filename(file_name) + '.' + extension
         file_path = os.path.join(_get_folder(), file_name)
 
-        #Suppression du fichier sur le serveur
+        # Suppression du fichier sur le serveur
         if os.path.exists(file_path):
             os.remove(file_path)
             return jsonify({'message': 'Fichier supprimé avec succès'})
@@ -106,17 +106,17 @@ def delete_file(file_name: str, extension: str):
 def print_document(file: io.BytesIO, file_name: str, extension: str, copies: str, username: str, sides: str, media: str, orientation: str, color: str):
     
     try:
-        #Création du chemin du fichier sur le serveur
+        # Création du chemin du fichier sur le serveur
         file_name = secure_filename(file_name) + '.' + extension
         file_path = os.path.join(_get_print_folder(), file_name)
         logger.info(f"Preparing to print file: {file_path}")
         
-        #Transfert du fichier vers le serveur
+        # Transfert du fichier vers le serveur
         with open(file_path, 'wb') as f:
             f.write(file.read())
             logger.info(f"File {file_path} written to print directory")
         
-        #Impression du fichier
+        # Impression du fichier
         print_file(file_path, username, 'Intranet' , copies, sides, media, orientation, color)
         logger.info(f"Print command sent for file: {file_path}")
         os.remove(file_path)

@@ -6,5 +6,5 @@ app/__pycache__
 *.pem
 venv/
 
-# Fichiers de test (ne pas commiter vers main)
+#  Fichiers de test (ne pas commiter vers main)
 sql/test_user.sql

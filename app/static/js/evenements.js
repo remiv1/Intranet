@@ -59,13 +59,19 @@ function updateSousMenuDocument(idContract) {
 function openTab(evt, tabName) {
     let i, tabcontent, tablinks;
     tabcontent = document.getElementsByClassName("tabcontent");
+    // Masquer tous les contenus de tab
     for (i = 0; i < tabcontent.length; i++) {
-      tabcontent[i].style.display = "none";
+        tabcontent[i].classList.remove("d-block");
+        tabcontent[i].classList.add("d-none");
     }
+    // Désactiver tous les onglets
     tablinks = document.getElementsByClassName("tablinks");
     for (i = 0; i < tablinks.length; i++) {
-      tablinks[i].className = tablinks[i].className.replace(" active", "");
+        tablinks[i].className = tablinks[i].className.replace(" active", "");
     }
-    document.getElementById(tabName).style.display = "block";
+    // Afficher le contenu du tab sélectionné
+    document.getElementById(tabName).classList.remove('d-none');
+    document.getElementById(tabName).classList.add('d-block');
+    // Activer l'onglet sélectionné
     evt.currentTarget.className += " active";
 }

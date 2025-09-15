@@ -16,8 +16,9 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Fenix&family=Pattaya&display=swap" rel="stylesheet">
-    <!-- Sprite SVG Bootstrap -->
-    <svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+    <!-- Sprite SVG dont Bootstrap -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+    <svg xmlns="http://www.w3.org/2000/svg" class="d-none">
         <symbol id="house-door-fill" viewBox="0 0 16 16">
             <path d="M8 1.52l6 5V14h-4V9H6v5H2V6.52l6-5zm8 5.67v6.11a1 1 0 0 1-1 1h-4a1 1 0 0 1-1-1v-4H6v4a1 1 0 0 1-1 1H1a1 1 0 0 1-1-1V7.19l-.94-.73a.8.8 0 0 1-.06-1.14l7-5.33a1.16 1.16 0 0 1 1.4 0l7 5.33a.8.8 0 0 1-.06 1.14L16 7.19z">
         </symbol>
@@ -27,24 +28,6 @@
 <body>
     <header>
         <h1>Gestion des contrats</h1>
-        {% if message %}
-        <div class="alert alert-info alert-dismissible fade show" role="alert">
-            {{ message }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close">X</button>
-        </div>
-        {% endif %}
-        {% if error_message %}
-        <div class="alert alert-danger alert-dismissible fade show" role="alert">
-            {{ error_message }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close">X</button>
-        </div>
-        {% endif %}
-        {% if success_message %}
-        <div class="alert alert-success alert-dismissible fade show" role="alert">
-            {{ success_message }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close">X</button>
-        </div>
-        {% endif %}
     </header>
     <main>
         <!-- Fil d'Ariane -->
@@ -52,7 +35,9 @@
             <nav aria-label="breadcrumb">
                 <ol class="breadcrumb breadcrumb-custom overflow-hidden text-center bg-body-tertiary border rounded-3">
                     <li class="breadcrumb-item">
-                        <a class="link-body-emphasis fw-semibold text-decoration-none" href="{{ url_for('home')}}">
+                        <a class="link-body-emphasis fw-semibold text-decoration-none"
+                           href="{{ url_for('home')}}"
+                           title="accueil">
                             <svg class="bi" width="20" height="20">
                                 <use xlink:href="#house-door-fill"></use>
                             </svg>
@@ -64,32 +49,61 @@
                 </ol>
             </nav>
         </div> 
-        <!-- Bouton d'ajout de contrat et filtres de listes-->
-        <div class="row align-items-center">
-            <div class="col-md-3">
-                <button type="button" class="button" data-bs-toggle="modal" data-bs-target="#modalAjout">Ajouter un contrat</button>
+        <!-- Messages de retour -->
+        {% if message or error_message or success_message %}
+        <div class="container-fluid">
+            <div class="row justify-content-center">
+                <div class="col-md-12">
+                    {% if message %}
+                    <div class="alert alert-info alert-dismissible fade show text-center" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                    {% endif %}
+                    {% if error_message %}
+                    <div class="alert alert-danger alert-dismissible fade show text-center" role="alert">
+                        {{ error_message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                    {% endif %}
+                    {% if success_message %}
+                    <div class="alert alert-success alert-dismissible fade show text-center" role="alert">
+                        {{ success_message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                    {% endif %}
+                </div>
             </div>
-            <form id="filterForm" class="d-flex col-md-6 align-items-center" action="" onsubmit="filterTable(event)">
+        </div>
+        {% endif %}
+        <!-- Bouton d'ajout de contrat et filtres de listes-->
+        <div class="container-fluid">
+            <div class="row align-items-center">
                 <div class="col-md-3">
-                    <select class="form-select" aria-label="Filtrer" name="TypeFiltre" id="TypeFiltre" onchange="updateSousFiltre()">
-                        <option value="" selected>Filtrer par type</option>
-                        <option value="Finance">Finance</option>
-                        <option value="Juridique">Juridique</option>
-                        <option value="RH">Ressources Humaines</option>
-                        <option value="Materiel">Matériel</option>
-                        <option value="Services">Services</option>
-                        <option value="Autre">Autre</option>
-                    </select>
+                    <button type="button" class="button" data-bs-toggle="modal" data-bs-target="#modalAjout">Ajouter un contrat</button>
                 </div>
-                <div class="col-md-3">
-                    <select disabled class="form-select" aria-label="Filtrer" name="STypeFiltre" id="STypeFiltre">
-                        <option value="" selected>Filtrer par sous-type</option>
-                    </select>
-                </div>
-                <div class="col-md-3">
-                    <button type="submit" class="button">Filtrer</button>
-                </div>
-            </form>
+                <form id="filterForm" class="d-flex col-md-6 align-items-center" action="" onsubmit="filterTable(event)">
+                    <div class="col-md-3">
+                        <select class="form-select" aria-label="Filtrer" name="TypeFiltre" id="TypeFiltre" onchange="updateSousFiltre()">
+                            <option value="" selected>Filtrer par type</option>
+                            <option value="Finance">Finance</option>
+                            <option value="Juridique">Juridique</option>
+                            <option value="RH">Ressources Humaines</option>
+                            <option value="Materiel">Matériel</option>
+                            <option value="Services">Services</option>
+                            <option value="Autre">Autre</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <select disabled class="form-select" aria-label="Filtrer" name="STypeFiltre" id="STypeFiltre">
+                            <option value="" selected>Filtrer par sous-type</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <button type="submit" class="button">Filtrer</button>
+                    </div>
+                </form>
+            </div>
         </div>
         <!-- Table de liste des contrats -->
         <div id="contractsTable" class="container-fluid">

@@ -16,8 +16,9 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Fenix&family=Pattaya&display=swap" rel="stylesheet">
-    <!-- Sprite SVG Bootstrap -->
-    <svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+    <!-- Sprite SVG dont Bootstrap -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+    <svg xmlns="http://www.w3.org/2000/svg" class="d-none">
         <symbol id="house-door-fill" viewBox="0 0 16 16">
             <path d="M8 1.52l6 5V14h-4V9H6v5H2V6.52l6-5zm8 5.67v6.11a1 1 0 0 1-1 1h-4a1 1 0 0 1-1-1v-4H6v4a1 1 0 0 1-1 1H1a1 1 0 0 1-1-1V7.19l-.94-.73a.8.8 0 0 1-.06-1.14l7-5.33a1.16 1.16 0 0 1 1.4 0l7 5.33a.8.8 0 0 1-.06 1.14L16 7.19z">
         </symbol>
@@ -27,24 +28,6 @@
 <body>
     <header>
         <h1>Accès Contrat</h1>
-        {% if message %}
-        <div class="alert alert-info alert-dismissible fade show" role="alert">
-            {{ message }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close">X</button>
-        </div>
-        {% endif %}
-        {% if error_message %}
-        <div class="alert alert-danger alert-dismissible fade show" role="alert">
-            {{ error_message }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close">X</button>
-        </div>
-        {% endif %}
-        {% if success_message %}
-        <div class="alert alert-success alert-dismissible fade show" role="alert">
-            {{ success_message }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close">X</button>
-        </div>
-        {% endif %}
     </header>
     <main>
         <!-- Fil d'Ariane -->
@@ -52,7 +35,9 @@
             <nav aria-label="breadcrumb">
                 <ol class="breadcrumb breadcrumb-custom overflow-hidden text-center bg-body-tertiary border rounded-3">
                     <li class="breadcrumb-item">
-                        <a class="link-body-emphasis fw-semibold text-decoration-none" href="{{ url_for('home')}}">
+                        <a class="link-body-emphasis fw-semibold text-decoration-none"
+                           href="{{ url_for('home')}}"
+                           title="accueil">
                             <svg class="bi" width="20" height="20">
                                 <use xlink:href="#house-door-fill"></use>
                             </svg>
@@ -69,19 +54,45 @@
                 </ol>
             </nav>
         </div> 
+        <!-- Messages de retour -->
         <!-- Onglets de gestion des contrats : Evènements & Documents -->
         <div class="container">
+            {% if message or error_message or success_message %}
+            <div class="row justify-content-center">
+                <div class="col-md-12">
+                    {% if message %}
+                    <div class="alert alert-info alert-dismissible fade show text-center" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                    {% endif %}
+                    {% if error_message %}
+                    <div class="alert alert-danger alert-dismissible fade show text-center" role="alert">
+                        {{ error_message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                    {% endif %}
+                    {% if success_message %}
+                    <div class="alert alert-success alert-dismissible fade show text-center" role="alert">
+                        {{ success_message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+            {% endif %}
             <!-- Insertion de deux onglets -->
             <div class="tab">
                 <button class="tablinks active" onclick="openTab(event, 'Events')" id="defaultOpen">Evènements</button>
                 <button class="tablinks" onclick="openTab(event, 'Documents')">Documents</button>
+                <button class="tablinks" onclick="openTab(event, 'Bills')">Factures</button>
             </div>
-            <!-- Conteneur du premier onglet -->
-            <div id="Events" class="tabcontent">
+            <!-- Conteneur du premier onglet (Evènements) -->
+            <div id="Events" class="tabcontent d-block">
                 <!-- Contenu -->
                 <div id="collapseOne" class="show" aria-labelledby="headingOne" data-parent="#accordion">
                     <div class="card-body">
-                        <div style="text-align: left;">
+                        <div class="d-flex justify-content-start">
                             <button type="button" class="button" data-bs-toggle="modal" data-bs-target="#modalAjoutEvenement">Ajouter</button>
                         </div>
                         <table class="table table-bordered">
@@ -96,32 +107,41 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                {% for event in events|sort(attribute='date_evenement', reverse=True) %}
-                                <tr>
-                                    <td class="align-middle">{{ event['id'] }}</td>
-                                    <td class="align-middle">{{ event['date_evenement'] }}</td>
-                                    <td class="align-middle">{{ event['type_evenement'] }}</td>
-                                    <td class="align-middle">{{ event['sous_type_evenement'] }}</td>
-                                    <td class="align-middle">{{ event['descriptif'] }}</td>
-                                    <td class="align-middle">
-                                        <button type="button" class="button" data-bs-toggle="modal" data-bs-target="#modalModifEvent{{ event['id'] }}">
-                                            Modifier
-                                        </button>
-                                    </td>
-                                </tr>
-                                {% endfor %}
+                                {% if events|length > 0 %}
+                                    {% for event in events|sort(attribute='date_evenement', reverse=True) %}
+                                    <tr>
+                                        <td class="align-middle">{{ event['id'] }}</td>
+                                        <td class="align-middle">{{ event['date_evenement'] }}</td>
+                                        <td class="align-middle">{{ event['type_evenement'] }}</td>
+                                        <td class="align-middle">{{ event['sous_type_evenement'] }}</td>
+                                        <td class="align-middle">{{ event['descriptif'] }}</td>
+                                        <td class="align-middle">
+                                            <button type="button" class="button" data-bs-toggle="modal" data-bs-target="#modalModifEvent{{ event['id'] }}">
+                                                Modifier
+                                            </button>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                {% else %}
+                                    <tr>
+                                        <td colspan="6" class="text-center">
+                                            <i class="bi bi-calendar-event"></i>
+                                            Aucun évènement disponible.
+                                        </td>
+                                    </tr>
+                                {% endif %}
                             </tbody>
                         </table>
                     </div>
                 </div>
             </div>
             <!-- Conteneur du deuxième onglet (Documents) -->
-            <div style="display: none;" id="Documents" class="tabcontent">
+            <div id="Documents" class="tabcontent d-none">
                 <!-- Contenu -->
                 <div id="collapseTwo" class="show" aria-labelledby="headingTwo" data-parent="#accordion">
                     <div class="card-body">
                         <!-- Bouton Ajouter -->
-                        <div style="text-align: left;">
+                        <div class="d-flex justify-content-start">
                             <button type="button" class="button" data-bs-toggle="modal" data-bs-target="#modalAjoutDocument">Ajouter</button>
                         </div>
                         <!-- Table de présentation des documents -->
@@ -141,33 +161,86 @@
                             </thead>
                             <!-- Corps -->
                             <tbody>
-                                {% for document in documents|sort(attribute='date_document', reverse=True) %}
+                                {% if documents|length > 0 %}
+                                    {% for document in documents|sort(attribute='date_document', reverse=True) %}
+                                    <tr>
+                                        <td class="align-middle">{{ document['id'] }}</td>
+                                        <td class="align-middle">{{ document['type_document'] }}</td>
+                                        <td class="align-middle">{{ document['sous_type_document'] }}</td>
+                                        <td class="align-middle">{{ document['descriptif'] }}</td>
+                                        <td class="align-middle">
+                                            <a href="{{ url_for('download_document', id_document=document['id'], id_contrat=document['id_contrat'], name=document['str_lien']) }}" target="_blank">
+                                                {{ document['str_lien'] }}
+                                            </a>
+                                        </td>
+                                        <td class="align-middle">{{ document['date_document'] }}</td>
+                                        <td class="align-middle">{{ document['name'] }}</td>
+                                        <td class="align-middle">
+                                            <button type="button" class="button" data-bs-toggle="modal" data-bs-target="#modalModifDoc{{ document['id'] }}">
+                                                Modifier
+                                            </button>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                {% else %}
+                                    <tr>
+                                        <td colspan="8" class="text-center">
+                                            <i class="bi bi-folder2-open"></i>
+                                            Aucun document disponible.
+                                        </td>
+                                    </tr>
+                                {% endif %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <!-- Conteneur du troisième onglet (Factures) -->
+            <div id="Bills" class="tabcontent d-none">
+                <!-- Contenu -->
+                <div id="collapseOne" class="show" aria-labelledby="headingThree" data-parent="#accordion">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-start">
+                            <button type="button" class="button" data-bs-toggle="modal" data-bs-target="#modalAjoutFacture">Ajouter</button>
+                        </div>
+                        <table class="table table-bordered">
+                            <thead>
                                 <tr>
-                                    <td class="align-middle">{{ document['id'] }}</td>
-                                    <td class="align-middle">{{ document['type_document'] }}</td>
-                                    <td class="align-middle">{{ document['sous_type_document'] }}</td>
-                                    <td class="align-middle">{{ document['descriptif'] }}</td>
-                                    <td class="align-middle">
-                                        <a href="{{ url_for('download_document', num_doc=document['id'], id_contrat=document['id_contrat'], name=document['str_lien']) }}" target="_blank">
-                                            {{ document['str_lien'] }}
-                                        </a>
-                                    </td>
-                                    <td class="align-middle">{{ document['date_document'] }}</td>
-                                    <td class="align-middle">{{ document['name'] }}</td>
-                                    <td class="align-middle">
-                                        <button type="button" class="button" data-bs-toggle="modal" data-bs-target="#modalModifDoc{{ document['id'] }}">
-                                            Modifier
-                                        </button>
-                                    </td>
+                                    <th>id</th>
+                                    <th>Date</th>
+                                    <th>Titre</th>
+                                    <th>Montant</th>
+                                    <th>Actions</th>
                                 </tr>
-                                {% endfor %}
+                            </thead>
+                            <tbody>
+                                {% if bills|length > 0 %}
+                                    {% for bill in bills|sort(attribute='date_facture', reverse=True) %}
+                                    <tr>
+                                        <td class="align-middle">{{ bill['id'] }}</td>
+                                        <td class="align-middle">{{ bill['date_facture'] }}</td>
+                                        <td class="align-middle">{{ bill['titre_facture'] }}</td>
+                                        <td class="align-middle">
+                                            <button type="button" class="button" data-bs-toggle="modal" data-bs-target="#modalModifFacture{{ bill['id'] }}">
+                                                Modifier
+                                            </button>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                {% else %}
+                                    <tr>
+                                        <td colspan="5" class="text-center">
+                                            <i class="bi bi-file-earmark-text"></i>
+                                            Aucune facture disponible.
+                                        </td>
+                                    </tr>
+                                {% endif %}
                             </tbody>
                         </table>
                     </div>
                 </div>
             </div>
         </div>
-        <!-- TODO: Onglet de facture à prévoir -->
         <!-- Modal d'ajout d'évènement -->
         <div class="modal fade" id="modalAjoutEvenement" tabindex="-1" aria-labelledby="modalAjoutLabel" aria-hidden="true">
             <div class="modal-dialog">
@@ -336,7 +409,7 @@
                     </div>
                     <!-- Contenu du modal -->
                     <div class="modal-body">
-                        <form action="{{ url_for('modif_document_id', id_contrat=document['id_contrat'], num_doc=document['id']) }}" method="post" enctype="multipart/form-data">
+                        <form action="{{ url_for('modif_document_id', id_contrat=document['id_contrat'], id_document=document['id']) }}" method="post" enctype="multipart/form-data">
                             <input type="hidden" name="_method" value="PUT">
                             <!-- Identifiant du contrat -->
                             <div class="mb-3 d-none">
