@@ -345,7 +345,7 @@
                             <!-- Date du document -->
                             <div class="mb-3">
                                 <label for="dateDocumentD{{ document['id'] }}" class="form-label">Date *</label>
-                                <input type="date" class="form-control" name="dateDocumentD{{ document['id'] }}" id="dateDocumentD" value="{{ document['date_document'] }}">
+                                <input type="date" class="form-control" name="dateDocumentD{{ document['id'] }}" id="dateDocumentD{{ document['id'] }}" value="{{ document['date_document'] }}">
                             </div>
                             <!-- Type du document -->
                             <div class="mb-3">
@@ -367,7 +367,7 @@
                             <!-- Descriptif du document -->
                             <div class="mb-3">
                                 <label for="descriptifD{{ document['id'] }}" class="form-label">Descriptif *</label>
-                                <textarea name="descriptifD{{ document['id'] }}" id="descriptifD{{ document['id'] }}" rows="4" id="descriptifD{{ document['id'] }}" class="form-control" required>{{ document['descriptif'] }}</textarea>
+                                <textarea name="descriptifD{{ document['id'] }}" id="descriptifD{{ document['id'] }}" rows="4" class="form-control" required>{{ document['descriptif'] }}</textarea>
                             </div>
                             <!-- Document -->
                             <div class="mb-3">

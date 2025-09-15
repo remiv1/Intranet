@@ -503,8 +503,7 @@ def ere(message: Optional[str] = None, success_message: Optional[str] = None,
 
 @peraudiere.route('/ajout-utilisateurs', methods=['POST'])
 @validate_habilitation(ADMINISTRATEUR)
-def ajout_utilisateurs(message: Optional[str] = None, success_message: Optional[str] = None,
-                       error_message: Optional[str] = None) -> Response:
+def ajout_utilisateurs() -> Response:
     """
     Route pour l'ajout d'un utilisateur.
     Gère l'ajout d'un utilisateur à la base de données.
@@ -541,9 +540,9 @@ def ajout_utilisateurs(message: Optional[str] = None, success_message: Optional[
         g.db_session.add(user)
         g.db_session.commit()
 
-        return redirect(url_for('gestion_utilisateurs'), success_message='Utilisateur ajouté avec succès')
-    except Exception:
-        return redirect(url_for('gestion_utilisateurs'), error_message='Erreur lors de l\'ajout de l\'utilisateur :\n' + str(e))
+        return redirect(url_for('gestion_utilisateurs', success_message='Utilisateur ajouté avec succès'))
+    except Exception as e:
+        return redirect(url_for('gestion_utilisateurs', error_message='Erreur lors de l\'ajout de l\'utilisateur :\n' + str(e)))
 
 @peraudiere.route('/suppr-utilisateurs', methods=['POST'])
 @validate_habilitation(ADMINISTRATEUR)
@@ -563,9 +562,9 @@ def suppr_utilisateurs(message: Optional[str] = None, success_message: Optional[
         if user:
             g.db_session.delete(user)
             g.db_session.commit()
-        return redirect(url_for('gestion_utilisateurs'), success_message='Utilisateur supprimé avec succès')
+        return redirect(url_for('gestion_utilisateurs', success_message='Utilisateur supprimé avec succès'))
     except Exception as e:
-        return redirect(url_for('gestion_utilisateurs'), error_message='Erreur lors de la suppression de l\'utilisateur :\n' + str(e))
+        return redirect(url_for('gestion_utilisateurs', error_message='Erreur lors de la suppression de l\'utilisateur :\n' + str(e)))
 
 @peraudiere.route('/modif-utilisateurs', methods=['POST'])
 @validate_habilitation(ADMINISTRATEUR)
@@ -615,9 +614,9 @@ def modif_utilisateurs(message: Optional[str] = None, success_message: Optional[
 
             g.db_session.commit()
 
-        return redirect(url_for('gestion_utilisateurs'), success_message='Utilisateur modifié avec succès')
+        return redirect(url_for('gestion_utilisateurs', success_message='Utilisateur modifié avec succès'))
     except Exception as e:
-        return redirect(url_for('gestion_utilisateurs'), error_message='Erreur lors de la modification de l\'utilisateur :\n' + str(e))
+        return redirect(url_for('gestion_utilisateurs', error_message='Erreur lors de la modification de l\'utilisateur :\n' + str(e)))
 
 @peraudiere.route('/gestion-droits', methods=['POST'])
 @validate_habilitation([ADMINISTRATEUR, GESTIONNAIRE])
@@ -892,7 +891,7 @@ def modif_document_id(num_doc: int, id_contrat: int) -> ResponseReturnValue:
         id_contrat = req.form.get(f'idContratD{num_doc}', '')
         date_document = req.form.get(f'dateDocumentD{num_doc}', '')
         document.date_document = date_document
-        type_document = req.form.get(f'type_document{num_doc}', '')
+        type_document = req.form.get(f'TypeD{num_doc}', '')
         document.type_document = type_document
         sous_type_document = req.form.get(f'STypeD{num_doc}', '')
         document.sous_type_document = sous_type_document
@@ -901,27 +900,28 @@ def modif_document_id(num_doc: int, id_contrat: int) -> ResponseReturnValue:
             document_binaire = req.files[f'documentD{num_doc}']
             name = docs.create_name(date_document, id_contrat, doc_id, sous_type_document)
             extention = os.path.splitext(str(document_binaire.filename))[1]
+            doc_to_delete_lien = document.str_lien
+            doc_to_delete_name = document.name
         else:
             str_lien = req.form.get(f'strLienD{num_doc}', '')
             complet_name = str_lien.split('_')[3]
             name = docs.create_name(date_document, id_contrat, doc_id, sous_type_document)
             extention = complet_name.split('.')[1]
+            doc_to_delete_lien = None
+            doc_to_delete_name = None
         lien_document = name + extention
         document.str_lien = lien_document
 
-        # création d'un nom de document
-        date_date = datetime.datetime.strptime(date_document, '%Y-%m-%d').date()
-        str_date = date_date.strftime('%y%m%d')
-        str_id_contrat = str(id_contrat).zfill(6)
-        str_id_document = str(doc_id).zfill(6)
-        str_sous_type_document = sous_type_document[:5]
-        name = f"{str_date}_{str_id_contrat}_{str_id_document}_{str_sous_type_document}"
-
-        #Gestion automatique du nom de document
+        # Gestion automatique du nom de document
         document.name = name
 
-        #Retour
+        # Retour
         g.db_session.commit()
+
+        # Suppression de l'ancien document si un nouveau a été uploadé
+        if doc_to_delete_lien and doc_to_delete_name:
+            docs.delete_file(doc_to_delete_name, os.path.splitext(doc_to_delete_lien)[1])
+
 
         return document.id
 

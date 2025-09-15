@@ -2,6 +2,7 @@ function updateSousMenuEvent(idContract) {
     let contractId = idContract.getAttribute('data-event-id');
     let menu = document.getElementById('TypeE' + contractId).value;
     let sousmenu = document.getElementById('STypeE' + contractId);
+    let currentValue = sousmenu.value;
     sousmenu.innerHTML = '';
 
     let options = []
@@ -17,7 +18,12 @@ function updateSousMenuEvent(idContract) {
 
     options.forEach(function(option) {
         let opt = document.createElement('option');
+        opt.value = option;
         opt.innerHTML = option;
+        // Restaurer la sélection si elle correspond à une option valide
+        if (option === currentValue) {
+            opt.selected = true;
+        }
         sousmenu.appendChild(opt);
     });
 }
@@ -26,6 +32,7 @@ function updateSousMenuDocument(idContract) {
     let contractId = idContract.getAttribute('data-event-id');
     let menu = document.getElementById('TypeD' + contractId).value;
     let sousmenu = document.getElementById('STypeD' + contractId);
+    let currentValue = sousmenu.value;
     sousmenu.innerHTML = '';
 
     let options = []
@@ -39,7 +46,12 @@ function updateSousMenuDocument(idContract) {
 
     options.forEach(function(option) {
         let opt = document.createElement('option');
+        opt.value = option;
         opt.innerHTML = option;
+        // Restaurer la sélection si elle correspond à une option valide
+        if (option === currentValue) {
+            opt.selected = true;
+        }
         sousmenu.appendChild(opt);
     });
 }
