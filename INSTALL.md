@@ -2,108 +2,97 @@
 
 ## Installation en 5 minutes
 
-### Méthode 1 : Installation automatique (Recommandée)
+### ✅ Liste de contrôle pré-installation
 
+Avant de commencer, assurez-vous d'avoir :
+
+- [ ] **Docker** installé (version 20.10+)
+- [ ] **Docker Compose** installé (version 2.0+)
+- [ ] **Git** installé pour cloner le projet
+- [ ] **Accès root/sudo** sur le serveur
+- [ ] **Ports 80 et 443** disponibles sur votre serveur
+- [ ] **Au moins 2GB** d'espace disque libre
+- [ ] **Au moins 1GB** de RAM disponible
+
+#### Étape 1 : Préparation de l'environnement
+
+Vérifier les prérequis
 ```bash
-# 1. Cloner le projet
-git clone https://github.com/remiv1/Intranet.git
-cd Intranet
-
-# 2. Démarrage automatique
-./quick-start.sh
-
-# 3. Accéder à l'application
-# → http://localhost
+docker --version
+docker compose version
+git --version
 ```
 
-### Méthode 2 : Avec Make
+#### Étape 2 : Clonage du projet
 
+Cloner le dépôt
 ```bash
-# 1. Cloner le projet
 git clone https://github.com/remiv1/Intranet.git
 cd Intranet
-
-# 2. Installation complète
-make install
-
-# 3. Accéder à l'application
-# → http://localhost
 ```
 
-### Méthode 3 : Installation manuelle
+#### Étape 3 : Configuration automatique
 
+Générer automatiquement la configuration avec mots de passe sécurisés
 ```bash
-# 1. Cloner le projet
-git clone https://github.com/remiv1/Intranet.git
-cd Intranet
-
-# 2. Générer la configuration
 ./generate-env.sh
+```
 
-# 3. Personnaliser la configuration
+#### Étape 4 : Personnalisation de la configuration
+
+Éditez le fichier `.env` généré et modifiez selon vos besoins :
+
+```bash
 nano .env
+```
 
-# 4. Créer les répertoires
+#### Étape 5 : Création des répertoires
+
+```bash
 mkdir -p $(grep FILES_LOCAL_PATH .env | cut -d'=' -f2)
 mkdir -p $(grep PRINT_LOCAL_PATH .env | cut -d'=' -f2)
+mkdir -p $(grep DB_LOCAL_PATH .env | cut -d'=' -f2)
 
-# 5. Démarrer l'application
-docker-compose up -d
-
-# 6. Accéder à l'application
-# → http://localhost
+# Définir les permissions appropriées
+sudo chown -R $USER:$USER $(grep FILES_LOCAL_PATH .env | cut -d'=' -f2)
+sudo chown -R $USER:$USER $(grep PRINT_LOCAL_PATH .env | cut -d'=' -f2)
+sudo chmod 755 $(grep FILES_LOCAL_PATH .env | cut -d'=' -f2)
 ```
 
-## Installation pour le développement
+#### Étape 6 : Configuration SSL (Optionnel mais recommandé)
 
+Placer vos certificats SSL dans app/nginx/certs/
 ```bash
-# 1. Cloner le projet
-git clone https://github.com/remiv1/Intranet.git
-cd Intranet
-
-# 2. Mode développement
-./quick-start.sh dev
-# OU
-make dev
-
-# 3. Accéder aux services
-# → Application: http://localhost:5000
-# → PhpMyAdmin: http://localhost:8080
+sudo cp votre-certificat.pem app/nginx/certs/cert.pem
+sudo cp votre-cle-privee.pem app/nginx/certs/privkey.pem
+sudo chmod 600 app/nginx/certs/privkey.pem
 ```
 
-## Vérification de l'installation
+#### Étape 7 : Construction et lancement
 
+Construire et lancer l'application
 ```bash
-# Vérifier les services
-docker-compose ps
-
-# Vérifier les logs
-docker-compose logs web
-
-# Tester la connectivité
-curl -I http://localhost
+docker compose up --build -d
 ```
 
-## Commandes utiles
+#### Étape 8 : Vérification du déploiement
 
+Vérifier que tous les conteneurs sont en cours d'exécution
 ```bash
-# Voir toutes les commandes disponibles
-make help
+docker compose ps
 
-# Arrêter l'application
-make stop
+# Vérifier les logs en cas de problème
+docker compose logs web
+docker compose logs db
+docker compose logs nginx
+```
 
-# Redémarrer l'application
-make restart
+#### Étape 9 : Premier accès
 
-# Voir les logs
-make logs
-
-# Créer une sauvegarde
-make backup
-
-# Mettre à jour
-make update
+Accéder à l'application
+```txt
+Ouvrir http://localhost (ou https://localhost si SSL configuré)
+Tester la connexion avec un compte administrateur
 ```
 
 ## Dépannage rapide
@@ -130,8 +119,40 @@ docker-compose restart db
 docker-compose logs db
 ```
 
+### Problème : Erreurs de lecture des fichiers *.sh
+
+#### Sous Linux / macOS
+```bash
+# Utiliser dos2unix pour convertir les fins de ligne
+# Version Debian/Ubuntu
+sudo apt-get install dos2unix
+dos2unix *.sh
+
+# Version macOS
+brew install dos2unix
+dos2unix *.sh
+```
+
+#### Sous Windows
+```Powershell (Administrateur)
+# Version Windows (Git Bash)
+# Installation de Chocolatey
+Set-ExecutionPolicy Bypass -Scope Process -Force; `
+[System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; `
+iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
+
+# Vérification de l'installation
+choco --version
+
+# Installation de dos2unix
+choco install dos2unix
+
+# Conversion des fichiers
+dos2unix *.sh
+```
+
 ## Contacts
 
 - 🐙 **GitHub** : [Issues](https://github.com/remiv1/Intranet/issues)
-- 📧 **Email** : [Contact développeur]
+- 📧 **Email** : [remiv1@gmail.com]
 - 📚 **Documentation** : [README.md](README.md)

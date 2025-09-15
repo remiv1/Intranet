@@ -1,9 +1,15 @@
 # 🎓 Intranet - Application de Gestion d'Établissement
 
 [![Flask](https://img.shields.io/badge/Flask-3.1.0-green.svg)](https://flask.palletsprojects.com/)
+[![SQLAlchemy](https://img.shields.io/badge/SQLAlchemy-2.0.38-green.svg)](https://www.sqlalchemy.org/)
+[![Alembic](https://img.shields.io/badge/Alembic-1.11.1-green.svg)](https://alembic.sqlalchemy.org/)
 [![Python](https://img.shields.io/badge/Python-3.12-blue.svg)](https://www.python.org/)
 [![MariaDB](https://img.shields.io/badge/MariaDB-latest-blue.svg)](https://mariadb.org/)
 [![Docker](https://img.shields.io/badge/Docker-compose-blue.svg)](https://www.docker.com/)
+[![CSS](https://img.shields.io/badge/CSS-3-blue.svg)](https://developer.mozilla.org/fr/docs/Web/CSS)
+[![HTML5](https://img.shields.io/badge/HTML5-orange.svg)](https://developer.mozilla.org/fr/docs/Web/HTML)
+[![JavaScript](https://img.shields.io/badge/JavaScript-yellow.svg)](https://developer.mozilla.org/fr/docs/Web/JavaScript)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 ## 📋 Description
 
@@ -15,191 +21,114 @@ Cette application web développée avec Flask permet la gestion complète d'un �
 
 ### Technologies utilisées
 - **Backend** : Flask 3.1.0 (Python 3.12)
-- **Base de données** : MariaDB (MySQL)
+- **Base de données** : MariaDB (MySQL) 12.0.2
 - **ORM** : SQLAlchemy 2.0.38
+- **Migrations** : Alembic 1.16.5
 - **Serveur web** : Waitress + Nginx (reverse proxy)
 - **Conteneurisation** : Docker & Docker Compose
 - **Sécurité** : Hachage SHA-256, sessions Flask, HTTPS
 
 ### Structure du projet
 ```
+.
+├── alembic/                # ⚗️ Migrations de la base de données
 ├── app/                    # 🐍 Application Flask principale
-│   ├── __init__.py        # Initialisation de l'application
-│   ├── models.py          # Modèles de données SQLAlchemy
-│   ├── routes.py          # Routes et logique métier
-│   ├── docs.py            # Gestion des documents
-│   ├── impression.py      # Gestion des impressions
-│   ├── nginx/             # Configuration Nginx + certificats SSL
-│   ├── static/            # Fichiers statiques (CSS, JS, images)
-│   └── templates/         # Templates HTML Jinja2
-├── documents/             # 📁 Stockage des documents uploadés
-├── veraudiere/            # 🐍 Environnement virtuel Python
-├── config.py              # ⚙️ Configuration de l'application
-├── run.py                 # 🚀 Point d'entrée principal
-├── requirements.txt       # 📦 Dépendances Python
-├── .env.example           # 📋 Template de configuration
-├── generate-env.sh        # 🔐 Script de génération de configuration
-├── Dockerfile.app         # 🐳 Configuration Docker
-├── docker-compose.yaml    # 🐳 Orchestration des services
-└── entrypoint.sh          # 🚀 Script de démarrage
+│   ├── nginx/              # 🔐 Configuration Nginx
+│   ├── static/             # Fichiers statiques (CSS, JS, images)
+│   │    ├── css/           # Styles CSS
+│   │    ├── js/            # Scripts JavaScript
+│   │    └── img/           # Images et icônes
+│   ├── templates/          # Templates HTML Jinja2
+│   ├── __init__.py         # 🐍 Initialisation de l'application
+│   ├── application.py      # 🐍 Application et routes flask
+│   ├── config.py           # 🔐 Configuration Flask
+│   ├── Dockerfile          # 🐳 Dockerfile pour l'application
+│   ├── docs.py             # 📁 Gestion des documents
+│   ├── entrypoint.sh       # 🔐 Script de démarrage
+│   ├── habilitations.py    # 🔐 Gestion des habilitations et permissions
+│   ├── impression.py       # 🖨️ Gestion des impressions
+│   ├── models.py           # ⚗️ Modèles de données SQLAlchemy
+│   ├── rapport_echeance.py # ⚙️ Création des rapports d'échéances
+│   └── run.py              # ⚙️ Point d'entrée principal
+├── backup/                 # 🗄️ Sauvegarde Base de données MariaDB et scripts de sauvegardes
+├── database/               # 🗄️ Dossier de la base de données
+│   ├── CHANGELOG.md        # ⚗️ Historique des versions de la base de données
+│   ├── Dockerfile.mariadb  # 🐳 Fichier Docker pour MariaDB
+│   └── init_user.sql       # 🗄️ Création du premier utilisateur admin
+├── documents/              # 📁 Stockage des documents uploadés (peut être mis ailleurs)
+├── print/                  # 🖨️ Stockage des documents à imprimer (peut être mis ailleurs)
+├── veraudiere/             # 🐍 Environnement virtuel Python
+├── .env.example            # ⚙️ Fichier de configuration exemple
+├── alembic.ini             # ⚙️ Fichier de configuration des migrations
+├── docker-compose.yaml     # 🐳 Orchestration des services
+├── generate-env.sh         # 🔐 Script de génération de configuration
+├── INSTALL                 # 📋 Guide d'installation
+├── LICENSE                 # 📜 Licence Apache
+├── requirements.txt        # 🐍 Dépendances Python
+└── todo.md                 # 🚀 Liste des tâches à réaliser
 ```
 
 ## 🚀 Installation et Déploiement
 
-### ✅ Liste de contrôle pré-installation
-
-Avant de commencer, assurez-vous d'avoir :
-
-- [ ] **Docker** installé (version 20.10+)
-- [ ] **Docker Compose** installé (version 2.0+)
-- [ ] **Git** installé pour cloner le projet
-- [ ] **Accès root/sudo** sur le serveur
-- [ ] **Ports 80 et 443** disponibles sur votre serveur
-- [ ] **Au moins 2GB** d'espace disque libre
-- [ ] **Au moins 1GB** de RAM disponible
-
-### 📋 Guide d'installation étape par étape
-
-#### Étape 1 : Préparation de l'environnement
-
-Vérifier les prérequis
-```bash
-docker --version
-docker-compose --version
-git --version
-```
-
-#### Étape 2 : Clonage du projet
-
-Cloner le dépôt
-```bash
-git clone https://github.com/remiv1/Intranet.git
-cd Intranet
-```
-
-#### Étape 3 : Configuration automatique
-
-Générer automatiquement la configuration avec mots de passe sécurisés
-```bash
-./generate-env.sh
-```
-
-**Alternative manuelle :**
-Copier le fichier de configuration exemple
-```bash
-cp .env.example .env
-nano .env  # Éditer avec vos valeurs
-```
-
-#### Étape 4 : Personnalisation de la configuration
-
-Éditez le fichier `.env` généré et modifiez selon vos besoins :
-
-```bash
-nano .env
-```
-
-**Variables importantes à vérifier :**
-- [ ] `FILES_LOCAL_PATH` : Chemin local pour les documents
-- [ ] `PRINT_LOCAL_PATH` : Chemin local pour les impressions
-- [ ] `DB_LOCAL_PATH` : Chemin local pour la base de données
-- [ ] `SSH_HOST`, `SSH_USER` : Configuration SSH si nécessaire
-- [ ] `EMAIL_USER`, `EMAIL_SMTP` : Configuration email
-- [ ] `PRINTER_NAME` : Nom de votre imprimante
-
-#### Étape 5 : Création des répertoires
-
-```bash
-mkdir -p $(grep FILES_LOCAL_PATH .env | cut -d'=' -f2)
-mkdir -p $(grep PRINT_LOCAL_PATH .env | cut -d'=' -f2)
-mkdir -p $(grep DB_LOCAL_PATH .env | cut -d'=' -f2)
-
-# Définir les permissions appropriées
-sudo chown -R $USER:$USER $(grep FILES_LOCAL_PATH .env | cut -d'=' -f2)
-sudo chown -R $USER:$USER $(grep PRINT_LOCAL_PATH .env | cut -d'=' -f2)
-sudo chmod 755 $(grep FILES_LOCAL_PATH .env | cut -d'=' -f2)
-```
-
-#### Étape 6 : Configuration SSL (Optionnel mais recommandé)
-
-Placer vos certificats SSL dans app/nginx/certs/
-```bash
-sudo cp votre-certificat.pem app/nginx/certs/cert.pem
-sudo cp votre-cle-privee.pem app/nginx/certs/privkey.pem
-sudo chmod 600 app/nginx/certs/privkey.pem
-```
-
-#### Étape 7 : Construction et lancement
-
-Construire et lancer l'application
-```bash
-docker-compose build
-docker-compose up -d
-```
-
-#### Étape 8 : Vérification du déploiement
-
-Vérifier que tous les conteneurs sont en cours d'exécution
-```bash
-docker-compose ps
-
-# Vérifier les logs en cas de problème
-docker-compose logs web
-docker-compose logs db
-docker-compose logs nginx
-```
-
-#### Étape 9 : Premier accès
-
-Accéder à l'application
-```bash
-Ouvrir http://localhost (ou https://localhost si SSL configuré)
-Tester la connexion avec un compte administrateur
-```
+Voir le fichier [INSTALL.md](INSTALL.md) pour un guide d'installation détaillé.
 
 ### 🔧 Commandes utiles
 
 ```bash
 # Arrêter l'application
-docker-compose down
+docker compose down
 
 # Redémarrer l'application
-docker-compose restart
+docker compose restart
 
 # Voir les logs en temps réel
-docker-compose logs -f web
+docker compose logs -f web
 
 # Accéder au conteneur de l'application
-docker-compose exec web bash
+docker compose -it exec web bash
 
 # Accéder à la base de données
-docker-compose exec db mysql -u root -p
+docker compose -it exec db mysql -u root -p
 
 # Mise à jour de l'application
 git pull
-docker-compose build
-docker-compose up -d
+docker compose build
+docker compose up -d
 
 # Sauvegarde de la base de données
-docker-compose exec db mysqldump -u root -p$(grep ROOT_PASSWORD .env | cut -d'=' -f2) $(grep DB_NAME .env | cut -d'=' -f2) > backup_$(date +%Y%m%d_%H%M%S).sql
+./backup/backup-script.sh
 ```
 
 ### 📋 Variables d'environnement détaillées
 
 Le fichier `.env` contient toutes les variables de configuration nécessaires :
-| Variable           | Description                        | Exemple                       |
-|--------------------|------------------------------------|-------------------------------|
-| `DB_USER`          | Utilisateur de la base de données  | `intranet_user`               |
-| `DB_PASSWORD`      | Mot de passe de la base de données | *Généré automatiquement*      |
-| `DB_HOST`          | Hôte de la base de données         | `db`                          |
-| `DB_NAME`          | Nom de la base de données          | `intranet_db`                 |
-| `ROOT_PASSWORD`    | Mot de passe root MySQL            | *Généré automatiquement*      |
-| `SECRET_KEY`       | Clé secrète Flask                  | *Généré automatiquement*      |
-| `FILES_LOCAL_PATH` | Chemin local des documents         | `/var/www/intranet/documents` |
-| `PRINT_LOCAL_PATH` | Chemin local des impressions       | `/var/www/intranet/print`     |
-| `SSH_HOST`         | Serveur SSH pour transferts        | `192.168.1.100`               |
-| `PRINTER_NAME`     | Nom de l'imprimante                | `HP_LaserJet_Pro`             |
-| `EMAIL_SMTP`       | Serveur SMTP                       | `smtp.gmail.com`              |
+
+| Variable             | Description                              | Exemple                           |
+|----------------------|------------------------------------------|-----------------------------------|
+| `ROOT_PASSWORD`      | Mot de passe root MySQL                  | `mot_de_passe_securise`           |
+| `DB_USER`            | Utilisateur de la base de données        | `lsorueidpr`                      |
+| `DB_PASSWORD`        | Mot de passe de la base de données       | `mot_de_passe_securise`           |
+| `DB_HOST`            | Hôte de la base de données               | `intranet_db`                     |
+| `DB_NAME`            | Nom de la base de données                | `msldkfjgury`                     |
+| `DB_URL`             | URL de connexion à la base de données    | `mysql+mysqlconnector://...`            |
+| `SECRET_KEY`         | Clé secrète Flask                        | `cle_secrete_a_generer`           |
+| `FILES_DOCKER_PATH`  | Chemin Docker des documents              | `/documents`                      |
+| `PRINT_DOCKER_PATH`  | Chemin Docker des impressions            | `/print`                          |
+| `FILES_LOCAL_PATH`   | Chemin local des documents               | `/home/partage/documents`         |
+| `PRINT_LOCAL_PATH`   | Chemin local des impressions             | `/home/partage/print`             |
+| `DB_DOCKER_PATH`     | Chemin Docker de la base de données      | `/var/lib/mysql`                  |
+| `DB_LOCAL_PATH`      | Chemin local de la base de données       | `/var/lib/mysql`                  |
+| `PRINTER_NAME`       | Nom de l'imprimante                      | `Imprim_name`                     |
+| `SSH_PORT`           | Port SSH                                 | `22`                              |
+| `SSH_HOST`           | Hôte SSH                                 | `adresse_ip_a_tester`             |
+| `SSH_USERNAME`       | Utilisateur SSH                          | `mqlskdjfhg`                      |
+| `SSH_PASSWORD`       | Mot de passe SSH                         | `mqlskdjfhdueirpcl`               |
+| `EMAIL_USER`         | Adresse email d'envoi                    | `mail@domaine.com`                |
+| `EMAIL_PASSWORD`     | Mot de passe email                       | `msdokgnôpqioghn`                 |
+| `EMAIL_SMTP`         | Serveur SMTP                             | `adresse_smtp`                    |
+| `EMAIL_PORT`         | Port SMTP                                | `587`                             |
+
+> **Remarque** : Adaptez les chemins et identifiants selon votre environnement. Ne partagez jamais le fichier `.env` publiquement.
 
 ## 🗄️ Base de Données
 
@@ -208,26 +137,26 @@ Le fichier `.env` contient toutes les variables de configuration nécessaires :
 L'application utilise **MariaDB** avec 4 tables principales interconnectées :
 
 ```sql
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   99_Users      │    │  01_Contrats    │    │ 11_Documents    │
-│                 │    │                 │    │                 │
-│ ├─ id (PK)      │    │ ├─ id (PK)      │ ◄──┤ ├─ id_contrat(FK)│
-│ ├─ identifiant  │    │ ├─ type_contrat │    │ ├─ type_document│
-│ ├─ sha_mdp      │    │ ├─ Stype        │    │ ├─ Descriptif   │
-│ ├─ habilitation │    │ ├─ entreprise   │    │ ├─ str_lien     │
-│ └─ Locked       │    │ ├─ date_debut   │    │ └─ date_document│
-└─────────────────┘    │ └─ date_fin     │    └─────────────────┘
-                       └─────────────────┘
-                                │
-                                │
-                       ┌──────────────────┐
-                       │ 12_Evenements    │
-                       │                  │
-                       │ ├─ id_contrat(FK) │
-                       │ ├─ type_evenement│
-                       │ ├─ Stype         │
-                       │ └─ Descriptif    │
-                       └──────────────────┘
+┌──────────────────────┐    ┌──────────────────────┐    ┌───────────────────┐
+│   99_Users           │    │  01_Contrats         │    │ 11_Documents      │
+│                      │    │                      │    │                   │
+│ ├─ id (PK)           │    │ ├─ id (PK)           │ ◄──┤ ├─ id_contrat(FK) │
+│ ├─ identifiant       │    │ ├─ type_contrat      │    │ ├─ type_document  │
+│ ├─ sha_mdp           │    │ ├─ sous_type_contrat │    │ ├─ descriptif     │
+│ ├─ habilitation      │    │ ├─ entreprise        │    │ ├─ str_lien       │
+│ └─ locked            │    │ ├─ date_debut        │    │ └─ date_document  │
+└──────────────────────┘    │ └─ date_fin          │    └───────────────────┘
+                            └──────────────────────┘
+                                        │
+                                        │
+                            ┌───────────────────────┐
+                            │ 12_Evenements         │
+                            │                       │
+                            │ ├─ id_contrat(FK)     │
+                            │ ├─ type_evenement     │
+                            │ ├─ sous_type_evenement│
+                            │ └─ descriptif         │
+                            └───────────────────────┘
 ```
 
 ### 📊 Structure détaillée des tables
@@ -236,52 +165,51 @@ L'application utilise **MariaDB** avec 4 tables principales interconnectées :
 | Champ          | Type         | Description                |
 |----------------|--------------|----------------------------|
 | `id`           | INT(11) PK   | Identifiant unique         |
-| `Prenom`       | VARCHAR(255) | Prénom de l'utilisateur    |
-| `Nom`          | VARCHAR(255) | Nom de l'utilisateur       |
+| `prenom`       | VARCHAR(255) | Prénom de l'utilisateur    |
+| `nom`          | VARCHAR(255) | Nom de l'utilisateur       |
 | `mail`         | VARCHAR(255) | Adresse email              |
 | `identifiant`  | VARCHAR(25)  | Login de connexion         |
-| `sha_mdp`       | VARCHAR(255) | Mot de passe hashé SHA-256 |
+| `sha_mdp`      | VARCHAR(255) | Mot de passe hashé SHA-256 |
 | `habilitation` | INT(11)      | Niveau d'autorisation      |
-| `Début`        | DATE         | Date de début d'accès      |
-| `Fin`          | DATE         | Date de fin d'accès        |
-| `Locked`       | BIT(1)       | Compte verrouillé (0/1)    |
+| `debut`        | DATE         | Date de début d'accès      |
+| `fin`          | DATE         | Date de fin d'accès        |
+| `locked`       | BIT(1)       | Compte verrouillé (0/1)    |
 
 #### Table `01_Contrats` - Gestion des contrats
 | Champ               | Type         | Description               |
 |---------------------|--------------|---------------------------|
 | `id`                | INT(11) PK   | Identifiant unique        |
 | `type_contrat`      | VARCHAR(50)  | Type de contrat           |
-| `Stype`             | VARCHAR(50)  | Sous-type de contrat      |
+| `sous_type_contrat` | VARCHAR(50)  | Sous-type de contrat      |
 | `entreprise`        | VARCHAR(255) | Nom de l'entreprise       |
 | `id_externe_contrat`| VARCHAR(50)  | Numéro de contrat externe |
 | `intitule`          | VARCHAR(255) | Intitulé du contrat       |
 | `date_debut`        | DATE         | Date de début             |
 | `date_fin_preavis`  | DATE         | Date de fin de préavis    |
-| `dateFin`           | DATE         | Date de fin de contrat    |
+| `date_fin`          | DATE         | Date de fin de contrat    |
 
 #### Table `11_Documents` - Documents liés aux contrats
 
-| Champ          | Type         | Description               |
-|----------------|--------------|---------------------------|
-| `id`           | INT(11) PK   | Identifiant unique        |
-| `id_contrat`   | INT(11) FK   | Référence vers le contrat |
-| `type_document`| VARCHAR(50)  | Type de document          |
-| `SType`        | VARCHAR(50)  | Sous-type de document     |
-| `Descriptif`   | VARCHAR(255) | Description du document   |
-| `str_lien`     | VARCHAR(255) | Chemin vers le fichier    |
-| `date_document`| DATE         | Date du document          |
-| `Name`         | VARCHAR(30)  | Nom du créateur           |
+| Champ               | Type         | Description               |
+|---------------------|--------------|---------------------------|
+| `id`                | INT(11) PK   | Identifiant unique        |
+| `id_contrat`        | INT(11) FK   | Référence vers le contrat |
+| `type_document`     | VARCHAR(50)  | Type de document          |
+| `sous_type_document`| VARCHAR(50)  | Sous-type de document     |
+| `Descriptif`        | VARCHAR(255) | Description du document   |
+| `str_lien`          | VARCHAR(255) | Chemin vers le fichier    |
+| `date_document`     | DATE         | Date du document          |
 
 #### Table `12_Evenements` - Événements liés aux contrats
 
-| Champ           | Type         | Description                |
-|-----------------|--------------|----------------------------|
-| `id`            | INT(11) PK   | Identifiant unique         |
-| `id_contrat`    | INT(11) FK   | Référence vers le contrat  |
-| `date_evenement`| DATE         | Date de l'événement        |
-| `type_evenement`| VARCHAR(50)  | Type d'événement           |
-| `Stype`         | VARCHAR(50)  | Sous-type d'événement      |
-| `Descriptif`    | VARCHAR(255) | Description de l'événement |
+| Champ                  | Type         | Description                |
+|------------------------|--------------|----------------------------|
+| `id`                   | INT(11) PK   | Identifiant unique         |
+| `id_contrat`           | INT(11) FK   | Référence vers le contrat  |
+| `date_evenement`       | DATE         | Date de l'événement        |
+| `type_evenement`       | VARCHAR(50)  | Type d'événement           |
+| `sous_type_evenement`  | VARCHAR(50)  | Sous-type d'événement      |
+| `descriptif`           | VARCHAR(255) | Description de l'événement |
 
 ### 🔐 Système d'Habilitations
 
@@ -290,7 +218,7 @@ L'application utilise un système d'habilitations numérique flexible :
 | Code  | Rôle                     | Permissions                      |
 |-------|--------------------------|----------------------------------|
 | **1** | 🔧 Super-administrateur  | Gestion des droits utilisateurs  |
-| **2** | 👤 Administrateur        | Gestion utilisateurs et contrats |
+| **2** | 👤 Administrateur étab.  | Gestion utilisateurs et contrats |
 | **3** | 🎓 Professeur principal  | Espace professeurs principaux    |
 | **4** | 📚 Professeur            | Espace professeurs               |
 | **5** | 🎒 Élève                 | Espace élèves                    |
@@ -301,18 +229,10 @@ L'application utilise un système d'habilitations numérique flexible :
 - `234` = Admin + Prof principal + Prof
 - `56` = Élève + Impression
 
-### 🗂️ Initialisation de la base de données
-
-Les tables sont créées automatiquement au premier lancement
-Vérification de la structure :
-```bash
-docker-compose exec db mysql -u root -p$(grep ROOT_PASSWORD .env | cut -d'=' -f2) $(grep DB_NAME .env | cut -d'=' -f2) -e "SHOW TABLES;"
-```
-
 ## ⭐ Fonctionnalités Principales
 
 ### 🔐 Authentification et Sécurité
-- [x] **Connexion sécurisée** avec hachage SHA-256
+- [x] **Connexion sécurisée** avec hachage SHA-256 (modifications à venir Argon2)
 - [x] **Système anti-brute force** : limitation à 3 tentatives
 - [x] **Verrouillage automatique** des comptes après échecs
 - [x] **Gestion des sessions** Flask sécurisées

@@ -17,8 +17,6 @@ services:
     entrypoint: ["sh", "app/entrypoint.sh"]
     extra_hosts:
       - "host.docker.internal:host-gateway"
-    ports:
-      - "5000:5000" #  Port de l'application Flask pour le développement local DEV
     networks:
       intranet_net:
       cups_network:

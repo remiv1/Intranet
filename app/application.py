@@ -58,6 +58,7 @@ from typing import List, Dict, Any, cast, Optional, Tuple
 from hashlib import sha256
 from os.path import splitext
 import logging
+from datetime import datetime
 
 # Configuration du logger
 logging.basicConfig(
@@ -170,7 +171,12 @@ class UsersMethods:
         Returns:
             bool: True si l'authentification est réussie, False sinon.
         """
-        if user and user.sha_mdp == password:
+        if user.locked:
+            return False
+        elif user.fin:
+            if user.fin <= datetime.now():
+                return False
+        elif user and user.sha_mdp == password:
             session['identifiant'] = user.identifiant
             session['prenom'] = user.prenom
             session['nom'] = user.nom
@@ -355,7 +361,12 @@ def login() -> str | Response:
             # Vérifier si l'utilisateur existe et si le mot de passe est correct
             if UsersMethods.valid_authentication(user, password):
                 return redirect(url_for('home', success_message='Connexion réussie'))
-            
+            # Gestion des comptes vérouillés
+            elif user.fin:
+                if user.fin <= datetime.now():
+                    message = 'Votre compte a expiré, veuillez contacter votre administrateur.'
+            elif user.locked:
+                message = 'Votre compte est verrouillé, veuillez contacter votre administrateur.'
             # Gestion des erreurs de mots de passe
             else:
                 message = UsersMethods.generate_nb_false_pwd(user)
