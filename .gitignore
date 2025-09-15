@@ -8,3 +8,10 @@ venv/
 
 # Fichiers de test (ne pas commiter vers main)
 sql/test_user.sql
+
+# Sauvegardes
+*.sql.gz
+*.sql
+*.bak
+*.backup
+*.old
