@@ -77,6 +77,10 @@ h2 {
     justify-content: center;
     margin: 20px;
 }
+.messages-container {
+    margin-left: 20%;
+    margin-right: 20%;
+}
 .rectangle {
     display: flex;
     flex-direction: column;

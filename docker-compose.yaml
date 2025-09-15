@@ -7,16 +7,18 @@ services:
     depends_on:
       - db
     volumes:
-      - ${FILES_LOCAL_PATH}:${FILES_DOCKER_PATH}  # Persistance des fichiers de contrats
+      - ${FILES_LOCAL_PATH}:${FILES_DOCKER_PATH}  #  Persistance des fichiers de contrats
       - ${PRINT_LOCAL_PATH}:${PRINT_DOCKER_PATH}
     environment:
-      - DATABASE_URL=${DB_URL}
+      - DB_URL=${DB_URL}
     env_file:
       - .env
     restart: always
     entrypoint: ["sh", "app/entrypoint.sh"]
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    ports:
+      - "5000:5000" #  Port de l'application Flask pour le développement local DEV
     networks:
       intranet_net:
       cups_network:
@@ -31,13 +33,16 @@ services:
       - ./app/nginx/nginx.conf:/etc/nginx/nginx.conf
       - /opt/certs:/etc/nginx/certs
     ports:
-      - "443:443"  # Port HTTPS
+      - "443:443"  #  Port HTTPS
       - "80:80"
     networks:
       - intranet_net
 
   db:
-    image: mariadb:12.0.2
+    build:
+      context: ./database
+      dockerfile: Dockerfile.mariadb
+    image: intranet_mariadb:12.0.2
     container_name: intranet_db
     restart: always
     environment:

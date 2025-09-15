@@ -16,8 +16,9 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Fenix&family=Pattaya&display=swap" rel="stylesheet">
-    <!-- Sprite SVG Bootstrap -->
-    <svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+    <!-- Sprite SVG dont Bootstrap -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+    <svg xmlns="http://www.w3.org/2000/svg" class="d-none">
         <symbol id="house-door-fill" viewBox="0 0 16 16">
             <path d="M8 1.52l6 5V14h-4V9H6v5H2V6.52l6-5zm8 5.67v6.11a1 1 0 0 1-1 1h-4a1 1 0 0 1-1-1v-4H6v4a1 1 0 0 1-1 1H1a1 1 0 0 1-1-1V7.19l-.94-.73a.8.8 0 0 1-.06-1.14l7-5.33a1.16 1.16 0 0 1 1.4 0l7 5.33a.8.8 0 0 1-.06 1.14L16 7.19z">
         </symbol>
@@ -35,7 +36,9 @@
             <nav aria-label="breadcrumb">
                 <ol class="breadcrumb breadcrumb-custom overflow-hidden text-center bg-body-tertiary border rounded-3">
                     <li class="breadcrumb-item">
-                        <a class="link-body-emphasis fw-semibold text-decoration-none">
+                        <a class="link-body-emphasis fw-semibold text-decoration-none"
+                           href="{{ url_for('home')}}"
+                           title="accueil">
                             <svg class="bi" width="16" height="16">
                                 <use xlink:href="#house-door-fill"></use>
                             </svg>
@@ -44,17 +47,44 @@
                 </ol>
             </nav>
         </div> 
-        <!--Conteneur-->
-        <div class="container">
+        <!-- Messages de retour -->
+        {% if message or error_message or success_message %}
+        <div class="container-fluid">
+            <div class="row align-items-center justify-content-center">
+                <div class="col-md-12">
+                    {% if message %}
+                    <div class="alert alert-info alert-dismissible fade show text-center" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                    {% endif %}
+                    {% if error_message %}
+                    <div class="alert alert-danger alert-dismissible fade show text-center" role="alert">
+                        {{ error_message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                    {% endif %}
+                    {% if success_message %}
+                    <div class="alert alert-success alert-dismissible fade show text-center" role="alert">
+                        {{ success_message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+        <!-- Cartes d'accès aux différentes sections -->
+        <div class="container-fluid">
             <div class="row">
-                <div class="col-lg-3 col-md-4 col-sm-6 col-12 mb-4">
+                <div class="col-xxl-2 col-lg-3 col-md-4 col-sm-6 col-12 mb-4">
                     <div class="rectangle card-environnement">
                         <h2 class="card-text">Bienvenue,<br>{{ prenom }}<br>{{ nom }} !</h2>
                     </div> <!-- rectangle -->
                 </div> <!-- col -->
                 {% for section in sections %}
                     {% if section['classe'] in habilitation_levels %}
-                        <div class="col-lg-3 col-md-4 col-sm-6 col-12 mb-4">
+                        <div class="col-xxl-2 col-lg-3 col-md-4 col-sm-6 col-12 mb-4">
                             <div class="rectangle card-environnement">
                                 <h2 class="card-title">{{ section['titre'] }}</h2>
                                 <p class="card-text">{{ section['descriptif'] }}</p>
@@ -65,7 +95,7 @@
                         </div> <!-- col -->
                     {% endif %}
                 {% endfor %}
-                <div class="col-lg-3 col-md-4 col-sm-6 col-12 mb-4">
+                <div class="col-xxl-2 col-lg-3 col-md-4 col-sm-6 col-12 mb-4">
                     <div class="rectangle card-environnement">
                         <h2 class="card-title">Déconnection</h2>
                         <p class="card-text"></p>

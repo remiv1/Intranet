@@ -1,59 +1,77 @@
 function updateSousMenuEvent(idContract) {
-    var contractId = idContract.getAttribute('data-event-id');
-    var menu = document.getElementById('TypeE' + contractId).value;
-    var sousmenu = document.getElementById('STypeE' + contractId);
+    let contractId = idContract.getAttribute('data-event-id');
+    let menu = document.getElementById('TypeE' + contractId).value;
+    let sousmenu = document.getElementById('STypeE' + contractId);
+    let currentValue = sousmenu.value;
     sousmenu.innerHTML = '';
 
-    var options = []
+    let options = []
     if (menu === 'Gestion') {
-        var options = ['', 'Souscription', 'Gestion', 'Renégociation', 'Résiliation', 'Autre'];
+        options = ['', 'Souscription', 'Gestion', 'Renégociation', 'Résiliation', 'Autre'];
     } else if (menu === 'Contact') {
-        var options = ['', 'Appel', 'Mail', 'SMS', 'Courrier'];
+        options = ['', 'Appel', 'Mail', 'SMS', 'Courrier'];
     } else if (menu === 'Contrat') {
-        var options = ['', 'Contrat'];
+        options = ['', 'Contrat'];
     } else {
-        var options = ['', 'Autre']
+        options = ['', 'Autre']
     }
 
     options.forEach(function(option) {
-        var opt = document.createElement('option');
+        let opt = document.createElement('option');
+        opt.value = option;
         opt.innerHTML = option;
+        // Restaurer la sélection si elle correspond à une option valide
+        if (option === currentValue) {
+            opt.selected = true;
+        }
         sousmenu.appendChild(opt);
     });
 }
 
 function updateSousMenuDocument(idContract) {
-    var contractId = idContract.getAttribute('data-event-id');
-    var menu = document.getElementById('TypeD' + contractId).value;
-    var sousmenu = document.getElementById('STypeD' + contractId);
+    let contractId = idContract.getAttribute('data-event-id');
+    let menu = document.getElementById('TypeD' + contractId).value;
+    let sousmenu = document.getElementById('STypeD' + contractId);
+    let currentValue = sousmenu.value;
     sousmenu.innerHTML = '';
 
-    var options = []
+    let options = []
     if (menu === 'Contact') {
-        var options = ['', 'Appel', 'Mail', 'SMS', 'Courrier'];
+        options = ['', 'Appel', 'Mail', 'SMS', 'Courrier'];
     } else if (menu === 'Contrat') {
-        var options = ['', 'Contrat', 'Avenant', 'Résiliation', 'Autre'];
+        options = ['', 'Contrat', 'Avenant', 'Résiliation', 'Autre'];
     } else {
-        var options = ['', 'Autre']
+        options = ['', 'Autre']
     }
 
     options.forEach(function(option) {
-        var opt = document.createElement('option');
+        let opt = document.createElement('option');
+        opt.value = option;
         opt.innerHTML = option;
+        // Restaurer la sélection si elle correspond à une option valide
+        if (option === currentValue) {
+            opt.selected = true;
+        }
         sousmenu.appendChild(opt);
     });
 }
 
 function openTab(evt, tabName) {
-    var i, tabcontent, tablinks;
+    let i, tabcontent, tablinks;
     tabcontent = document.getElementsByClassName("tabcontent");
+    // Masquer tous les contenus de tab
     for (i = 0; i < tabcontent.length; i++) {
-      tabcontent[i].style.display = "none";
+        tabcontent[i].classList.remove("d-block");
+        tabcontent[i].classList.add("d-none");
     }
+    // Désactiver tous les onglets
     tablinks = document.getElementsByClassName("tablinks");
     for (i = 0; i < tablinks.length; i++) {
-      tablinks[i].className = tablinks[i].className.replace(" active", "");
+        tablinks[i].className = tablinks[i].className.replace(" active", "");
     }
-    document.getElementById(tabName).style.display = "block";
+    // Afficher le contenu du tab sélectionné
+    document.getElementById(tabName).classList.remove('d-none');
+    document.getElementById(tabName).classList.add('d-block');
+    // Activer l'onglet sélectionné
     evt.currentTarget.className += " active";
 }
