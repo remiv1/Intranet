@@ -169,7 +169,7 @@
                                         <td class="align-middle">{{ document['sous_type_document'] }}</td>
                                         <td class="align-middle">{{ document['descriptif'] }}</td>
                                         <td class="align-middle">
-                                            <a href="{{ url_for('download_document', id_document=document['id'], id_contrat=document['id_contrat'], name=document['str_lien']) }}" target="_blank">
+                                            <a href="{{ url_for('download_document', name=document['str_lien']) }}" target="_blank">
                                                 {{ document['str_lien'] }}
                                             </a>
                                         </td>

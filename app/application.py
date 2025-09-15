@@ -247,8 +247,7 @@ def teardown_request(exception: Optional[BaseException]) -> None:
     """
     db_session = g.pop('db_session', None)
     if db_session is not None:
-        if exception:
-            db_session.rollback()
+        db_session.rollback()
         db_session.close()
 
 @peraudiere.route('/')
