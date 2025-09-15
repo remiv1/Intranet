@@ -20,8 +20,8 @@ COPY .env ./
 COPY app/ ./app/
 
 # Copie des fichiers Alembic pour les migrations
-COPY alembic.ini alembic.ini
-COPY alembic alembic
+COPY alembic.ini ./
+COPY alembic/ ./alembic/
 
 ENV FLASK_APP=app/run.py
 ENV FLASK_ENV=production
