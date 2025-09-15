@@ -2,20 +2,22 @@
 
 ## Supported Versions
 
-Use this section to tell people about which versions of your project are
-currently being supported with security updates.
+The following versions of the Intranet project receive security updates:
 
 | Version | Supported          |
 | ------- | ------------------ |
-| 5.1.x   | :white_check_mark: |
-| 5.0.x   | :x:                |
-| 4.0.x   | :white_check_mark: |
-| < 4.0   | :x:                |
+| 1.2.x   | :white_check_mark: |
+| 1.1.x   | :x:                |
+| 0.9.x   | :x:                |
 
 ## Reporting a Vulnerability
 
-Use this section to tell people how to report a vulnerability.
+If you discover a security vulnerability in this project, please report it by email to: [remiv1@gmail.com]  
+Alternatively, you can open a GitHub issue and mark it as "Security".
 
-Tell them where to go, how often they can expect to get an update on a
-reported vulnerability, what to expect if the vulnerability is accepted or
-declined, etc.
+We commit to:
+- Acknowledge your report within 48 hours
+- Provide a response within 7 days
+- Fix accepted vulnerabilities as quickly as possible
+
+Please do not disclose vulnerabilities publicly until a fix is released.
