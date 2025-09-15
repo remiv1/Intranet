@@ -1,6 +1,7 @@
 # Documentation API - Routes et Paramètres
 
 ## Table des matières
+
 1. [Authentification](#authentification)
 2. [Gestion des utilisateurs](#gestion-des-utilisateurs)
 3. [Gestion des contrats](#gestion-des-contrats)
@@ -14,7 +15,9 @@
 ## Authentification
 
 ### 🏠 Page d'accueil
+
 **Route :** `GET /`
+
 - **Description :** Page d'accueil de l'application, affiche le tableau de bord
 - **Authentification :** Requise (session)
 - **Habilitations :** Toutes
@@ -23,7 +26,9 @@
 - **Redirection :** `/login` si non authentifié
 
 ### 🔐 Connexion
+
 **Route :** `GET/POST /login`
+
 - **Description :** Page de connexion utilisateur
 - **Méthode GET :**
   - **Paramètres :** `message` (optionnel) - Message d'erreur à afficher
@@ -40,7 +45,9 @@
     - Verrouillage automatique du compte
 
 ### 🚪 Déconnexion
+
 **Route :** `GET /logout`
+
 - **Description :** Déconnexion et suppression de la session
 - **Authentification :** Requise
 - **Paramètres :** Aucun
@@ -51,7 +58,9 @@
 ## Gestion des Utilisateurs
 
 ### 👑 Gestion des droits
+
 **Route :** `GET /gestion_droits`
+
 - **Description :** Interface de gestion des habilitations utilisateurs
 - **Authentification :** Requise
 - **Habilitations :** Niveau 1 (super-administrateur)
@@ -59,6 +68,7 @@
 - **Réponse :** Template `gestion_droits.html` avec liste des utilisateurs
 
 **Route :** `POST /gestion_droits`
+
 - **Description :** Modification des droits d'un utilisateur
 - **Authentification :** Requise
 - **Habilitations :** Niveau 1 ou 2
@@ -69,7 +79,9 @@
 - **Réponse :** Redirection vers `/gestion_droits`
 
 ### 👥 Gestion des utilisateurs
+
 **Route :** `GET /gestion_utilisateurs`
+
 - **Description :** Interface de gestion des utilisateurs
 - **Authentification :** Requise
 - **Habilitations :** Niveau 2 (administrateur)
@@ -77,7 +89,9 @@
 - **Réponse :** Template `gestion_utilisateurs.html` avec liste triée par nom/prénom
 
 ### ➕ Ajout d'utilisateur
+
 **Route :** `POST /ajout_utilisateurs`
+
 - **Description :** Création d'un nouvel utilisateur
 - **Authentification :** Requise
 - **Habilitations :** Niveau 1
@@ -91,7 +105,9 @@
 - **Réponse :** Redirection vers `/gestion_utilisateurs`
 
 ### ❌ Suppression d'utilisateur
+
 **Route :** `POST /suppr_utilisateurs`
+
 - **Description :** Suppression d'un utilisateur
 - **Authentification :** Requise
 - **Habilitations :** Niveau 1
@@ -100,7 +116,9 @@
 - **Réponse :** Redirection vers `/gestion_utilisateurs`
 
 ### ✏️ Modification d'utilisateur
+
 **Route :** `POST /modif_utilisateurs`
+
 - **Description :** Modification des informations d'un utilisateur
 - **Authentification :** Requise
 - **Habilitations :** Niveau 1 ou 2
@@ -119,7 +137,9 @@
 ## Gestion des Contrats
 
 ### 📋 Liste des contrats
+
 **Route :** `GET /contrats`
+
 - **Description :** Affichage de la liste des contrats
 - **Authentification :** Requise
 - **Habilitations :** Niveau 2
@@ -127,23 +147,27 @@
 - **Réponse :** Template `contrats.html` avec liste des contrats
 
 ### ➕ Création de contrat
+
 **Route :** `POST /contrats`
+
 - **Description :** Création d'un nouveau contrat
 - **Authentification :** Requise
 - **Habilitations :** Niveau 2
 - **Paramètres :**
-  - `Type0` (string, requis) - Type principal du contrat
+  - `type_contrat_contrat_contrat_contrat0` (string, requis) - Type principal du contrat
   - `SType0` (string, requis) - Sous-type du contrat
   - `Entreprise` (string, requis) - Nom de l'entreprise
   - `numContratExterne` (string, requis) - Numéro de contrat externe
   - `Intitule` (string, requis) - Intitulé du contrat
-  - `dateDebut` (date, requis) - Date de début (YYYY-MM-DD)
-  - `dateFinPreavis` (date, requis) - Date de fin de préavis (YYYY-MM-DD)
-  - `dateFin` (date, optionnel) - Date de fin (YYYY-MM-DD)
+  - `date_debut` (date, requis) - Date de début (YYYY-MM-DD)
+  - `date_fin_preavis` (date, requis) - Date de fin de préavis (YYYY-MM-DD)
+  - `date_fin` (date, optionnel) - Date de fin (YYYY-MM-DD)
 - **Réponse :** Redirection vers `/contrats`
 
 ### 📄 Détail d'un contrat
-**Route :** `GET /contrats/<numContrat>`
+
+**Route :** `GET /contrats/<id_contrat>`
+
 - **Description :** Affichage des détails d'un contrat avec ses événements et documents
 - **Authentification :** Requise
 - **Habilitations :** Niveau 2
@@ -152,19 +176,21 @@
 - **Réponse :** Template `contrat_detail.html` avec contrat, événements et documents
 
 ### ✏️ Modification de contrat
-**Route :** `POST /contrats/<numContrat>`
+
+**Route :** `POST /contrats/<id_contrat>`
+
 - **Description :** Modification d'un contrat existant (méthode PUT simulée)
 - **Authentification :** Requise
 - **Habilitations :** Niveau 2
 - **Paramètres :**
-  - `numContrat` (int, URL) - ID du contrat
+  - `id_contrat` (int, URL) - ID du contrat
   - `_method` (string, requis) - Doit être "PUT"
-  - `Type{numContrat}` (string, requis) - Type principal
+  - `type_contrat{id_contrat}` (string, requis) - Type principal
   - `SType{numContrat}` (string, requis) - Sous-type
   - `Entreprise{numContrat}` (string, requis) - Nom de l'entreprise
   - `numContratExterne{numContrat}` (string, requis) - Numéro externe
   - `Intitule{numContrat}` (string, requis) - Intitulé
-  - `dateDebut{numContrat}` (date, requis) - Date de début
+  - `date_debut{numContrat}` (date, requis) - Date de début
   - `dateFinPreavis{numContrat}` (date, requis) - Date de fin de préavis
   - `dateFin{numContrat}` (date, optionnel) - Date de fin
 - **Réponse :** Redirection vers `/contrats`
@@ -174,41 +200,47 @@
 ## Gestion des Événements
 
 ### ➕ Ajout d'événement à un contrat
-**Route :** `POST /contrats/<numContrat>/evenement`
+
+**Route :** `POST /contrats/<id_contrat>/evenement`
+
 - **Description :** Ajout d'un événement lié à un contrat
 - **Authentification :** Requise
 - **Habilitations :** Niveau 2
 - **Paramètres :**
-  - `numContrat` (int, URL) - ID du contrat
+  - `id_contrat` (int, URL) - ID du contrat
   - `idContratE` (int, requis) - ID du contrat (confirmation)
   - `dateEvenementE` (date, requis) - Date de l'événement (YYYY-MM-DD)
-  - `TypeE0` (string, requis) - Type principal de l'événement
+  - `type_contrat_e0` (string, requis) - Type principal de l'événement
   - `STypeE0` (string, requis) - Sous-type de l'événement
   - `descriptifE` (string, requis) - Description de l'événement
-- **Réponse :** Redirection vers `/contrats/<numContrat>`
+- **Réponse :** Redirection vers `/contrats/<id_contrat>`
 
 ### ✏️ Modification d'événement
-**Route :** `POST /contrats/numContrat/<numContrat>/numEvenement/<numEvent>`
+
+**Route :** `POST /contrats/numContrat/<id_contrat>/numEvenement/<id_event>`
+
 - **Description :** Modification d'un événement existant
 - **Authentification :** Requise
 - **Habilitations :** Niveau 2
 - **Paramètres :**
   - `numContrat` (int, URL) - ID du contrat
-  - `numEvent` (int, URL) - ID de l'événement
+  - `id_event` (int, URL) - ID de l'événement
   - `_method` (string, requis) - Doit être "PUT"
-  - `idContratE{numEvent}` (int, requis) - ID du contrat
-  - `dateEvenementE{numEvent}` (date, requis) - Date de l'événement
-  - `TypeE{numEvent}` (string, requis) - Type principal
-  - `STypeE{numEvent}` (string, requis) - Sous-type
-  - `descriptifE{numEvent}` (string, requis) - Description
-- **Réponse :** Redirection vers `/contrats/<numContrat>`
+  - `idContratE{id_event}` (int, requis) - ID du contrat
+  - `dateEvenementE{id_event}` (date, requis) - Date de l'événement
+  - `type_contrat_E{id_event}` (string, requis) - Type principal
+  - `STypeE{id_event}` (string, requis) - Sous-type
+  - `descriptifE{id_event}` (string, requis) - Description
+- **Réponse :** Redirection vers `/contrats/<id_contrat>`
 
 ---
 
 ## Gestion des Documents
 
 ### ➕ Ajout de document à un contrat
-**Route :** `POST /contrats/<numContrat>/document`
+
+**Route :** `POST /contrats/<id_contrat>/document`
+
 - **Description :** Upload et ajout d'un document lié à un contrat
 - **Authentification :** Requise
 - **Habilitations :** Niveau 2
@@ -216,7 +248,7 @@
   - `numContrat` (int, URL) - ID du contrat
   - `idContratD` (int, requis) - ID du contrat (confirmation)
   - `dateDocumentD` (date, requis) - Date du document (YYYY-MM-DD)
-  - `TypeD0` (string, requis) - Type principal du document
+  - `type_d0` (string, requis) - Type principal du document
   - `STypeD0` (string, requis) - Sous-type du document
   - `descriptifD` (string, requis) - Description du document
   - `documentD` (file, requis) - Fichier à uploader
@@ -224,34 +256,38 @@
   - Génération du nom : `{YYMMDD}_{idContrat}_{idDocument}_{sousType}.{extension}`
   - Sauvegarde sur le serveur
   - Enregistrement en base de données
-- **Réponse :** Redirection vers `/contrats/<numContrat>`
+- **Réponse :** Redirection vers `/contrats/<id_contrat>`
 
 ### ✏️ Modification de document
-**Route :** `POST /contrats/numContrat/<numContrat>/numDocument/<numDoc>`
+
+**Route :** `POST /contrats/numContrat/<id_contrat>/num_document/<num_doc>`
+
 - **Description :** Modification d'un document existant
 - **Authentification :** Requise
 - **Habilitations :** Niveau 2
 - **Paramètres :**
   - `numContrat` (int, URL) - ID du contrat
-  - `numDoc` (int, URL) - ID du document
+  - `num_doc` (int, URL) - ID du document
   - `_method` (string, requis) - Doit être "PUT"
-  - `idContratD{numDoc}` (int, requis) - ID du contrat
-  - `dateDocumentD{numDoc}` (date, requis) - Date du document
-  - `TypeD{numDoc}` (string, requis) - Type principal
-  - `STypeD{numDoc}` (string, requis) - Sous-type
-  - `descriptifD{numDoc}` (string, requis) - Description
-  - `documentD{numDoc}` (file, optionnel) - Nouveau fichier
-  - `strLienD{numDoc}` (string, conditionnel) - Lien existant si pas de nouveau fichier
-- **Réponse :** Redirection vers `/contrats/<numContrat>`
+  - `idContratD{num_doc}` (int, requis) - ID du contrat
+  - `dateDocumentD{num_doc}` (date, requis) - Date du document
+  - `type_document{num_doc}` (string, requis) - Type principal
+  - `STypeD{num_doc}` (string, requis) - Sous-type
+  - `descriptifD{num_doc}` (string, requis) - Description
+  - `documentD{num_doc}` (file, optionnel) - Nouveau fichier
+  - `strLienD{num_doc}` (string, conditionnel) - Lien existant si pas de nouveau fichier
+- **Réponse :** Redirection vers `/contrats/<id_contrat>`
 
 ### 📥 Téléchargement de document
-**Route :** `GET /contrats/numContrat/<numContrat>/numDocument/<numDoc>/download/<name>`
+
+**Route :** `GET /contrats/numContrat/<id_contrat>/num_document/<num_doc>/download/<name>`
+
 - **Description :** Téléchargement d'un document
 - **Authentification :** Requise
 - **Habilitations :** Niveau 2
 - **Paramètres :**
   - `numContrat` (int, URL) - ID du contrat
-  - `numDoc` (int, URL) - ID du document
+  - `num_doc` (int, URL) - ID du document
   - `name` (string, URL) - Nom complet du fichier avec extension
 - **Réponse :** Fichier en téléchargement
 
@@ -260,7 +296,9 @@
 ## Impression
 
 ### 🖨️ Espace d'impression
+
 **Route :** `GET /ei`
+
 - **Description :** Interface d'impression à distance
 - **Authentification :** Requise
 - **Habilitations :** Niveau 6
@@ -268,7 +306,9 @@
 - **Réponse :** Template `ei.html`
 
 ### 📄 Impression de document
+
 **Route :** `POST /print_doc`
+
 - **Description :** Upload et impression d'un document
 - **Authentification :** Requise
 - **Habilitations :** Niveau 6
@@ -290,7 +330,9 @@
 ## Espaces Réservés
 
 ### 🎓 Espace Professeurs Principaux
+
 **Route :** `GET /erpp`
+
 - **Description :** Espace réservé aux professeurs principaux (en construction)
 - **Authentification :** Requise
 - **Habilitations :** Niveau 3
@@ -298,7 +340,9 @@
 - **Réponse :** Template `erpp.html`
 
 ### 👨‍🏫 Espace Professeurs
+
 **Route :** `GET /erp`
+
 - **Description :** Espace réservé aux professeurs (en construction)
 - **Authentification :** Requise
 - **Habilitations :** Niveau 4
@@ -306,7 +350,9 @@
 - **Réponse :** Template `erp.html`
 
 ### 🎒 Espace Élèves
+
 **Route :** `GET /ere`
+
 - **Description :** Espace réservé aux élèves (en construction)
 - **Authentification :** Requise
 - **Habilitations :** Niveau 5
@@ -318,6 +364,7 @@
 ## Modèles de Données
 
 ### 👤 User (99_users)
+
 ```python
 {
     "id": int,                    # Clé primaire auto-incrémentée
@@ -325,51 +372,54 @@
     "nom": string(255),           # Nom de famille (obligatoire)
     "mail": string(255),          # Adresse email (obligatoire)
     "identifiant": string(25),    # Identifiant de connexion
-    "shaMdp": string(255),        # Mot de passe haché SHA-256 (obligatoire)
+    "sha_mdp": string(255),        # Mot de passe haché SHA-256 (obligatoire)
     "habilitation": int,          # Niveau d'habilitation (combinable)
     "debut": date,                # Date de création (auto)
     "fin": date,                  # Date de fin d'accès
-    "falseTest": int,             # Nombre de tentatives échouées (défaut: 0)
+    "false_test": int,             # Nombre de tentatives échouées (défaut: 0)
     "locked": bool                # Compte verrouillé (défaut: false)
 }
 ```
 
 ### 📋 Contract (01_contrats)
+
 ```python
 {
     "id": int,                    # Clé primaire auto-incrémentée
-    "Type": string(50),           # Type principal (obligatoire)
+    "type_contrat": string(50),           # Type principal (obligatoire)
     "SType": string(50),          # Sous-type (obligatoire)
     "entreprise": string(255),    # Nom de l'entreprise (obligatoire)
     "numContratExterne": string(50), # Numéro externe (obligatoire)
     "intitule": string(255),      # Intitulé du contrat (obligatoire)
-    "dateDebut": date,            # Date de début (obligatoire)
-    "dateFinPreavis": date,       # Date de fin de préavis (obligatoire)
-    "dateFin": date               # Date de fin (optionnel)
+    "date_debut": date,            # Date de début (obligatoire)
+    "date_fin_preavis": date,       # Date de fin de préavis (obligatoire)
+    "date_fin": date               # Date de fin (optionnel)
 }
 ```
 
 ### 📄 Document (11_documents)
+
 ```python
 {
     "id": int,                    # Clé primaire auto-incrémentée
-    "idContrat": int,             # ID du contrat lié (obligatoire)
-    "Type": string(50),           # Type principal (obligatoire)
+    "id_contrat": int,             # ID du contrat lié (obligatoire)
+    "type_document": string(50),           # Type principal (obligatoire)
     "SType": string(50),          # Sous-type
     "descriptif": string(255),    # Description (obligatoire)
-    "strLien": string(255),       # Chemin du fichier
-    "dateDocument": date,         # Date du document (obligatoire)
+    "str_lien": string(255),       # Chemin du fichier
+    "date_document": date,         # Date du document (obligatoire)
     "name": string(30)            # Nom normalisé du fichier
 }
 ```
 
 ### 📅 Event (12_evenements)
+
 ```python
 {
     "id": int,                    # Clé primaire auto-incrémentée
-    "idContrat": int,             # ID du contrat lié (obligatoire)
-    "dateEvenement": date,        # Date de l'événement (obligatoire)
-    "Type": string(50),           # Type principal (obligatoire)
+    "id_contrat": int,             # ID du contrat lié (obligatoire)
+    "date_evenement": date,        # Date de l'événement (obligatoire)
+    "type_evenement": string(50),           # Type principal (obligatoire)
     "SType": string(50),          # Sous-type (obligatoire)
     "descriptif": string(255)     # Description (obligatoire)
 }
@@ -390,17 +440,20 @@
 ## Sécurité et Validation
 
 ### Authentification
+
 - Toutes les routes (sauf `/login`) nécessitent une session active
 - Vérification des habilitations pour chaque niveau d'accès
 - Redirection automatique vers `/logout` en cas d'accès non autorisé
 
 ### Validation des données
+
 - Hachage SHA-256 automatique des mots de passe
 - Validation des types de fichiers pour l'upload
 - Génération automatique des noms de fichiers pour éviter les conflits
 - Protection contre les injections SQL via SQLAlchemy ORM
 
 ### Gestion des erreurs
+
 - Tentatives de connexion limitées (3 max)
 - Verrouillage automatique des comptes
 - Messages d'erreur informatifs mais sécurisés

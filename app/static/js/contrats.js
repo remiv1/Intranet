@@ -1,53 +1,53 @@
 function updateSousMenu(idContract) {
-    var contractId = idContract.getAttribute('data-contract-id');
-    var menu = document.getElementById('Type' + contractId).value;
-    var sousmenu = document.getElementById('SType' + contractId);
+    let contractId = idContract.getAttribute('data-contract-id');
+    let menu = document.getElementById('Type' + contractId).value;
+    let sousmenu = document.getElementById('SType' + contractId);
     sousmenu.innerHTML = '';
 
-    var options = []
+    let options = []
     if (menu === 'Finance') {
-        var options = ['', 'Banque', 'Assurances', 'Autre'];
+        options = ['', 'Banque', 'Assurances', 'Autre'];
     } else if (menu === 'Juridique') {
-        var options = ['', 'Conseils', 'Comptabilité', 'Autre'];
+        options = ['', 'Conseils', 'Comptabilité', 'Autre'];
     } else if (menu === 'RH') {
-        var options = ['', 'Titulaires', 'Bénévoles', 'Autre'];
+        options = ['', 'Titulaires', 'Bénévoles', 'Autre'];
     } else if (menu === 'Materiel') {
-        var options = ['', 'Immobilier', 'Matériel durable', 'Matériel consomptible', 'Informatique', 'Autre']
+        options = ['', 'Immobilier', 'Matériel durable', 'Matériel consomptible', 'Informatique', 'Autre']
     } else if (menu === 'Services') {
-        var options = ['', 'Prestations régulières', 'Prestations à la demande', 'Autre']
+        options = ['', 'Prestations régulières', 'Prestations à la demande', 'Autre']
     } else {
-        var options = ['', 'Autre']
+        options = ['', 'Autre']
     }
 
     options.forEach(function(option) {
-        var opt = document.createElement('option');
+        let opt = document.createElement('option');
         opt.innerHTML = option;
         sousmenu.appendChild(opt);
     });
 }
 
 function updateSousFiltre() {
-    var menu = document.getElementById('TypeFiltre').value;
-    var sousmenu = document.getElementById('STypeFiltre');
+    let menu = document.getElementById('TypeFiltre').value;
+    let sousmenu = document.getElementById('STypeFiltre');
     sousmenu.innerHTML = '';
 
-    var options = []
+    let options = []
     if (menu === 'Finance') {
-        var options = ['', 'Banque', 'Assurances', 'Autre'];
+        options = ['', 'Banque', 'Assurances', 'Autre'];
     } else if (menu === 'Juridique') {
-        var options = ['', 'Conseils', 'Comptabilité', 'Autre'];
+        options = ['', 'Conseils', 'Comptabilité', 'Autre'];
     } else if (menu === 'RH') {
-        var options = ['', 'Titulaires', 'Bénévoles', 'Autre'];
+        options = ['', 'Titulaires', 'Bénévoles', 'Autre'];
     } else if (menu === 'Materiel') {
-        var options = ['', 'Immobilier', 'Matériel durable', 'Matériel consomptible', 'Informatique', 'Autre']
+        options = ['', 'Immobilier', 'Matériel durable', 'Matériel consomptible', 'Informatique', 'Autre']
     } else if (menu === 'Services') {
-        var options = ['', 'Prestations régulières', 'Prestations à la demande', 'Autre']
+        options = ['', 'Prestations régulières', 'Prestations à la demande', 'Autre']
     } else {
-        var options = ['', 'Autre']
+        options = ['', 'Autre']
     }
 
     options.forEach(function(option) {
-        var opt = document.createElement('option');
+        let opt = document.createElement('option');
         opt.innerHTML = option;
         sousmenu.appendChild(opt);
     });
@@ -66,13 +66,13 @@ $(document).ready(function() {
 function filterTable(event) {
     event.preventDefault();
     
-    var typeFiltre = document.getElementById('TypeFiltre').value;
-    var subTypeFiltre = document.getElementById('STypeFiltre').value;
-    var rows = document.querySelectorAll('#contractsTable tbody tr');
+    let typeFiltre = document.getElementById('TypeFiltre').value;
+    let subTypeFiltre = document.getElementById('STypeFiltre').value;
+    let rows = document.querySelectorAll('#contractsTable tbody tr');
     
     rows.forEach(function(row) {
-        var type = row.getAttribute('data-type');
-        var subtype = row.getAttribute('data-stype');
+        let type = row.getAttribute('data-type');
+        let subtype = row.getAttribute('data-stype');
 
         if ((typeFiltre === "" || type === typeFiltre) && (subTypeFiltre === "" || subtype === subTypeFiltre)) {
             row.style.display = "";

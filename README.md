@@ -211,23 +211,23 @@ L'application utilise **MariaDB** avec 4 tables principales interconnectées :
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
 │   99_Users      │    │  01_Contrats    │    │ 11_Documents    │
 │                 │    │                 │    │                 │
-│ ├─ id (PK)      │    │ ├─ id (PK)      │ ◄──┤ ├─ idContrat(FK)│
-│ ├─ identifiant  │    │ ├─ Type         │    │ ├─ Type         │
-│ ├─ shaMdp       │    │ ├─ Stype        │    │ ├─ Descriptif   │
-│ ├─ habilitation │    │ ├─ Entreprise   │    │ ├─ strLien      │
-│ └─ Locked       │    │ ├─ dateDebut    │    │ └─ dateDocument │
-└─────────────────┘    │ └─ dateFin      │    └─────────────────┘
+│ ├─ id (PK)      │    │ ├─ id (PK)      │ ◄──┤ ├─ id_contrat(FK)│
+│ ├─ identifiant  │    │ ├─ type_contrat │    │ ├─ type_document│
+│ ├─ sha_mdp      │    │ ├─ Stype        │    │ ├─ Descriptif   │
+│ ├─ habilitation │    │ ├─ entreprise   │    │ ├─ str_lien     │
+│ └─ Locked       │    │ ├─ date_debut   │    │ └─ date_document│
+└─────────────────┘    │ └─ date_fin     │    └─────────────────┘
                        └─────────────────┘
                                 │
                                 │
-                       ┌─────────────────┐
-                       │ 12_Evenements   │
-                       │                 │
-                       │ ├─ idContrat(FK)│
-                       │ ├─ Type         │
-                       │ ├─ Stype        │
-                       │ └─ Descriptif   │
-                       └─────────────────┘
+                       ┌──────────────────┐
+                       │ 12_Evenements    │
+                       │                  │
+                       │ ├─ id_contrat(FK) │
+                       │ ├─ type_evenement│
+                       │ ├─ Stype         │
+                       │ └─ Descriptif    │
+                       └──────────────────┘
 ```
 
 ### 📊 Structure détaillée des tables
@@ -240,7 +240,7 @@ L'application utilise **MariaDB** avec 4 tables principales interconnectées :
 | `Nom`          | VARCHAR(255) | Nom de l'utilisateur       |
 | `mail`         | VARCHAR(255) | Adresse email              |
 | `identifiant`  | VARCHAR(25)  | Login de connexion         |
-| `shaMdp`       | VARCHAR(255) | Mot de passe hashé SHA-256 |
+| `sha_mdp`       | VARCHAR(255) | Mot de passe hashé SHA-256 |
 | `habilitation` | INT(11)      | Niveau d'autorisation      |
 | `Début`        | DATE         | Date de début d'accès      |
 | `Fin`          | DATE         | Date de fin d'accès        |
@@ -250,40 +250,43 @@ L'application utilise **MariaDB** avec 4 tables principales interconnectées :
 | Champ               | Type         | Description               |
 |---------------------|--------------|---------------------------|
 | `id`                | INT(11) PK   | Identifiant unique        |
-| `Type`              | VARCHAR(50)  | Type de contrat           |
+| `type_contrat`      | VARCHAR(50)  | Type de contrat           |
 | `Stype`             | VARCHAR(50)  | Sous-type de contrat      |
-| `Entreprise`        | VARCHAR(255) | Nom de l'entreprise       |
-| `numContratExterne` | VARCHAR(50)  | Numéro de contrat externe |
-| `Intitule`          | VARCHAR(255) | Intitulé du contrat       |
-| `dateDebut`         | DATE         | Date de début             |
-| `dateFinPreavis`    | DATE         | Date de fin de préavis    |
+| `entreprise`        | VARCHAR(255) | Nom de l'entreprise       |
+| `id_externe_contrat`| VARCHAR(50)  | Numéro de contrat externe |
+| `intitule`          | VARCHAR(255) | Intitulé du contrat       |
+| `date_debut`        | DATE         | Date de début             |
+| `date_fin_preavis`  | DATE         | Date de fin de préavis    |
 | `dateFin`           | DATE         | Date de fin de contrat    |
 
 #### Table `11_Documents` - Documents liés aux contrats
+
 | Champ          | Type         | Description               |
 |----------------|--------------|---------------------------|
 | `id`           | INT(11) PK   | Identifiant unique        |
-| `idContrat`    | INT(11) FK   | Référence vers le contrat |
-| `Type`         | VARCHAR(50)  | Type de document          |
+| `id_contrat`   | INT(11) FK   | Référence vers le contrat |
+| `type_document`| VARCHAR(50)  | Type de document          |
 | `SType`        | VARCHAR(50)  | Sous-type de document     |
 | `Descriptif`   | VARCHAR(255) | Description du document   |
-| `strLien`      | VARCHAR(255) | Chemin vers le fichier    |
-| `dateDocument` | DATE         | Date du document          |
+| `str_lien`     | VARCHAR(255) | Chemin vers le fichier    |
+| `date_document`| DATE         | Date du document          |
 | `Name`         | VARCHAR(30)  | Nom du créateur           |
 
 #### Table `12_Evenements` - Événements liés aux contrats
+
 | Champ           | Type         | Description                |
 |-----------------|--------------|----------------------------|
 | `id`            | INT(11) PK   | Identifiant unique         |
-| `idContrat`     | INT(11) FK   | Référence vers le contrat  |
-| `dateEvenement` | DATE         | Date de l'événement        |
-| `Type`          | VARCHAR(50)  | Type d'événement           |
+| `id_contrat`    | INT(11) FK   | Référence vers le contrat  |
+| `date_evenement`| DATE         | Date de l'événement        |
+| `type_evenement`| VARCHAR(50)  | Type d'événement           |
 | `Stype`         | VARCHAR(50)  | Sous-type d'événement      |
 | `Descriptif`    | VARCHAR(255) | Description de l'événement |
 
 ### 🔐 Système d'Habilitations
 
 L'application utilise un système d'habilitations numérique flexible :
+
 | Code  | Rôle                     | Permissions                      |
 |-------|--------------------------|----------------------------------|
 | **1** | 🔧 Super-administrateur  | Gestion des droits utilisateurs  |
@@ -760,7 +763,8 @@ docker-compose restart nginx
 
 #### Contribution au projet
 
-* Fork et contribution
+* Fork et contribution :
+
 - [ ] Fork du projet sur GitHub
 - [ ] git checkout -b nouvelle-fonctionnalite
 - [ ] # Développement et tests
@@ -769,6 +773,7 @@ docker-compose restart nginx
 - [ ] # Créer une Pull Request
 
 #### Standards de code
+
 - [ ] **PEP 8** : Style de code Python
 - [ ] **Type hints** : Documentation des types
 - [ ] **Docstrings** : Documentation des fonctions
@@ -779,7 +784,7 @@ docker-compose restart nginx
 
 ## 🎯 Informations Projet
 
-**Développé avec ❤️ pour l'éducation**
+*Développé avec ❤️ pour l'éducation*
 
 Ce projet open-source a été créé bénévolement pour répondre aux besoins spécifiques de gestion d'un établissement scolaire. Il évoluera selon les retours d'expérience et les contributions de la communauté.
 
