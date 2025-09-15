@@ -866,23 +866,24 @@ def add_contrats_document(id_contrat: int) -> ResponseReturnValue:
     """
     # === Gestion de la méthode POST (ajout d'un nouveau document) ===
     if request.method == 'POST':
+        # Récupération des données du formulaire
+        date_document = request.form.get('dateDocumentD', '')
+        type_document = request.form.get('TypeD0', '')
+        sous_type_document = request.form.get('STypeD0', '')
+        descriptif = request.form.get('descriptifD', '')
+        document_binaire: Any = request.files.get('documentD', None)
+
         try:
             # Récupération du dernier élément
             last_doc = g.db_session.query(Document).order_by(Document.id.desc()).first()
             if last_doc:
-                id_contrat = last_doc.id + 1
+                id_document = last_doc.id + 1
             else:
-                id_contrat = 1
+                id_document = 1
 
-            # Récupération des données du formulaire
-            id_contrat = int(request.form.get('idContratD', 0))
-            date_document = request.form.get('dateDocumentD', '')
-            type_document = request.form.get('TypeD0', '')
-            sous_type_document = request.form.get('STypeD0', '')
-            descriptif = request.form.get('descriptifD', '')
-            document_binaire: Any = request.files['documentD']
+            # Création du nom du fichier
             extention: str = splitext(str(document_binaire.filename))[1]
-            name = create_name(date_document, str(id_contrat), str(id_contrat), sous_type_document)
+            name = create_name(date_document, str(id_contrat), str(id_document), sous_type_document)
             lien_document = name + extention
 
             # Création du document dans la base de données
@@ -902,9 +903,11 @@ def add_contrats_document(id_contrat: int) -> ResponseReturnValue:
             upload_file(document_binaire, name, extention)
 
             # Retour du formulaire
-            return redirect(url_for('contrats_by_num', id_contrat=id_contrat, success_message='Document ajouté avec succès'))
+            message = f'Document {document.str_lien} ajouté avec succès'
+            return redirect(url_for('contrats_by_num', id_contrat=id_contrat, success_message=message))
         except Exception as e:
-            return redirect(url_for('contrats_by_num', id_contrat=id_contrat, error_message='Erreur lors de l\'ajout du document :\n' + str(e)))
+            message = f'Erreur lors de l\'ajout du document {descriptif} : {e}'
+            return redirect(url_for('contrats_by_num', id_contrat=id_contrat, error_message=message))
     else:
         return redirect(url_for('contrats_by_num', id_contrat=id_contrat, error_message=NOT_ALLOWED))
 
@@ -921,27 +924,35 @@ def modif_event_id(id_event: int, id_contrat: int) -> ResponseReturnValue:
         Response: Redirection vers la page de détail du contrat.
     """
     if request.method == 'POST' and request.form.get('_method') == 'PUT':
+        # Récupération du formulaire
+        date_evenement = request.form.get(f'dateEvenementE{id_event}')
+        type_evenement = request.form.get(f'TypeE{id_event}')
+        sous_type_evenement = request.form.get(f'STypeE{id_event}')
+        descriptif = request.form.get(f'descriptifE{id_event}')
+
         try:
             # Récupération de l'évènement
             event = g.db_session.query(Event).filter(Event.id == id_event).first()
 
             if event:
-                # Récupération formulaire
+                # Mise à jour des informations de l'évènement
                 event.id_contrat = id_contrat
-                event.date_evenement = request.form.get(f'dateEvenementE{id_event}')
-                event.type_evenement = request.form.get(f'TypeE{id_event}')
-                event.sous_type_evenement = request.form.get(f'STypeE{id_event}')
-                event.descriptif = request.form.get(f'descriptifE{id_event}')
+                event.date_evenement = date_evenement
+                event.type_evenement = type_evenement
+                event.sous_type_evenement = sous_type_evenement
+                event.descriptif = descriptif
 
                 # Retour
                 g.db_session.commit()
 
-                return redirect(url_for('contrats_by_num', id_contrat = id_contrat, success_message='Évènement modifié avec succès'))
+                message = f'Évènement {event.id} modifié avec succès'
+                return redirect(url_for('contrats_by_num', id_contrat = id_contrat, success_message=message))
             else:
-                return redirect(url_for('contrats_by_num', id_contrat = id_contrat, error_message='Évènement non trouvé'))
+                message = f'Évènement {id_event} non trouvé'
+                return redirect(url_for('contrats_by_num', id_contrat = id_contrat, error_message=message))
         except Exception:
-            g.db_session.rollback()
-            return redirect(url_for('contrats_by_num', id_contrat = id_contrat, error_message='Erreur lors de la modification de l\'évènement'))
+            message = f'Erreur lors de la modification de l\'évènement {id_event}'
+            return redirect(url_for('contrats_by_num', id_contrat = id_contrat, error_message=message))
     else:
         return redirect(url_for('contrats_by_num', id_contrat = id_contrat, error_message=NOT_ALLOWED))
 
@@ -958,6 +969,17 @@ def modif_document_id(id_document: int, id_contrat: int) -> ResponseReturnValue:
         Response: Redirection vers la page de détail du contrat.
     """
     def _fonction_modif_doc(document: Document, req: Request, id_document: int) -> None:
+        """
+        Fonction interne pour modifier un document.
+        Args:
+            document (Document): Le document à modifier.
+            req (Request): La requête contenant les données du formulaire.
+            id_document (int): Le numéro du document à modifier.
+        Returns:
+            None
+        Raises:
+            Exception: Si une erreur survient lors de la modification du document.
+        """
         # Récupération du formulaire
         id_contrat = req.form.get(f'idContratD{id_document}', '')
         date_document = req.form.get(f'dateDocumentD{id_document}', '')
@@ -965,13 +987,15 @@ def modif_document_id(id_document: int, id_contrat: int) -> ResponseReturnValue:
         sous_type_document = req.form.get(f'STypeD{id_document}', '')
         document.descriptif = req.form.get(f'descriptifD{id_document}', '')
         document_binaire: Any = req.files.get(f'documentD{id_document}', None)
-        logger.debug(f'type document_binaire : {type(document_binaire)}')
+
+        # Création du nom du fichier si un nouveau document a été uploadé
         if document_binaire and document_binaire.filename != '':
             name = create_name(date_document, str(id_contrat), str(id_document), sous_type_document)
             extention = splitext(str(document_binaire.filename))[1]
             doc_to_delete_lien = document.str_lien
             doc_to_delete_name = document.name
-            logger.debug(f"Document à supprimer : {doc_to_delete_name}{splitext(doc_to_delete_lien)[1]}")
+
+        # Sinon, on garde l'ancien nom
         else:
             str_lien = req.form.get(f'strLienD{id_document}', '')
             complet_name = str_lien.split('_')[3]
@@ -1004,16 +1028,21 @@ def modif_document_id(id_document: int, id_contrat: int) -> ResponseReturnValue:
 
             # Création du document et récupération de son id
             _fonction_modif_doc(document, request, id_document)
-            return redirect(url_for('contrats_by_num', id_contrat = id_contrat, success_message='Document modifié avec succès'))
+
+            # Message de succès et redirection
+            message = f'Document {document.str_lien} modifié avec succès'
+            return redirect(url_for('contrats_by_num', id_contrat = id_contrat, success_message=message))
 
         except Exception as e:
-            return redirect(url_for('contrats_by_num', id_contrat = id_contrat, error_message='Erreur lors de la modification du document :\n' + str(e)))
+            # Message d'erreur et redirection
+            message = f'Erreur lors de la modification du document {id_document} : {e}'
+            return redirect(url_for('contrats_by_num', id_contrat = id_contrat, error_message=message))
     else:
         return redirect(url_for('contrats_by_num', id_contrat = id_contrat, error_message=NOT_ALLOWED))
 
-@peraudiere.route('/contrats/contrat-<int:id_contrat>/document-<int:id_document>/download/<name>', methods=['GET'])
+@peraudiere.route('/contrats/download/<name>', methods=['GET'])
 @validate_habilitation(GESTIONNAIRE)
-def download_document(id_document: int, id_contrat: int, name: str) -> Any:
+def download_document(name: str) -> Any:
     """
     Route pour le téléchargement d'un document.
     Gère le téléchargement d'un document depuis le serveur.
@@ -1038,4 +1067,3 @@ def rapport_contrats() -> Response:
         return jsonify(f"Rapport envoyé à {email}", 200)
     except Exception as e:
         return jsonify(f"Erreur lors de l'envoi du rapport à {email} : {e}", 500)
-    
