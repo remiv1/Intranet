@@ -145,3 +145,9 @@ function openTab(evt, tabName) {
     // Activer l'onglet sélectionné
     evt.currentTarget.className += " active";
 }
+
+// Fonction pour modifier le champs et remplacer le '.' par une ',' dans le champs montant de la facture
+function replaceCommaByDot(input) {
+    let value = input.value;
+    input.value = value.replace(',', '.');
+}

@@ -28,7 +28,7 @@
                 "titre": "Gestion des contrats",
                 "descriptif": "Permet de gérer/accéder aux contrats en cours pour l'établissement et d'en gérer les documents et évènements",
                 "buttonid": "Ddc",
-                "onclick": "contrats"
+                "onclick": "contracts_bp.contrats"
             },
             {
                 "classe": 3,

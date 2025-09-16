@@ -121,7 +121,7 @@
                         {% for contract in contracts %}
                             <tr data-type="{{ contract['type_contrat'] }}" data-stype="{{ contract['sous_type_contrat'] }}">
                                 <td class="align-middle">
-                                    <a href="{{ url_for('contrats_by_num', id_contrat=contract['id']) }}">
+                                    <a href="{{ url_for('contracts_bp.contrats_by_num', id_contrat=contract['id']) }}">
                                         {{ contract['id'] }}
                                     </a>
                                 </td>
@@ -153,7 +153,7 @@
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div class="modal-body">
-                        <form action="{{ url_for('contrats') }}" method="post">
+                        <form action="{{ url_for('contracts_bp.contrats') }}" method="post">
                             <div class="mb-3">
                                 <label for="Type0" class="form-label">Type *</label>
                                 <select name="Type0" class="form-control" id="Type0" data-contract-id="0" onchange="updateSousMenu(this)" data-contract-id="0" required>
@@ -209,7 +209,7 @@
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div class="modal-body">
-                        <form action="{{ url_for('contrats_by_num', id_contrat=contract['id']) }}" method="POST">
+                        <form action="{{ url_for('contracts_bp.contrats_by_num', id_contrat=contract['id']) }}" method="POST">
                             <input type="hidden" name="_method" value="PUT">
                             <div class="mb-3">
                                 <label for="Type{{ contract['id'] }}" class="form-label">Type</label>
@@ -271,7 +271,10 @@
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <!--Scripts Propriétaire-->
     <script>
+        /* eslint-disable */
+        // jshint ignore:line
         const menusData = {{ menus_data|safe }};
+        /* eslint-enable */
     </script>
     <Script src="{{ url_for('static', filename='js/contrats.js') }}"></Script>
     <!--Scripts Bootstrap-->

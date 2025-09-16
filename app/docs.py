@@ -24,6 +24,7 @@ def _get_print_folder() -> str:
 # Validation des chemins (appelée lors du premier accès)
 _folder_initialized = False
 
+# S'assurer que le dossier existe
 def _ensure_folder_exists():
     global _folder_initialized
     if not _folder_initialized:
@@ -31,9 +32,6 @@ def _ensure_folder_exists():
         if not os.path.exists(folder):
             os.makedirs(folder)
         _folder_initialized = True
-
-# Ne plus créer le dossier lors de l'import
-# _ensure_folder_exists() - Retiré pour éviter l'import circulaire
 
 # Création d'un nom de docment
 def create_name(doc_date: str, id_contrat: str, id_document: str, sous_type_document: str):
@@ -76,14 +74,13 @@ def exchange_files(old_file_name: str, new_file: io.BytesIO, new_file_name: str,
     
     try:
         # Suppression de l'ancien fichier
-        old_file_path = os.path.join(_get_folder(), secure_filename(splitext(old_file_name)[0]) + extension)
+        old_file_path = os.path.join(_get_folder(), secure_filename(old_file_name))
         if os.path.exists(old_file_path):
             os.remove(old_file_path)
 
         # Création du chemin du nouveau fichier sur le serveur
         new_file_name = secure_filename(new_file_name) + extension
         new_file_path = os.path.join(_get_folder(), new_file_name)
-        logger.info(f"Exchanging file: {old_file_path} with new file: {new_file_path}")
         
         # Enregistrement du nouveau fichier sur le serveur
         with open(new_file_path, 'wb') as f:
@@ -102,19 +99,15 @@ def rename_file(old_file_name: str, new_file_name: str, extension: str):
         # Création des chemins des fichiers sur le serveur
         old_file_path = os.path.join(_get_folder(), secure_filename(splitext(old_file_name)[0]) + extension)
         new_file_path = os.path.join(_get_folder(), secure_filename(new_file_name) + extension)
-        logger.info(f"Renaming file: {old_file_path} to new file: {new_file_path}")
         
         # Renommage du fichier sur le serveur
         if os.path.exists(old_file_path):
-            logger.info(f"File {old_file_path} exists, proceeding to rename.")
             os.rename(old_file_path, new_file_path)
             return True
         else:
-            logger.warning(f"File {old_file_path} does not exist, cannot rename.")
             return False
     
     except Exception:
-        logger.error(f"Error renaming file {old_file_name} to {new_file_name}", exc_info=True)
         return False
     
 # Téléchargement du fichier depuis le serveur
@@ -140,6 +133,7 @@ def download_file(file_name: str, extension: str):
     except Exception as e:
         return jsonify({'erreur': f'Erreur inconnue lors du téléchargement : {e}'})
     
+# Suppression du fichier depuis le serveur
 def delete_file(file_name: str, extension: str):
     _ensure_folder_exists()  # S'assurer que le dossier existe
     
@@ -157,7 +151,8 @@ def delete_file(file_name: str, extension: str):
 
     except Exception as e:
         return jsonify({'erreur': f'Erreur inconnue : {e}'})
-    
+
+# Impression du fichier vers le serveur d'impression
 def print_document(file: io.BytesIO, file_name: str, extension: str, copies: str, username: str, sides: str, media: str, orientation: str, color: str):
     
     try:

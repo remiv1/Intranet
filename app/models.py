@@ -2,8 +2,10 @@ from sqlalchemy import Integer, String, Date, Boolean, ForeignKey
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import mapped_column
 from sqlalchemy.sql import func
+from sqlalchemy import Numeric
 
 Base = declarative_base()
+CONTRACT_KEY = '01_contrats.id'
 
 class User(Base):
     __tablename__ = '99_users'
@@ -46,7 +48,7 @@ class Contract(Base):
 class Document(Base):
     __tablename__ = '11_documents'
     id = mapped_column(Integer, primary_key=True)
-    id_contrat = mapped_column(Integer, ForeignKey('01_contrats.id'), nullable=False)
+    id_contrat = mapped_column(Integer, ForeignKey(CONTRACT_KEY), nullable=False)
     type_document = mapped_column(String(50), nullable=False)
     sous_type_document = mapped_column(String(50), nullable=True)
     descriptif = mapped_column(String(255), nullable=False)
@@ -61,7 +63,7 @@ class Document(Base):
 class Event(Base): 
     __tablename__ = '12_evenements'
     id = mapped_column(Integer, primary_key=True)
-    id_contrat = mapped_column(Integer, ForeignKey('01_contrats.id'), nullable=False)
+    id_contrat = mapped_column(Integer, ForeignKey(CONTRACT_KEY), nullable=False)
     type_evenement = mapped_column(String(50), nullable=False)
     sous_type_evenement = mapped_column(String(50), nullable=False)
     date_evenement = mapped_column(Date, nullable=False)
@@ -71,3 +73,15 @@ class Event(Base):
         return (f"<Event(id={self.id}, id_contrat={self.id_contrat}, date_evenement={self.date_evenement}, "
         f"type_evenement='{self.type_evenement}', sous_type_evenement='{self.sous_type_evenement}', descriptif='{self.descriptif}')>")
     
+class Bill(Base):
+    __tablename__ = '13_factures'
+    id = mapped_column(Integer, primary_key=True, autoincrement=True)
+    id_contrat = mapped_column(Integer, ForeignKey(CONTRACT_KEY), nullable=False)
+    date_facture = mapped_column(Date, nullable=False)
+    titre_facture = mapped_column(String(255), nullable=False)
+    montant = mapped_column(Numeric(10, 2), nullable=False)
+    lien = mapped_column(String(255), nullable=True)
+
+    def __repr__(self) -> str:
+        return (f"<Bill(id={self.id}, id_contrat={self.id_contrat}, date_facture={self.date_facture}, "
+            f"titre_facture='{self.titre_facture}', montant={self.montant}, lien='{self.lien}')>")

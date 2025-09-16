@@ -44,7 +44,7 @@
                         </a>
                     </li>
                     <li class="breadcrumb-item">
-                        <a class="link-body-emphasis fw-semibold text-decoration-none" href="{{ url_for('contrats') }}">
+                        <a class="link-body-emphasis fw-semibold text-decoration-none" href="{{ url_for('contracts_bp.contrats') }}">
                             Gestion des Contrats
                         </a>
                     </li>
@@ -54,8 +54,7 @@
                 </ol>
             </nav>
         </div> 
-        <!-- Messages de retour -->
-        <!-- Onglets de gestion des contrats : Evènements & Documents -->
+        <!-- Messages de retour et onglets -->
         <div class="container">
             {% if message or error_message or success_message %}
             <div class="row justify-content-center">
@@ -81,14 +80,17 @@
                 {% endif %}
             </div>
             {% endif %}
-            <!-- Insertion de deux onglets -->
+            <!-- Onglets de gestion des contrats : Evènements & Documents -->
             <div class="tab">
-                <button class="tablinks active" onclick="openTab(event, 'Events')" id="defaultOpen">Evènements</button>
-                <button class="tablinks" onclick="openTab(event, 'Documents')">Documents</button>
-                <button class="tablinks" onclick="openTab(event, 'Bills')">Factures</button>
+                <button class="tablinks{{' active' if tab == 'e' else ''}}"
+                        onclick="openTab(event, 'Events')" id="defaultOpen">Evènements</button>
+                <button class="tablinks{{' active' if tab == 'd' else ''}}"
+                        onclick="openTab(event, 'Documents')">Documents</button>
+                <button class="tablinks{{' active' if tab == 'f' else ''}}"
+                        onclick="openTab(event, 'Bills')">Factures</button>
             </div>
             <!-- Conteneur du premier onglet (Evènements) -->
-            <div id="Events" class="tabcontent d-block">
+            <div id="Events" class="tabcontent{{' d-block' if tab == 'e' else ' d-none'}}">
                 <!-- Contenu -->
                 <div id="collapseOne" class="show" aria-labelledby="headingOne" data-parent="#accordion">
                     <div class="card-body">
@@ -136,7 +138,7 @@
                 </div>
             </div>
             <!-- Conteneur du deuxième onglet (Documents) -->
-            <div id="Documents" class="tabcontent d-none">
+            <div id="Documents" class="tabcontent{{' d-block' if tab == 'd' else ' d-none'}}">
                 <!-- Contenu -->
                 <div id="collapseTwo" class="show" aria-labelledby="headingTwo" data-parent="#accordion">
                     <div class="card-body">
@@ -169,7 +171,7 @@
                                         <td class="align-middle">{{ document['sous_type_document'] }}</td>
                                         <td class="align-middle">{{ document['descriptif'] }}</td>
                                         <td class="align-middle">
-                                            <a href="{{ url_for('download_document', name=document['str_lien']) }}" target="_blank">
+                                            <a href="{{ url_for('contracts_bp.download_document', name=document['str_lien']) }}" target="_blank">
                                                 {{ document['str_lien'] }}
                                             </a>
                                         </td>
@@ -196,9 +198,9 @@
                 </div>
             </div>
             <!-- Conteneur du troisième onglet (Factures) -->
-            <div id="Bills" class="tabcontent d-none">
+            <div id="Bills" class="tabcontent{{' d-block' if tab == 'f' else ' d-none'}}">
                 <!-- Contenu -->
-                <div id="collapseOne" class="show" aria-labelledby="headingThree" data-parent="#accordion">
+                <div id="collapseThree" class="show" aria-labelledby="headingThree" data-parent="#accordion">
                     <div class="card-body">
                         <div class="d-flex justify-content-start">
                             <button type="button" class="button" data-bs-toggle="modal" data-bs-target="#modalAjoutFacture">Ajouter</button>
@@ -210,6 +212,7 @@
                                     <th>Date</th>
                                     <th>Titre</th>
                                     <th>Montant</th>
+                                    <th>Lien</th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
@@ -220,6 +223,12 @@
                                         <td class="align-middle">{{ bill['id'] }}</td>
                                         <td class="align-middle">{{ bill['date_facture'] }}</td>
                                         <td class="align-middle">{{ bill['titre_facture'] }}</td>
+                                        <td class="align-middle">{{ bill['montant'] }} €</td>
+                                        <td class="align-middle">
+                                            <a href="{{ url_for('contracts_bp.download_document', name=bill['lien']) }}" target="_blank">
+                                                {{ bill['lien'] }}
+                                            </a>
+                                        </td>
                                         <td class="align-middle">
                                             <button type="button" class="button" data-bs-toggle="modal" data-bs-target="#modalModifFacture{{ bill['id'] }}">
                                                 Modifier
@@ -250,7 +259,7 @@
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div class="modal-body">
-                        <form action="{{ url_for('add_contrats_event', id_contrat=contract['id']) }}" method="post">
+                        <form action="{{ url_for('contracts_bp.add_contrats_event', id_contrat=contract['id'], tab='e') }}" method="post">
                             <!-- id Contrat -->
                             <div class="mb-3 d-none">
                                 <input type="text" name="idContratE" id="idContrat" value="{{ contract['id'] }}">
@@ -295,7 +304,7 @@
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div class="modal-body">
-                        <form action="{{ url_for('add_contrats_document', id_contrat=contract['id']) }}" method="post" enctype="multipart/form-data">
+                        <form action="{{ url_for('contracts_bp.add_contrats_document', id_contrat=contract['id'], tab='d') }}" method="post" enctype="multipart/form-data">
                             <!-- id Contrat -->
                             <div class="mb-3 d-none">
                                 <input type="text" name="idContratD" id="idContratD" value="{{ contract['id'] }}">
@@ -341,6 +350,47 @@
                 </div>
             </div>
         </div>
+        <!-- Modal d'ajout de facture -->
+        <div class="modal fade" id="modalAjoutFacture" tabindex="-1" aria-labelledby="modalAjoutLabel" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="modalAjoutLabel">Ajouter une facture</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <form action="{{ url_for('contracts_bp.add_contrats_bill', id_contrat=contract['id'], tab='f') }}" method="post" enctype="multipart/form-data">
+                            <!-- id Contrat -->
+                            <div class="mb-3 d-none">
+                                <input type="text" name="idContratF0" id="idContratF0" value="{{ contract['id'] }}">
+                            </div>
+                            <!-- Date de la facture -->
+                            <div class="mb-3">
+                                <label for="dateFactureF0" class="form-label">Date *</label>
+                                <input type="date" class="form-control" name="dateFactureF0" id="dateFactureF0" required>
+                            </div>
+                            <!-- Titre de la facture -->
+                            <div class="mb-3">
+                                <label for="titreFactureF0" class="form-label">Titre *</label>
+                                <input type="text" class="form-control" name="titreFactureF0" id="titreFactureF0" required>
+                            </div>
+                            <!-- Montant de la facture -->
+                            <div class="mb-3">
+                                <label for="montantFactureF0" class="form-label">Montant *</label>
+                                <input type="number" step="0.01" class="form-control" name="montantFactureF0"
+                                       id="montantFactureF0" onchange="replaceCommaByDot(this)" required>
+                            </div>
+                            <!-- Upload du fichier de la facture -->
+                            <div class="mb-3">
+                                <label for="documentF0" class="form-label">Document *</label>
+                                <input type="file" class="form-control" name="documentF0" id="documentF0" required>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Ajouter</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
         <!-- Modaux de modification d'évènements-->
         {% for event in events %}
         <div class="modal fade" id="modalModifEvent{{ event['id'] }}" tabindex="-1" aria-labelledby="modalModif{{ event['id'] }}Label" aria-hidden="true">
@@ -351,7 +401,7 @@
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div class="modal-body">
-                        <form action="{{ url_for('modif_event_id', id_contrat=event['id_contrat'], id_event=event['id']) }}" method="post">
+                        <form action="{{ url_for('contracts_bp.modif_event_id', id_contrat=event['id_contrat'], id_event=event['id'], tab='e') }}" method="post">
                             <input type="hidden" name="_method" value="PUT">
                             <!-- id Contrat -->
                             <div class="mb-3 d-none">
@@ -404,7 +454,7 @@
                     </div>
                     <!-- Contenu du modal -->
                     <div class="modal-body">
-                        <form action="{{ url_for('modif_document_id', id_contrat=document['id_contrat'], id_document=document['id']) }}" method="post" enctype="multipart/form-data">
+                        <form action="{{ url_for('contracts_bp.modif_document_id', id_contrat=document['id_contrat'], id_document=document['id'], tab='d') }}" method="post" enctype="multipart/form-data">
                             <input type="hidden" name="_method" value="PUT">
                             <!-- Identifiant du contrat -->
                             <div class="mb-3 d-none">
@@ -447,6 +497,52 @@
                             <div class="mb-3 d-none">
                                 <label for="strLienD{{ document['id'] }}" class="form-label">Lien *</label>
                                 <input type="text" class="form-control" name="strLienD{{ document['id'] }}" id="strLienD{{ document['id'] }}" value="{{ document['str_lien'] }}">
+                            </div>
+                            <button type="submit" class="btn btn-primary">Modifier</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+        <!-- Modaux de modification de factures-->
+        {% for bill in bills %}
+        <div class="modal fade" id="modalModifFacture{{ bill['id'] }}" tabindex="-1" aria-labelledby="modalModif{{ bill['id'] }}Label" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <!-- Titre du modal -->
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="modalModif{{ bill['id'] }}Label">Modifier facture du {{ bill['date_facture'] }}</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <!-- Contenu du modal -->
+                    <div class="modal-body">
+                        <form action="{{ url_for('contracts_bp.modif_bill_id', id_contrat=bill['id_contrat'], id_bill=bill['id'], tab='f') }}" method="post" enctype="multipart/form-data">
+                            <input type="hidden" name="_method" value="PUT">
+                            <!-- Identifiant du contrat -->
+                            <div class="mb-3 d-none">
+                                <input type="text" name="idContratF{{ bill['id'] }}" id="idContratF{{ bill['id'] }}" value="{{ bill['id_contrat'] }}">
+                            </div>
+                            <!-- Date de la facture -->
+                            <div class="mb-3">
+                                <label for="dateFactureF{{ bill['id'] }}" class="form-label">Date *</label>
+                                <input type="date" class="form-control" name="dateFactureF{{ bill['id'] }}" id="dateFactureF{{ bill['id'] }}" value="{{ bill['date_facture'] }}" required>
+                            </div>
+                            <!-- Titre de la facture -->
+                            <div class="mb-3">
+                                <label for="titreFactureF{{ bill['id'] }}" class="form-label">Titre *</label>
+                                <input type="text" class="form-control" name="titreFactureF{{ bill['id'] }}" id="titreFactureF{{ bill['id'] }}" value="{{ bill['titre_facture'] }}" required>
+                            </div>
+                            <!-- Montant de la facture -->
+                            <div class="mb-3">
+                                <label for="montantFactureF{{ bill['id'] }}" class="form-label">Montant *</label>
+                                <input type="number" step="0.01" class="form-control" name="montantFactureF{{ bill['id'] }}"
+                                       id="montantFactureF{{ bill['id'] }}" value="{{ bill['montant'] }}" onchange="replaceCommaByDot(this)" required>
+                            </div>
+                            <!-- Upload du fichier de la facture -->
+                            <div class="mb-3">
+                                <label for="fileFactureF{{ bill['id'] }}" class="form-label">Document</label>
+                                <input type="file" class="form-control" name="fileFactureF{{ bill['id'] }}" id="fileFactureF{{ bill['id'] }}">
                             </div>
                             <button type="submit" class="btn btn-primary">Modifier</button>
                         </form>
