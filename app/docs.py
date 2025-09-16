@@ -1,6 +1,7 @@
 from flask import jsonify, send_file
 from werkzeug.utils import secure_filename
 import os, io, datetime
+from os.path import splitext
 from config import ConfigDict
 from typing import cast
 from impression import print_file
@@ -61,6 +62,60 @@ def upload_file(file: io.BytesIO, file_name: str, extension: str):
     
     except Exception as e:
         return jsonify({'erreur': f'Erreur lors de la sauvegarde locale : {e}'})
+    
+# Transfert de deux fichiers (exchange files)
+def exchange_files(old_file_name: str, new_file: io.BytesIO, new_file_name: str, extension: str):
+    """
+    Fonction pour échanger un fichier existant sur le serveur avec un nouveau fichier.
+    Supprime l'ancien fichier et enregistre le nouveau fichier avec un nom potentiellement différent.
+    1. Supprime l'ancien fichier.
+    2. Enregistre le nouveau fichier avec le nouveau nom.
+    3. Gère les erreurs et retourne un booléen.
+    """
+    _ensure_folder_exists()  # S'assurer que le dossier existe
+    
+    try:
+        # Suppression de l'ancien fichier
+        old_file_path = os.path.join(_get_folder(), secure_filename(splitext(old_file_name)[0]) + extension)
+        if os.path.exists(old_file_path):
+            os.remove(old_file_path)
+
+        # Création du chemin du nouveau fichier sur le serveur
+        new_file_name = secure_filename(new_file_name) + extension
+        new_file_path = os.path.join(_get_folder(), new_file_name)
+        logger.info(f"Exchanging file: {old_file_path} with new file: {new_file_path}")
+        
+        # Enregistrement du nouveau fichier sur le serveur
+        with open(new_file_path, 'wb') as f:
+            f.write(new_file.read())
+
+        return True
+    
+    except Exception:
+        return False
+    
+# Fonction pour changer seulement le nom d'un fichier (rename file)
+def rename_file(old_file_name: str, new_file_name: str, extension: str):
+    _ensure_folder_exists()  # S'assurer que le dossier existe
+    
+    try:
+        # Création des chemins des fichiers sur le serveur
+        old_file_path = os.path.join(_get_folder(), secure_filename(splitext(old_file_name)[0]) + extension)
+        new_file_path = os.path.join(_get_folder(), secure_filename(new_file_name) + extension)
+        logger.info(f"Renaming file: {old_file_path} to new file: {new_file_path}")
+        
+        # Renommage du fichier sur le serveur
+        if os.path.exists(old_file_path):
+            logger.info(f"File {old_file_path} exists, proceeding to rename.")
+            os.rename(old_file_path, new_file_path)
+            return True
+        else:
+            logger.warning(f"File {old_file_path} does not exist, cannot rename.")
+            return False
+    
+    except Exception:
+        logger.error(f"Error renaming file {old_file_name} to {new_file_name}", exc_info=True)
+        return False
     
 # Téléchargement du fichier depuis le serveur
 def download_file(file_name: str, extension: str):

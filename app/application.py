@@ -49,16 +49,17 @@ from habilitations import (validate_habilitation, ADMINISTRATEUR, GESTIONNAIRE, 
 # Imports liés à l'application
 from config import Config
 from models import Base
-from docs import print_document, delete_file, create_name, upload_file, download_file
+from docs import print_document, delete_file, create_name, upload_file, download_file, exchange_files, rename_file
 from models import User, Contract, Event, Document
 from rapport_echeances import envoi_contrats_renego
 
 # Imports standards
-from typing import List, Dict, Any, cast, Optional, Tuple
+from typing import List, Dict, Any, cast, Optional, Tuple, overload, Literal, Union
 from hashlib import sha256
-from os.path import splitext
+from os.path import splitext, dirname, join as join_os
 import logging
 from datetime import datetime
+import json
 
 # Configuration du logger
 logging.basicConfig(
@@ -214,6 +215,35 @@ class UsersMethods:
             message = f'Erreur lors de la mise à jour du compteur d\'essais : {e}'
         return message
 
+@overload
+def get_jsoned_datas(file: str, level_one: str, level_two: Optional[str],
+                     dumped: Literal[True]) -> str: ...
+@overload
+def get_jsoned_datas(file: str, level_one: str, level_two: Optional[str],
+                     dumped: Literal[False] = False) -> Union[Dict[str, Any], list[Any]]: ...
+
+def get_jsoned_datas(file: str, level_one: str, level_two: Optional[str] = None, dumped: bool = False
+                     ) -> Union[str, Dict[str, Any], list[Any]]:
+    """
+    Récupère les menus depuis le fichier JSON et les convertit en chaîne JSON.
+    Args:
+        file (str): Le nom du fichier JSON.
+        level_one (str): Le niveau un à récupérer dans le JSON.
+        level_two (Optional[str]): Le niveau deux à récupérer dans le JSON (optionnel).
+        dumped (Optional[bool]): Si True, retourne une chaîne JSON, sinon retourne un dictionnaire ou une liste.
+    Returns:
+        str ou Dict[str, Any] ou List[Any]: Les menus au format JSON ou en tant que structure de données Python.
+    """
+    with open(join_os(dirname(__file__), 'json', file), 'r', encoding='utf-8') as f:
+        data = json.load(f)
+        if level_two is None:
+            menus_json = data[1][level_one]
+        else:
+            menus_json = data[1][level_one][0][level_two]
+    if dumped:
+        return json.dumps(menus_json, ensure_ascii=False)
+    return menus_json
+
 @peraudiere.before_request
 def before_request() -> Any:
     """
@@ -276,57 +306,7 @@ def home() -> str | Response:
         habilitation_levels = list(map(int, str(habilitation)))
 
         # définition des sections disponibles en fonction des habilitations
-        sections: List[Dict[str, str | int]] = [
-            {
-                'classe': 1,
-                'titre': 'Gestion des droits',
-                'descriptif': 'Permet de gérer/créer/supprimer les droits des utilisateurs de l\'Intranet',
-                'buttonid': 'Gdr',
-                'onclick': 'gestion_droits'
-            },
-            {
-                'classe': 2,
-                'titre': 'Gestion des utilisateurs',
-                'descriptif': 'Permet de gérer les utilisateurs déjà existant de l\'Intranet',
-                'buttonid': 'Gdu',
-                'onclick': 'gestion_utilisateurs'
-            },
-            {
-                'classe': 2,
-                'titre': 'Gestion des contrats',
-                'descriptif': 'Permet de gérer/accéder aaux contrats en cours pour l\'établissement et d\'en gérer les documents et évènements',
-                'buttonid': 'Ddc',
-                'onclick': 'contrats'
-            },
-            {
-                'classe': 3,
-                'titre': RESERVED_SPACE,
-                'descriptif': 'Espace réservé pour les professeurs principaux des classes (en construction)',
-                'buttonid': 'Erpp',
-                'onclick': 'erpp'
-            },
-            {
-                'classe': 4,
-                'titre': RESERVED_SPACE,
-                'descriptif': 'Espace réservé pour les professeurs de l\'établissement (en construction)',
-                'buttonid': 'Erp',
-                'onclick': 'erp'
-            },
-            {
-                'classe': 6,
-                'titre': 'Espace impressions',
-                'descriptif': 'Espace de lancement des impressions à distance',
-                'buttonid': 'Ei',
-                'onclick': 'ei'
-            },
-            {
-                'classe': 5,
-                'titre': RESERVED_SPACE,
-                'descriptif': 'Espace réservé pour les élèves de l\'établissement (en construction)',
-                'buttonid': 'Ere',
-                'onclick': 'ere'
-            }
-        ]
+        sections = get_jsoned_datas(file='modules.json', level_one='modules', dumped=False)
 
         # Retourne la page d'accueil avec les informations utilisateur et les sections disponibles
         return render_template('index.html', prenom=prenom, nom=nom, habilitation_levels=habilitation_levels,
@@ -433,21 +413,6 @@ def gestion_utilisateurs(message: Optional[str] = None, success_message: Optiona
     users.sort(key=lambda x: (x.nom, x.prenom))
     return render_template('gestion_utilisateurs.html', users=users, message=message,
                            success_message=success_message, error_message=error_message)
-
-@peraudiere.route('/gestion-documents')
-@validate_habilitation(GESTIONNAIRE)
-def gestion_documents(message: Optional[str] = None, success_message: Optional[str] = None,
-                     error_message: Optional[str] = None) -> str | Response:
-    """
-    Route pour la gestion des documents.
-    Gère l'affichage et la modification des documents.
-    Args:
-        None
-    Returns:
-        Response: La page de gestion des documents.
-    """
-    return render_template('gestion_documents.html', message=message, success_message=success_message,
-                           error_message=error_message)
 
 @peraudiere.route('/erpp')
 @validate_habilitation(PROFESSEURS_PRINCIPAUX)
@@ -723,10 +688,19 @@ def contrats() -> ResponseReturnValue:
         # Récupération de la liste des contrats
         contracts = g.db_session.query(Contract).all()
 
+        # Récupération des menus depuis le fichier JSON
+        menus: str = get_jsoned_datas(file='menus.json',
+                                      level_one='types et sous-types',
+                                      level_two='Contrats',
+                                      dumped=True)
+        with open(join_os(dirname(__file__), 'json', 'menus.json'), 'r', encoding='utf-8') as f:
+            menus = json.load(f)[1]["types et sous-types"][0]["Contrats"]
+            menus = json.dumps(menus, ensure_ascii=False)
+
         # Retourne la page de gestion des contrats et des messages éventuels
         return render_template('contrats.html', contracts=contracts, message=message,
-                               success_message=success_message, error_message=error_message)
-    
+                               success_message=success_message, error_message=error_message, menus_data=menus)
+
     # === Gestion de la méthode POST (ajout d'un nouveau contrat) ===
     elif request.method == 'POST':
         # Récupération des données du formulaire
@@ -785,9 +759,14 @@ def contrats_by_num(id_contrat: int) -> ResponseReturnValue:
         events = list(g.db_session.query(Event).filter(Event.id_contrat == id_contrat))
         documents = list(g.db_session.query(Document).filter(Document.id_contrat == id_contrat))
 
+        # Récupération des filtres depuis le fichier JSON
+        document_typing = get_jsoned_datas(file='menus.json', level_one='types et sous-types', level_two='Contrats', dumped=False)
+        event_typing = get_jsoned_datas(file='menus.json', level_one='types et sous-types', level_two='Evènements', dumped=False)
+
         # Affichage de la page de détail du contrat
         return render_template('contrat_detail.html', contract=contract, events=events, documents=documents,
-                               message=message, success_message=success_message, error_message=error_message)
+                               message=message, success_message=success_message, error_message=error_message,
+                               document_typing=document_typing, event_typing=event_typing)
 
     # === Gestion de la méthode POST (modification du contrat) ===
     elif request.method == 'POST' and request.form.get('_method') == 'PUT':
@@ -995,39 +974,36 @@ def modif_document_id(id_document: int, id_contrat: int) -> ResponseReturnValue:
         type_document = req.form.get(f'TypeD{id_document}', '')
         sous_type_document = req.form.get(f'STypeD{id_document}', '')
         document.descriptif = req.form.get(f'descriptifD{id_document}', '')
-        document_binaire: Any = req.files.get(f'documentD{id_document}', None)
+        new_binary_document: Any = req.files.get(f'documentD{id_document}', None)
+        str_lien = req.form.get(f'strLienD{id_document}', '')
 
-        # Création du nom du fichier si un nouveau document a été uploadé
-        if document_binaire and document_binaire.filename != '':
+        # Documents à détruire
+        if document.type_document != type_document or document.sous_type_document != sous_type_document or document.date_document != date_document:
+            document.date_document = date_document
+            document.type_document = type_document
+            document.sous_type_document = sous_type_document
             name = create_name(date_document, str(id_contrat), str(id_document), sous_type_document)
-            extention = splitext(str(document_binaire.filename))[1]
-            doc_to_delete_lien = document.str_lien
-            doc_to_delete_name = document.name
-
-        # Sinon, on garde l'ancien nom
-        else:
-            str_lien = req.form.get(f'strLienD{id_document}', '')
-            complet_name = str_lien.split('_')[3]
-            name = create_name(date_document, str(id_contrat), str(id_document), sous_type_document)
-            extention = complet_name.split('.')[1]
-            doc_to_delete_lien = None
-            doc_to_delete_name = None
-        lien_document = name + extention
-
-        # Mise à jour des informations du document
-        document.date_document = date_document
-        document.type_document = type_document
-        document.sous_type_document = sous_type_document
-        document.str_lien = lien_document
-        document.name = name
+            if new_binary_document and new_binary_document.filename != '':
+                extention = splitext(str(new_binary_document.filename))[1]
+                exchange_files(old_file_name=document.str_lien, new_file=new_binary_document,
+                               new_file_name=name, extension=extention)
+            else:
+                extention = splitext(str_lien)[1]
+                rename_file(old_file_name=document.str_lien, new_file_name=name, extension=extention)
+            document.name = name
+            document.str_lien = name + extention
+        elif new_binary_document and new_binary_document.filename != '':
+            name = splitext(document.str_lien)[0]
+            extention = splitext(str(new_binary_document.filename))[1]
+            exchange_files(old_file_name=document.str_lien, new_file=new_binary_document,
+                            new_file_name=name, extension=extention)
+            document.str_lien = name + extention
+            document.name = name
 
         # Mise à jour du document dans la base de données
         g.db_session.commit()
 
-        # Suppression de l'ancien document si un nouveau a été uploadé
-        if doc_to_delete_lien and doc_to_delete_name:
-            delete_file(doc_to_delete_name, splitext(doc_to_delete_lien)[1])
-            upload_file(document_binaire, name, extention)
+        return None
 
     # === Gestion de la méthode POST (modification d'un document) ===
     if request.method == 'POST' and request.form.get('_method') == 'PUT':

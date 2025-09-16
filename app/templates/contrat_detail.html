@@ -263,12 +263,9 @@
                             <!-- Type de l'évènement -->
                             <div class="mb-3">
                                 <label for="TypeE0" class="form-label">Type *</label>
-                                <select name="TypeE0" class="form-control" id="TypeE0" data-event-id="0" onchange="updateSousMenuEvent(this)" data-contract-id="0" required>
-                                    <option value=""></option>
-                                    <option value="Gestion">Gestion</option>
-                                    <option value="Contact">Contact</option>
-                                    <option value="Contrat">Contrat</option>
-                                    <option value="Autre">Autre</option>
+                                <select name="TypeE0" class="form-control" id="TypeE0" data-event-id="0" onchange="updateSousMenuEvent(this, menusEvents)"
+                                        data-contract-id="0" required>
+                                    <!-- Mise à jour dynamique par JavaScript des options du menu déroulant -->
                                 </select>
                             </div>
                             <!-- Sous-Type de l'évènement -->
@@ -278,10 +275,10 @@
                                     <option value=""></option>
                                 </select>
                             </div>
-                            <!-- Descriptif du document -->
+                            <!-- Descriptif de l'évènement -->
                             <div class="mb-3">
                                 <label for="descriptifE" class="form-label">Descriptif *</label>
-                                <textarea name="descriptifE" rows="4" id="descriptifE" class="form-control" required></textarea>
+                                <textarea name="descriptifE" rows="4" id="descriptifE" class="form-control" data-stype-event-value="" required></textarea>
                             </div>
                             <button type="submit" class="btn btn-primary">Ajouter</button>
                         </form>
@@ -311,17 +308,15 @@
                             <!-- Type du document -->
                             <div class="mb-3">
                                 <label for="TypeD0" class="form-label">Type *</label>
-                                <select name="TypeD0" class="form-control" id="TypeD0" data-event-id="0" onchange="updateSousMenuDocument(this)" data-contract-id="0" required>
-                                    <option value=""></option>
-                                    <option value="Contact">Contact</option>
-                                    <option value="Contrat">Contrat</option>
-                                    <option value="Autre">Autre</option>
+                                <select name="TypeD0" class="form-control" id="TypeD0" data-document-id="0" onchange="updateSousMenuDocument(this, menusDocuments)"
+                                        data-contract-id="0" required>
+                                    <!--  Mise à jour dynamique par JavaScript des options du menu déroulant -->
                                 </select>
                             </div>
                             <!-- Sous-Type du document -->
                             <div class="mb-3">
                                 <label for="STypeD0" class="form-label">Sous-Type *</label>
-                                <select name="STypeD0" class="form-control" id="STypeD0" required>
+                                <select name="STypeD0" class="form-control" id="STypeD0" data-stype-document-value="" required>
                                     <option value=""></option>
                                 </select>
                             </div>
@@ -367,25 +362,25 @@
                                 <label for="dateEvenementE{{ event['id'] }}" class="form-label">Date *</label>
                                 <input type="date" class="form-control" name="dateEvenementE{{ event['id'] }}" id="dateEvenementE{{ event['id'] }}" value="{{ event['date_evenement'] }}">
                             </div>
-                            <!-- Type du document -->
+                            <!-- Type d'évènement -->
                             <div class="mb-3">
                                 <label for="TypeE{{ event['id'] }}" class="form-label">Type *</label>
-                                <select name="TypeE{{ event['id'] }}" class="form-control" id="TypeE{{ event['id'] }}" data-event-id="{{ event['id'] }}" onchange="updateSousMenuEvent(this)" data-contract-id="0" required>
-                                    <option value="" {% if event['type_evenement'] == "" %}selected{% endif %}></option>
-                                    <option value="Gestion" {% if event['type_evenement'] == "Gestion" %}selected{% endif %}>Gestion</option>
-                                    <option value="Contact" {% if event['type_evenement'] == "Contact" %}selected{% endif %}>Contact</option>
-                                    <option value="Contrat" {% if event['type_evenement'] == "Contrat" %}selected{% endif %}>Contrat</option>
-                                    <option value="Autre" {% if event['type_evenement'] == "Autre" %}selected{% endif %}>Autre</option>
+                                <select name="TypeE{{ event['id'] }}" class="form-control" id="TypeE{{ event['id'] }}" data-event-id="{{ event['id'] }}"
+                                        data-event-type-value="{{ event['type_evenement'] }}" onchange="updateSousMenuEvent(this, menusEvents)"
+                                        data-contract-id="{{ event['id_contrat'] }}" required>
+                                    <!-- Mise à jour dynamique par JavaScript des options du menu déroulant -->
                                 </select>
                             </div>
-                            <!-- Sous-Type du document -->
+                            <!-- Sous-Type d'évènement -->
                             <div class="mb-3">
                                 <label for="STypeE{{ event['id'] }}" class="form-label">Sous-Type *</label>
-                                <select name="STypeE{{ event['id'] }}" class="form-control" id="STypeE{{ event['id'] }}" required>
+                                <select name="STypeE{{ event['id'] }}" class="form-control" id="STypeE{{ event['id'] }}" onfocus="updateSousMenuEvent(this, menusEvents)"
+                                        data-event-id="{{ event['id'] }}" data-stype-event-value="{{ event['sous_type_evenement'] }}"
+                                        data-contract-id="{{ event['id_contrat'] }}" required>
                                     <option value="{{ event['sous_type_evenement'] }}" selected>{{ event['sous_type_evenement'] }}</option>
                                 </select>
                             </div>
-                            <!-- Descriptif du document -->
+                            <!-- Descriptif de l'évènement -->
                             <div class="mb-3">
                                 <label for="descriptifE{{ event['id'] }}" class="form-label">Descriptif *</label>
                                 <textarea name="descriptifE{{ event['id'] }}" id="descriptifE{{ event['id'] }}" rows="10" id="descriptifE{{ event['id'] }}" class="form-control" required>{{ event['descriptif'] }}</textarea>
@@ -423,17 +418,18 @@
                             <!-- Type du document -->
                             <div class="mb-3">
                                 <label for="TypeD{{ document['id'] }}" class="form-label">Type *</label>
-                                <select name="TypeD{{ document['id'] }}" class="form-control" id="TypeD{{ document['id'] }}" data-event-id="{{ document['id'] }}" onchange="updateSousMenuDocument(this)" data-contract-id="0" required>
-                                    <option value="" {% if document['type_document'] == "" %}selected{% endif %}></option>
-                                    <option value="Contact" {% if document['type_document'] == "Contact" %}selected{% endif %}>Contact</option>
-                                    <option value="Contrat" {% if document['type_document'] == "Contrat" %}selected{% endif %}>Contrat</option>
-                                    <option value="Autre" {% if document['type_document'] == "Autre" %}selected{% endif %}>Autre</option>
+                                <select name="TypeD{{ document['id'] }}" class="form-control" id="TypeD{{ document['id'] }}" data-document-id="{{ document['id'] }}"
+                                        data-document-type-value="{{ document['type_document'] }}" onfocus="updateSousMenuDocument(this, menusDocuments)"
+                                        data-contract-id="{{ document['id_contrat'] }}" required>
+                                    <!-- Mise à jour des options dynamique au chargement de la page par JavaScript -->
                                 </select>
                             </div>
                             <!-- Sous-Type du document -->
                             <div class="mb-3">
                                 <label for="STypeD{{ document['id'] }}" class="form-label">Sous-Type *</label>
-                                <select name="STypeD{{ document['id'] }}" class="form-control" id="STypeD{{ document['id'] }}" required>
+                                <select name="STypeD{{ document['id'] }}" class="form-control" id="STypeD{{ document['id'] }}"
+                                        data-stype-document-value="{{ document['sous_type_document'] }}" data-document-id="{{ document['id'] }}"
+                                        onfocus="updateSousMenuDocument(this, menusDocuments)" required>
                                     <option value="{{ document['sous_type_document'] }}" selected>{{ document['sous_type_document'] }}</option>
                                 </select>
                             </div>
@@ -464,7 +460,11 @@
         <p>© 2025 - La Péraudière - Tous droits réservés</p>
     </footer>
     <!--Scripts Propriétaire-->
-    <Script src="{{ url_for('static', filename='js/evenements.js') }}"></Script>
+    <script>
+        const menusDocuments = {{ document_typing|safe }};
+        const menusEvents = {{ event_typing|safe }};
+    </script>
+    <Script src="{{ url_for('static', filename='js/contrats-details.js') }}"></Script>
     <!--Scripts Bootstrap-->
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>

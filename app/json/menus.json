@@ -1,0 +1,93 @@
+[
+    {
+        "métadonnées": {
+            "__version": "1.0",
+            "__auteur": "Rémi VERSCHUUR",
+            "date_de_création": "2025-09-16",
+            "description": "Menus de typages et de sous-typages"
+        }
+    },
+    {
+        "types et sous-types": [
+            {
+                "Contrats":{
+                    "": [
+                        ""
+                    ],
+                    "Finance": [
+                        "",
+                        "Banque",
+                        "Assurances",
+                        "Autre"
+                    ],
+                    "Juridique": [
+                        "",
+                        "Conseils",
+                        "Comptabilité",
+                        "Autre"
+                    ],
+                    "RH": [
+                        "",
+                        "Titulaires",
+                        "Bénévoles",
+                        "Administratifs",
+                        "Autre"
+                    ],
+                    "Matériel": [
+                        "",
+                        "Immobilier",
+                        "Matériel durable",
+                        "Matériel consomptible",
+                        "Informatique",
+                        "Autre"
+                    ],
+                    "Services": [
+                        "",
+                        "Prestations régulières",
+                        "Prestations à la demande",
+                        "Autre"
+                    ],
+                    "Autre": [
+                        "",
+                        "Autre"
+                    ]
+                },
+                "Evènements": {
+                    "": [
+                        ""
+                    ],
+                    "Gestion": [
+                        "",
+                        "Souscription",
+                        "Avenant",
+                        "Gestion",
+                        "Renégociation",
+                        "Résiliation",
+                        "Autre"
+                    ],
+                    "Contact": [
+                        "",
+                        "Visite",
+                        "Appel",
+                        "Mail",
+                        "SMS",
+                        "Courrier",
+                        "Autre"
+                    ],
+                    "Contrat": [
+                        "",
+                        "Devis",
+                        "Proposition",
+                        "Commande",
+                        "Contrat",
+                        "Autre"
+                    ],
+                    "Autre": [
+                        "",
+                        "Autre"
+                    ]
+                }
+            }
+        ]
+    }
+]
