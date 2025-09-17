@@ -20,6 +20,7 @@ Cette application web développée avec Flask permet la gestion complète d'un �
 ## 🏗️ Architecture
 
 ### Technologies utilisées
+
 - **Backend** : Flask 3.1.0 (Python 3.12)
 - **Base de données** : MariaDB (MySQL) 12.0.2
 - **ORM** : SQLAlchemy 2.0.38
@@ -29,7 +30,8 @@ Cette application web développée avec Flask permet la gestion complète d'un �
 - **Sécurité** : Hachage SHA-256, sessions Flask, HTTPS
 
 ### Structure du projet
-```
+
+```txt
 .
 ├── alembic/                # ⚗️ Migrations de la base de données
 ├── app/                    # 🐍 Application Flask principale
@@ -162,6 +164,7 @@ L'application utilise **MariaDB** avec 4 tables principales interconnectées :
 ### 📊 Structure détaillée des tables
 
 #### Table `99_Users` - Gestion des utilisateurs
+
 | Champ          | Type         | Description                |
 |----------------|--------------|----------------------------|
 | `id`           | INT(11) PK   | Identifiant unique         |
@@ -176,6 +179,7 @@ L'application utilise **MariaDB** avec 4 tables principales interconnectées :
 | `locked`       | BIT(1)       | Compte verrouillé (0/1)    |
 
 #### Table `01_Contrats` - Gestion des contrats
+
 | Champ               | Type         | Description               |
 |---------------------|--------------|---------------------------|
 | `id`                | INT(11) PK   | Identifiant unique        |
@@ -225,6 +229,7 @@ L'application utilise un système d'habilitations numérique flexible :
 | **6** | 🖨️ Impression            | Accès aux fonctions d'impression |
 
 **Combinaisons possibles :**
+
 - `126` = Super-admin + Admin + Impression
 - `234` = Admin + Prof principal + Prof
 - `56` = Élève + Impression
@@ -232,6 +237,7 @@ L'application utilise un système d'habilitations numérique flexible :
 ## ⭐ Fonctionnalités Principales
 
 ### 🔐 Authentification et Sécurité
+
 - [x] **Connexion sécurisée** avec hachage SHA-256 (modifications à venir Argon2)
 - [x] **Système anti-brute force** : limitation à 3 tentatives
 - [x] **Verrouillage automatique** des comptes après échecs
@@ -240,6 +246,7 @@ L'application utilise un système d'habilitations numérique flexible :
 - [x] **Validation des entrées** côté serveur
 
 ### 👥 Gestion des Utilisateurs
+
 - [x] **CRUD complet** : Création, lecture, modification, suppression
 - [x] **Système d'habilitations** multi-niveaux (1-6)
 - [x] **Déverrouillage de comptes** par les administrateurs
@@ -248,6 +255,7 @@ L'application utilise un système d'habilitations numérique flexible :
 - [x] **Recherche et filtres** avancés
 
 ### 📋 Gestion des Contrats
+
 - [x] **Création de contrats** avec formulaires structurés
 - [x] **Suivi des échéances** (début, préavis, fin)
 - [x] **Classification** par type et sous-type
@@ -256,6 +264,7 @@ L'application utilise un système d'habilitations numérique flexible :
 - [x] **Tableau de bord** avec indicateurs
 
 ### 📄 Gestion Documentaire
+
 - [x] **Upload sécurisé** de fichiers multiples
 - [x] **Nomenclature automatique** des documents
 - [x] **Classification** par type et sous-type
@@ -265,6 +274,7 @@ L'application utilise un système d'habilitations numérique flexible :
 - [x] **Versioning** et historique des documents
 
 ### 📅 Gestion des Événements
+
 - [x] **Ajout d'événements** liés aux contrats
 - [x] **Chronologie interactive** des événements
 - [x] **Classification** des types d'événements
@@ -273,6 +283,7 @@ L'application utilise un système d'habilitations numérique flexible :
 - [x] **Export** des données au format CSV/PDF
 
 ### 🖨️ Impression à Distance
+
 - [x] **Upload et impression** de documents
 - [x] **Configuration avancée** des paramètres :
   - Nombre de copies (1-100)
@@ -286,6 +297,7 @@ L'application utilise un système d'habilitations numérique flexible :
 - [x] **Historique** des impressions par utilisateur
 
 ### 📊 Tableaux de Bord et Rapports
+
 - [x] **Dashboard principal** avec métriques clés
 - [x] **Graphiques interactifs** (contrats, échéances)
 - [x] **Rapports automatisés** d'échéances
@@ -294,6 +306,7 @@ L'application utilise un système d'habilitations numérique flexible :
 - [x] **Alertes visuelles** pour les actions urgentes
 
 ### 🌐 Interface Utilisateur
+
 - [x] **Design responsive** adaptatif mobile/desktop
 - [x] **Interface intuitive** avec navigation claire
 - [x] **Thème sombre/clair** selon préférences
@@ -306,6 +319,7 @@ L'application utilise un système d'habilitations numérique flexible :
 ### 📋 Liste de contrôle maintenance
 
 #### Vérifications quotidiennes
+
 - [ ] **État des conteneurs** : `docker-compose ps`
 - [ ] **Espace disque** disponible : `df -h`
 - [ ] **Logs d'erreurs** : `docker-compose logs --tail=50 web`
@@ -313,6 +327,7 @@ L'application utilise un système d'habilitations numérique flexible :
 - [ ] **Certificats SSL** (validité restante)
 
 #### Vérifications hebdomadaires
+
 - [ ] **Sauvegarde base de données** testée
 - [ ] **Rotation des logs** (si configurée)
 - [ ] **Mises à jour de sécurité** Docker
@@ -320,6 +335,7 @@ L'application utilise un système d'habilitations numérique flexible :
 - [ ] **Nettoyage** des fichiers temporaires
 
 #### Vérifications mensuelles
+
 - [ ] **Sauvegarde complète** du système
 - [ ] **Test de restauration** des sauvegardes
 - [ ] **Mise à jour** des dépendances Python
@@ -329,6 +345,7 @@ L'application utilise un système d'habilitations numérique flexible :
 ### 📊 Monitoring et Logs
 
 Consulter les logs en temps réel
+
 ```bash
 docker-compose logs -f web          # Logs application
 docker-compose logs -f db           # Logs base de données  
@@ -346,6 +363,7 @@ docker-compose top                  # Processus actifs
 ### 💾 Stratégie de Sauvegarde
 
 #### Sauvegarde automatique quotidienne
+
 ```bash
 #!/bin/bash
 # Script de sauvegarde à programmer dans crontab
@@ -371,6 +389,7 @@ find $BACKUP_DIR -name "*.tar.gz" -mtime +30 -delete
 ```
 
 #### Restauration d'urgence
+
 ```bash
 # Restaurer la base de données
 docker-compose exec -T db mysql -u root -p$(grep ROOT_PASSWORD .env | cut -d'=' -f2) $(grep DB_NAME .env | cut -d'=' -f2) < backup_file.sql
@@ -385,6 +404,7 @@ docker-compose restart
 ### 🔄 Mise à jour de l'Application
 
 #### Procédure de mise à jour
+
 ```bash
 # 1. Sauvegarder avant mise à jour
 ./backup-script.sh
@@ -417,6 +437,7 @@ curl -I http://localhost    # Test de connectivité
 ### 🛡️ Sécurité et Bonnes Pratiques
 
 #### Configuration sécurisée
+
 - [ ] **Mots de passe forts** : utilisez `generate-env.sh`
 - [ ] **SECRET_KEY unique** : changez régulièrement
 - [ ] **HTTPS activé** : certificats SSL valides
@@ -424,6 +445,7 @@ curl -I http://localhost    # Test de connectivité
 - [ ] **Mises à jour régulières** : système et conteneurs
 
 #### Permissions fichiers
+
 ```bash
 # Sécuriser les fichiers de configuration
 chmod 600 .env
@@ -436,6 +458,7 @@ chmod 755 $(grep FILES_LOCAL_PATH .env | cut -d'=' -f2)
 ```
 
 #### Audit de sécurité
+
 ```bash
 # Vérifier les ports ouverts
 netstat -tlnp | grep :80
@@ -452,7 +475,9 @@ grep "403\|404\|500" docker-compose logs nginx
 ### 🚨 Procédures d'Urgence
 
 #### En cas de panne
+
 1. **Diagnostic rapide**
+
    ```bash
    - [ ] docker-compose ps                    # État des conteneurs
    - [ ] docker-compose logs --tail=20 web    # Erreurs récentes
@@ -461,12 +486,14 @@ grep "403\|404\|500" docker-compose logs nginx
    ```
 
 2. **Redémarrage d'urgence**
+
    ```bash
    - [ ] docker-compose down
    - [ ] docker-compose up -d
    ```
 
 3. **Restauration complète**
+
    ```bash
    - [ ] docker-compose down -v              # Arrêt + suppression volumes
    - [ ] docker system prune -a              # Nettoyage complet
@@ -475,6 +502,7 @@ grep "403\|404\|500" docker-compose logs nginx
    ```
 
 #### Contacts d'urgence
+
 - [ ] **Administrateur système** : [Rémi Verschuur, remiv1@gmail.com]
 - [ ] **Développeur** : [Rémi Verschuur, remiv1@gmail.com]
 - [ ] **Support infrastructure** : [Rémi Verschuur, remiv1@gmail.com]
@@ -484,7 +512,8 @@ grep "403\|404\|500" docker-compose logs nginx
 ### 🏗️ Architecture du Code
 
 #### Structure modulaire
-```
+
+```txt
 app/
 ├── __init__.py          # 🚀 Initialisation Flask + configuration
 ├── models.py            # 🗄️ Modèles SQLAlchemy (Tables BDD)
@@ -503,6 +532,7 @@ app/
 ```
 
 #### Patterns utilisés
+
 - [x] **MVC** : Séparation Models/Views/Controllers
 - [x] **Repository Pattern** : Accès aux données centralisé
 - [x] **Factory Pattern** : Création de l'application Flask
@@ -512,6 +542,7 @@ app/
 ### 🔧 Guide de Développement
 
 #### Configuration de l'environnement de développement
+
 ```bash
 # Cloner le projet
 git clone https://github.com/remiv1/Intranet.git
@@ -530,6 +561,7 @@ nano .env.dev  # Adapter pour environnement local
 ```
 
 #### Lancement en mode développement
+
 ```bash
 # Variables d'environnement de développement
 export FLASK_ENV=development
@@ -545,6 +577,7 @@ docker-compose -f docker-compose.dev.yml up
 ### 📝 Ajout de Nouvelles Fonctionnalités
 
 #### 1. Nouveau modèle de données
+
 ```python
 # Dans app/models.py
 class NouveauModele(db.Model):
@@ -556,6 +589,7 @@ class NouveauModele(db.Model):
 ```
 
 #### 2. Nouvelles routes
+
 ```python
 # Dans app/routes.py
 @app.route('/nouvelle-fonctionnalite')
@@ -567,6 +601,7 @@ def nouvelle_fonctionnalite():
 ```
 
 #### 3. Nouveau template
+
 ```html
 <!-- Dans app/templates/nouvelle_page.html -->
 {% extends "base.html" %}
@@ -577,6 +612,7 @@ def nouvelle_fonctionnalite():
 ```
 
 #### 4. Tests unitaires
+
 ```python
 # Dans tests/test_nouvelle_fonctionnalite.py
 import unittest
@@ -595,6 +631,7 @@ class TestNouvelleFonctionnalite(unittest.TestCase):
 ### 🔍 Débogage et Tests
 
 #### Logs de développement
+
 ```python
 # Utilisation du logger Flask
 import logging
@@ -608,6 +645,7 @@ app.logger.error("Erreur")
 ```
 
 #### Tests automatisés
+
 ```bash
 # Exécution des tests
 python -m pytest tests/
@@ -621,6 +659,7 @@ python -m pytest tests/test_routes.py
 ### 📊 Métriques et Performance
 
 #### Monitoring de performance
+
 ```python
 # Profiling des requêtes SQL
 from flask_sqlalchemy import get_debug_queries
@@ -634,6 +673,7 @@ def after_request(response):
 ```
 
 #### Optimisations recommandées
+
 - [ ] **Index BDD** : sur les clés étrangères et champs de recherche
 - [ ] **Cache Redis** : pour les requêtes fréquentes
 - [ ] **Compression** : GZIP pour les réponses HTTP
@@ -643,6 +683,7 @@ def after_request(response):
 ### 🐛 Résolution de Problèmes Courants
 
 #### Problème : Base de données inaccessible
+
 ```bash
 # Diagnostic
 docker-compose ps db                           # Conteneur actif ?
@@ -650,11 +691,13 @@ docker-compose logs db                         # Logs d'erreur ?
 docker-compose exec db mysql -u root -p        # Connexion directe
 ```
 
-* Solution
+**Solution** :
+
 - [ ] Vérifier les variables d'environnement
 - [ ] Redémarrer le conteneur : docker-compose restart db
 
 #### Problème : Permissions insuffisantes
+
 ```sql
 // Vérifier les habilitations utilisateur
 SELECT habilitation FROM 99_Users WHERE identifiant='user';
@@ -664,6 +707,7 @@ UPDATE 99_Users SET habilitation=126 WHERE identifiant='admin';
 ```
 
 #### Problème : Certificats SSL expirés
+
 ```bash
 # Vérifier l'expiration
 openssl x509 -in app/nginx/certs/cert.pem -text -noout | grep "Not After"
@@ -676,14 +720,14 @@ docker-compose restart nginx
 ### 📞 Support et Communauté
 
 #### Canaux de support
+
 - [x] **GitHub Issues** : Bugs et demandes de fonctionnalités
 - [x] **Documentation** : Wiki du projet
-- [x] **Email** : Contact direct développeur
-- [x] **Chat** : Support temps réel (si configuré)
+- [x] **Email** : [contact](remiv1@gmail.com)
 
 #### Contribution au projet
 
-* Fork et contribution :
+Fork et contribution :
 
 - [ ] Fork du projet sur GitHub
 - [ ] git checkout -b nouvelle-fonctionnalite
@@ -704,19 +748,21 @@ docker-compose restart nginx
 
 ## 🎯 Informations Projet
 
-*Développé avec ❤️ pour l'éducation*
+**Développé avec ❤️ pour l'éducation** :
 
 Ce projet open-source a été créé bénévolement pour répondre aux besoins spécifiques de gestion d'un établissement scolaire. Il évoluera selon les retours d'expérience et les contributions de la communauté.
 
 ### 📈 Roadmap
 
 #### Version actuelle : 1.0
+
 - [x] Gestion complète des contrats
 - [x] Système d'impression à distance  
 - [x] Interface responsive
 - [x] Sécurité renforcée
 
 #### Version future : 2.0
+
 - [ ] API REST complète
 - [ ] Application mobile
 - [ ] Intégration calendrier
@@ -726,6 +772,7 @@ Ce projet open-source a été créé bénévolement pour répondre aux besoins s
 ### 🤝 Remerciements
 
 Merci à tous les contributeurs qui ont permis à ce projet de voir le jour et d'évoluer :
+
 - Équipe pédagogique de l'établissement
 - Développeurs bénévoles
 - Testeurs et utilisateurs finaux
