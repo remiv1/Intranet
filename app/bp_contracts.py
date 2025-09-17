@@ -21,15 +21,15 @@ Routes disponibles (prefixe '/contrats') :
 from flask import Blueprint, render_template, request, g, redirect, url_for
 from flask.typing import ResponseReturnValue
 from utilities import (
-    get_jsoned_datas, NOT_ALLOWED, JSON_MENUS, TYPINGS, ACCUEIL_CONTRAT, DETAIL_CONTRAT,
-    check_changements, update_files
+    get_jsoned_datas, NOT_ALLOWED, JSON_MENUS, TYPINGS, ACCUEIL_CONTRAT, DETAIL_CONTRAT
     )
 from models import Contract, Event, Document, Bill
-from typing import Any, Dict
-from os.path import splitext
+from typing import Any
 from habilitations import validate_habilitation, GESTIONNAIRE
-from docs import create_name, upload_file, download_file
+from docs import download_file
+from logging import getLogger
 
+log = getLogger(__name__)
 
 contracts_bp = Blueprint('contracts_bp', __name__, url_prefix='/contrats')
 
@@ -233,35 +233,19 @@ def add_contrats_document(id_contrat: int) -> ResponseReturnValue:
         type_document = request.form.get('TypeD0', '')
         sous_type_document = request.form.get('STypeD0', '')
         descriptif = request.form.get('descriptifD', '')
-        document_binaire: Any = request.files.get('documentD', None)
+        binary_file: Any = request.files.get('documentD', None)
         try:
-            # Récupération du dernier élément
-            last_doc = g.db_session.query(Document).order_by(Document.id.desc()).first()
-            if last_doc:
-                id_document = last_doc.id + 1
-            else:
-                id_document = 1
-
-            # Création du nom du fichier
-            extention: str = splitext(str(document_binaire.filename))[1]
-            name = create_name(date_document, str(id_contrat), str(id_document), sous_type_document)
-            lien_document = name + extention
-
             # Création du document dans la base de données
-            document = Document(id_contrat = id_contrat,
-                                type_document = type_document,
-                                sous_type_document = sous_type_document,
-                                descriptif = descriptif,
-                                str_lien = lien_document,
-                                date_document = date_document,
-                                name = name)
+            document = Document(id_contrat = id_contrat, date_document = date_document,
+                                type_document = type_document, sous_type_document = sous_type_document,
+                                descriptif = descriptif)
+            g.db_session.flush()  # Pour obtenir l'ID avant le commit
+            document.create_name(binary_file=binary_file)
+            document.upload(binary_file)
 
             # Ajout et Fermeture de la session
             g.db_session.add(document)
             g.db_session.commit()
-
-            # Enregistrement du fichier sur le serveur
-            upload_file(document_binaire, name, extention)
 
             # Retour du formulaire
             message = f'Document {document.str_lien} ajouté avec succès'
@@ -285,35 +269,28 @@ def add_contrats_bill(id_contrat: int) -> ResponseReturnValue:
     """
     tab = 'f'
     if request.method == 'POST':
-        # Récupération du dernier élément
-        last_bill = g.db_session.query(Bill).order_by(Bill.id.desc()).first()
-        if last_bill:
-            id_facture = last_bill.id + 1
-        else:
-            id_facture = 1
 
         # Récupération des données du formulaire
         date_facture = request.form.get('dateFactureF0', '')
         titre_facture = request.form.get('titreFactureF0', '')
         montant = request.form.get('montantFactureF0', '')
         binary_file: Any = request.files.get('documentF0', None)
-        extention = splitext(str(binary_file.filename))[1]
-        str_lien = create_name(date_facture, str(id_contrat), str(id_facture), 'Facture')
 
         try:
             # Création de la facture dans la base de données
             bill = Bill(id_contrat=id_contrat,
                         date_facture=date_facture,
                         titre_facture=titre_facture,
-                        montant=montant,
-                        lien=str_lien)
+                        montant=montant)
+            g.db_session.flush()  # Pour obtenir l'ID avant le commit
+            bill.create_name(binary_file=binary_file)
 
             # Ajout et Fermeture de la session
             g.db_session.add(bill)
             g.db_session.commit()
 
             # Enregistrement du fichier sur le serveur
-            upload_file(binary_file, str_lien, extention)
+            bill.upload(binary_file)
 
             # Retour du formulaire
             message = f'Facture {bill.titre_facture} ajoutée avec succès'
@@ -384,34 +361,31 @@ def modif_document_id(id_document: int, id_contrat: int) -> ResponseReturnValue:
         Response: Redirection vers la page de détail du contrat.
     """
     tab = 'd'
-    new_binary_document: Any = request.files.get(f'documentD{id_document}', None)
-    descriptif = request.form.get(f'descriptifD{id_document}', '')
+    new_binary_file: Any = request.files.get(f'documentD{id_document}', None)
 
     # === Gestion de la méthode POST (modification d'un document) ===
     if request.method == 'POST' and request.form.get('_method') == 'PUT':
         try:
             # Récupération du document
-            document = g.db_session.query(Document).filter(Document.id == id_document).first()
-            document.descriptif = descriptif
+            document: Document = g.db_session.query(Document).filter(Document.id == id_document).first()
 
-            # Vérification des changements
-            old_values: Dict[str, str] = {
-                'type_document': document.type_document,
-                'sous_type_document': document.sous_type_document,
-                'date_document': str(document.date_document),
-            }
-            new_values: Dict[str, str] = {
-                'type_document': request.form.get(f'TypeD{id_document}', ''),
-                'sous_type_document': request.form.get(f'STypeD{id_document}', ''),
-                'date_document': request.form.get(f'dateDocumentD{id_document}', ''),
-            }
-            context_changes = check_changements(old_values, new_values)
-            binary_changes = True if new_binary_document and new_binary_document.filename != '' else False
+            # Récupération des anciennes valeurs pour conversion du fichier
+            old_str_lien = document.str_lien or ''
 
-            # Mise à jour des informations du document
-            update_files(context_changes=context_changes, binary_changes=binary_changes, document_model=document,
-                         new_values=new_values, new_binary_document=new_binary_document,
-                         id_contrat=id_contrat, id_document=id_document)
+            # Mise à jour des valeurs du document
+            document.date_document = request.form.get(f'dateDocumentD{id_document}', '')
+            document.type_document = request.form.get(f'TypeD{id_document}', '')
+            document.sous_type_document = request.form.get(f'STypeD{id_document}', '')
+            document.descriptif = request.form.get(f'descriptifD{id_document}', '')
+            binary_changes = True if new_binary_file and new_binary_file.filename != '' else False
+            document.create_name(binary_file=new_binary_file) # Ancienne extension si pas de nouveau fichier
+            if binary_changes:
+                document.switch(file_to_switch=new_binary_file, old_file_name=old_str_lien)
+            else:
+                document.rename_file()
+
+            # Enregistrement en base de données
+            g.db_session.commit()
 
             # Message de succès et redirection
             message = f'Document {document.str_lien} modifié avec succès'
@@ -437,36 +411,33 @@ def modif_bill_id(id_bill: int, id_contrat: int) -> ResponseReturnValue:
         Response: Redirection vers la page de détail du contrat.
     """
     tab = 'f'
-    new_binary_document: Any = request.files.get(f'fileFactureF{id_bill}', None)
+    new_binary_file: Any = request.files.get(f'fileFactureF{id_bill}', None)
 
     # === Gestion de la méthode POST (modification d'une facture) ===
     if request.method == 'POST' and request.form.get('_method') == 'PUT':
-        # Récupération du formulaire
-        montant = request.form.get(f'montantFactureF{id_bill}', '')
-        binary_file: Any = request.files.get(f'fileFactureF{id_bill}', None)
 
         try:
             # Récupération de la facture
             bill: Bill = g.db_session.query(Bill).filter(Bill.id == id_bill).first()
 
-            # Vérification des changements
-            old_values: Dict[str, str] = {
-                'date_facture': bill.date_facture
-            }
-            new_values: Dict[str, str] = {
-                'date_facture': request.form.get(f'dateFactureF{id_bill}', '')
-            }
-            context_changes = check_changements(old_values, new_values)
-            binary_changes = True if new_binary_document and new_binary_document.filename != '' else False
+            # Récupération des anciennes valeurs pour conversion du fichier
+            old_str_lien = bill.str_lien or ''
 
-            # Récupération de la facture
+            # Mise à jour des valeurs de la facture
+            bill.date_facture = request.form.get(f'dateFactureF{id_bill}', '')
             bill.titre_facture = request.form.get(f'titreFactureF{id_bill}', '')
-            bill.montant = montant
+            bill.montant = request.form.get(f'montantFactureF{id_bill}', '')
+            binary_changes = True if new_binary_file and new_binary_file.filename != '' else False
+            bill.create_name(binary_file=new_binary_file) # Ancienne extension si pas de nouveau fichier
+            if binary_changes:
+                bill.switch(file_to_switch=new_binary_file, old_file_name=old_str_lien)
+            else:
+                bill.rename_file()
 
-            # Mise à jour des informations de la facture
-            update_files(context_changes=context_changes, binary_changes=binary_changes, bill_model=bill,
-                         new_values=new_values, new_binary_document=binary_file,id_contrat=id_contrat, id_bill=id_bill)
-            
+            # Enregistrement en base de données
+            g.db_session.commit()
+
+            # Message de succès et redirection
             message = f'Facture {bill.titre_facture} modifiée avec succès'
             return redirect(url_for(DETAIL_CONTRAT, id_contrat = id_contrat, success_message=message, tab=tab))
         except Exception as e:
@@ -482,6 +453,4 @@ def download_document(name: str) -> Any:
     Route pour le téléchargement d'un document.
     Gère le téléchargement d'un document depuis le serveur.
     """
-    extention = name.split('.')[1]
-    name = name.split('.')[0]
-    return download_file(file_name=name, extension=extention)
+    return download_file(file_name_with_ext=name)
