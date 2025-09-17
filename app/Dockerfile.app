@@ -19,9 +19,5 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY .env ./ 
 COPY app/ ./app/
 
-# Copie des fichiers Alembic pour les migrations
-COPY alembic.ini ./
-COPY alembic/ ./alembic/
-
 ENV FLASK_APP=app/run.py
 ENV FLASK_ENV=production
