@@ -40,7 +40,7 @@ def upload_file(file_to_upload: FileStorage, *, file_name: str):
     
     # Création du chemin du fichier sur le serveur
     extension = splitext(str(file_to_upload.filename))[1] or '.any'
-    file_name = secure_filename(file_name) + extension
+    file_name = secure_filename(splitext(file_name)[0]) + extension
     file_path = os.path.join(_get_folder(), file_name)
     
     # Enregistrement du fichier sur le serveur

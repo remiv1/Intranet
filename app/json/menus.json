@@ -86,6 +86,78 @@
                         "",
                         "Autre"
                     ]
+                },
+                "Documents": {
+                    "": [
+                        ""
+                    ],
+                    "Gestion": [
+                        "",
+                        "Souscription",
+                        "Avenant",
+                        "Gestion",
+                        "Renégociation",
+                        "Résiliation",
+                        "Autre"
+                    ],
+                    "Contact": [
+                        "",
+                        "Visite",
+                        "Appel",
+                        "Mail",
+                        "SMS",
+                        "Courrier",
+                        "Autre"
+                    ],
+                    "Contrats": [
+                        "",
+                        "Devis",
+                        "Proposition",
+                        "Commande",
+                        "Contrat",
+                        "Avenant",
+                        "Résiliation",
+                        "Autre"
+                    ],
+                    "Prestation": [
+                        "",
+                        "Bon de livraison",
+                        "Rapport d'intervention",
+                        "PV de réception",
+                        "Autre"
+                    ],
+                    "RH": [
+                        "",
+                        "Contrat de travail",
+                        "Fiche de paie",
+                        "Document administratif",
+                        "Autre"
+                    ],
+                    "Juridique": [
+                        "",
+                        "Statuts",
+                        "PV d'AG/CA/CE",
+                        "Document administratif",
+                        "Autre"
+                    ],
+                    "Finance": [
+                        "",
+                        "Relevé bancaire",
+                        "Document administratif",
+                        "Autre"
+                    ],
+                    "Matériel": [
+                        "",
+                        "Bon de commande",
+                        "Bon de livraison",
+                        "Facture d'achat",
+                        "Document administratif",
+                        "Autre"
+                    ],
+                    "Autre": [
+                        "",
+                        "Autre"
+                    ]
                 }
             }
         ]

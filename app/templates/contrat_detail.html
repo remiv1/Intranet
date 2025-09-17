@@ -225,8 +225,8 @@
                                         <td class="align-middle">{{ bill['titre_facture'] }}</td>
                                         <td class="align-middle">{{ bill['montant'] }} €</td>
                                         <td class="align-middle">
-                                            <a href="{{ url_for('contracts_bp.download_document', name=bill['lien']) }}" target="_blank">
-                                                {{ bill['lien'] }}
+                                            <a href="{{ url_for('contracts_bp.download_document', name=bill['str_lien']) }}" target="_blank">
+                                                {{ bill['str_lien'] }}
                                             </a>
                                         </td>
                                         <td class="align-middle">

@@ -3,6 +3,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import mapped_column
 from sqlalchemy.sql import func
 from werkzeug.datastructures import FileStorage
+from werkzeug.utils import secure_filename
 from typing import Optional
 from datetime import datetime
 from os.path import splitext
@@ -96,7 +97,7 @@ class Document(Base):
         sous_type_document = self.sous_type_document[:5] if self.sous_type_document else 'Docum'
         
         # Assemblage du nom complet et mise à jour des attributs
-        self.name = f'{str_date}_{id_contrat}_{id_document}_{sous_type_document}'
+        self.name = secure_filename(f'{str_date}_{id_contrat}_{id_document}_{sous_type_document}')
         self.str_lien = self.name + extention
         return self
 
@@ -172,8 +173,9 @@ class Document(Base):
         try:
             if self.str_lien:
                 from docs import exchange_files
+                self.create_name(binary_file=file_to_switch)
                 return exchange_files(old_file_name=old_file_name, new_file=file_to_switch,
-                                      new_file_name=self.name)
+                                      new_file_name=self.str_lien)
             else:
                 return False
         except Exception:
@@ -221,7 +223,7 @@ class Bill(Base):
         """
         Crée le nom de la facture en fonction de ses attributs.
         Format : JJMMYYYY_IDCONTRAT_IDFACTURE_TITREFACTURE
-        Exemple : 10062024_005_0001_Factu
+        Exemple : F10062024_005_0001_Factu
         Arguments : None
         Returns: self
         """
@@ -238,7 +240,7 @@ class Bill(Base):
         titre_facture = self.titre_facture[:5] if self.titre_facture else 'Factu'
 
         # Assemblage du nom complet et mise à jour des attributs
-        self.name = f'{str_date}_{id_contrat}_{id_bill}_{titre_facture}'
+        self.name = secure_filename(f'F{str_date}_{id_contrat}_{id_bill}_{titre_facture}')
         self.str_lien = self.name + extention
         return self
 
@@ -314,8 +316,9 @@ class Bill(Base):
         try:
             if self.str_lien:
                 from docs import exchange_files
+                self.create_name(binary_file=file_to_switch)
                 return exchange_files(old_file_name=old_file_name, new_file=file_to_switch,
-                                      new_file_name=self.name)
+                                      new_file_name=self.str_lien)
             else:
                 return False
         except Exception:

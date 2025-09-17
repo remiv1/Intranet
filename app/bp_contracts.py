@@ -128,7 +128,7 @@ def contrats_by_num(id_contrat: int) -> ResponseReturnValue:
         bills = list(g.db_session.query(Bill).filter(Bill.id_contrat == id_contrat))
 
         # Récupération des filtres depuis le fichier JSON
-        document_typing = get_jsoned_datas(file=JSON_MENUS, level_one=TYPINGS, level_two='Contrats', dumped=False)
+        document_typing = get_jsoned_datas(file=JSON_MENUS, level_one=TYPINGS, level_two='Documents', dumped=False)
         event_typing = get_jsoned_datas(file=JSON_MENUS, level_one=TYPINGS, level_two='Evènements', dumped=False)
 
         # Affichage de la page de détail du contrat
@@ -239,12 +239,12 @@ def add_contrats_document(id_contrat: int) -> ResponseReturnValue:
             document = Document(id_contrat = id_contrat, date_document = date_document,
                                 type_document = type_document, sous_type_document = sous_type_document,
                                 descriptif = descriptif)
+            g.db_session.add(document)
             g.db_session.flush()  # Pour obtenir l'ID avant le commit
             document.create_name(binary_file=binary_file)
             document.upload(binary_file)
 
             # Ajout et Fermeture de la session
-            g.db_session.add(document)
             g.db_session.commit()
 
             # Retour du formulaire
@@ -282,11 +282,11 @@ def add_contrats_bill(id_contrat: int) -> ResponseReturnValue:
                         date_facture=date_facture,
                         titre_facture=titre_facture,
                         montant=montant)
+            g.db_session.add(bill)
             g.db_session.flush()  # Pour obtenir l'ID avant le commit
             bill.create_name(binary_file=binary_file)
 
             # Ajout et Fermeture de la session
-            g.db_session.add(bill)
             g.db_session.commit()
 
             # Enregistrement du fichier sur le serveur
@@ -378,7 +378,6 @@ def modif_document_id(id_document: int, id_contrat: int) -> ResponseReturnValue:
             document.sous_type_document = request.form.get(f'STypeD{id_document}', '')
             document.descriptif = request.form.get(f'descriptifD{id_document}', '')
             binary_changes = True if new_binary_file and new_binary_file.filename != '' else False
-            document.create_name(binary_file=new_binary_file) # Ancienne extension si pas de nouveau fichier
             if binary_changes:
                 document.switch(file_to_switch=new_binary_file, old_file_name=old_str_lien)
             else:
@@ -428,7 +427,6 @@ def modif_bill_id(id_bill: int, id_contrat: int) -> ResponseReturnValue:
             bill.titre_facture = request.form.get(f'titreFactureF{id_bill}', '')
             bill.montant = request.form.get(f'montantFactureF{id_bill}', '')
             binary_changes = True if new_binary_file and new_binary_file.filename != '' else False
-            bill.create_name(binary_file=new_binary_file) # Ancienne extension si pas de nouveau fichier
             if binary_changes:
                 bill.switch(file_to_switch=new_binary_file, old_file_name=old_str_lien)
             else:
