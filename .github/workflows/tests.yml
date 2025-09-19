@@ -2,14 +2,17 @@ name: Tests CI/CD
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [ main, sprint* ]
   pull_request:
     branches: [ main ]
 
 jobs:
   test:
-    runs-on: debian-bookworm
+    runs-on: ubuntu-latest
     
+    container:
+      image: python:3.12.11-bookworm
+      
     strategy:
       matrix:
         python-version: [3.12]
@@ -71,7 +74,7 @@ jobs:
         fail_ci_if_error: false
 
   security-scan:
-    runs-on: debian-bookworm
+    runs-on: ubuntu-latest
     
     steps:
     - name: Checkout code
@@ -89,7 +92,7 @@ jobs:
         path: bandit-report.json
 
   dependency-check:
-    runs-on: debian-bookworm
+    runs-on: ubuntu-latest
     
     steps:
     - name: Checkout code
