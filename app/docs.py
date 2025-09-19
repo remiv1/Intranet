@@ -39,7 +39,10 @@ def upload_file(file_to_upload: FileStorage, *, file_name: str):
     _ensure_folder_exists()  # S'assurer que le dossier existe
     
     # Création du chemin du fichier sur le serveur
-    extension = splitext(str(file_to_upload.filename))[1] or '.any'
+    if file_to_upload.filename:
+        extension = splitext(file_to_upload.filename)[1] or '.any'
+    else:
+        extension = '.any'
     file_name = secure_filename(splitext(file_name)[0]) + extension
     file_path = os.path.join(_get_folder(), file_name)
     
