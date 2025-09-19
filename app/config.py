@@ -32,6 +32,7 @@ class Config:
     EMAIL_PASSWORD: str = os.getenv('EMAIL_PASSWORD', '')
     EMAIL_SMTP: str = os.getenv('EMAIL_SMTP', '')
     EMAIL_PORT: int = int(os.getenv('EMAIL_PORT', 587))
+    API_MAIL_TOKEN: str = os.getenv('API_MAIL_TOKEN', '')
 
 class ConfigDict(TypedDict, total=False):
     SECRET_KEY: str
