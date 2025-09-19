@@ -207,7 +207,7 @@ class Bill(Base):
     def __repr__(self) -> str:
         """Représentation textuelle de l'objet Facture."""
         return (f"<Bill(id={self.id}, id_contrat={self.id_contrat}, date_facture={self.date_facture}, "
-            f"titre_facture='{self.titre_facture}', montant={self.montant}, lien='{self.lien}')>")
+            f"titre_facture='{self.titre_facture}', montant={self.montant}, lien='{self.str_lien}')>")
     
     def _get_extension(self, binary_file: Optional[FileStorage]) -> str:
         """
