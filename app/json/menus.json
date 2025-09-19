@@ -1,0 +1,165 @@
+[
+    {
+        "métadonnées": {
+            "__version": "1.0",
+            "__auteur": "Rémi VERSCHUUR",
+            "date_de_création": "2025-09-16",
+            "description": "Menus de typages et de sous-typages"
+        }
+    },
+    {
+        "types et sous-types": [
+            {
+                "Contrats":{
+                    "": [
+                        ""
+                    ],
+                    "Finance": [
+                        "",
+                        "Banque",
+                        "Assurances",
+                        "Autre"
+                    ],
+                    "Juridique": [
+                        "",
+                        "Conseils",
+                        "Comptabilité",
+                        "Autre"
+                    ],
+                    "RH": [
+                        "",
+                        "Titulaires",
+                        "Bénévoles",
+                        "Administratifs",
+                        "Autre"
+                    ],
+                    "Matériel": [
+                        "",
+                        "Immobilier",
+                        "Matériel durable",
+                        "Matériel consomptible",
+                        "Informatique",
+                        "Autre"
+                    ],
+                    "Services": [
+                        "",
+                        "Prestations régulières",
+                        "Prestations à la demande",
+                        "Autre"
+                    ],
+                    "Autre": [
+                        "",
+                        "Autre"
+                    ]
+                },
+                "Evènements": {
+                    "": [
+                        ""
+                    ],
+                    "Gestion": [
+                        "",
+                        "Souscription",
+                        "Avenant",
+                        "Gestion",
+                        "Renégociation",
+                        "Résiliation",
+                        "Autre"
+                    ],
+                    "Contact": [
+                        "",
+                        "Visite",
+                        "Appel",
+                        "Mail",
+                        "SMS",
+                        "Courrier",
+                        "Autre"
+                    ],
+                    "Contrat": [
+                        "",
+                        "Devis",
+                        "Proposition",
+                        "Commande",
+                        "Contrat",
+                        "Autre"
+                    ],
+                    "Autre": [
+                        "",
+                        "Autre"
+                    ]
+                },
+                "Documents": {
+                    "": [
+                        ""
+                    ],
+                    "Gestion": [
+                        "",
+                        "Souscription",
+                        "Avenant",
+                        "Gestion",
+                        "Renégociation",
+                        "Résiliation",
+                        "Autre"
+                    ],
+                    "Contact": [
+                        "",
+                        "Visite",
+                        "Appel",
+                        "Mail",
+                        "SMS",
+                        "Courrier",
+                        "Autre"
+                    ],
+                    "Contrats": [
+                        "",
+                        "Devis",
+                        "Proposition",
+                        "Commande",
+                        "Contrat",
+                        "Avenant",
+                        "Résiliation",
+                        "Autre"
+                    ],
+                    "Prestation": [
+                        "",
+                        "Bon de livraison",
+                        "Rapport d'intervention",
+                        "PV de réception",
+                        "Autre"
+                    ],
+                    "RH": [
+                        "",
+                        "Contrat de travail",
+                        "Fiche de paie",
+                        "Document administratif",
+                        "Autre"
+                    ],
+                    "Juridique": [
+                        "",
+                        "Statuts",
+                        "PV d'AG/CA/CE",
+                        "Document administratif",
+                        "Autre"
+                    ],
+                    "Finance": [
+                        "",
+                        "Relevé bancaire",
+                        "Document administratif",
+                        "Autre"
+                    ],
+                    "Matériel": [
+                        "",
+                        "Bon de commande",
+                        "Bon de livraison",
+                        "Facture d'achat",
+                        "Document administratif",
+                        "Autre"
+                    ],
+                    "Autre": [
+                        "",
+                        "Autre"
+                    ]
+                }
+            }
+        ]
+    }
+]

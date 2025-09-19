@@ -1,0 +1,63 @@
+[
+    {
+        "metadonnees":
+        {
+            "__comment": "Modules accessibles via la page d'accueil de l'Intranet",
+            "__version": "1.0.0",
+            "__auteur": "Rémi VERSCHUUR"
+        }
+    },
+    {
+        "modules": [
+            {
+                "classe": 1,
+                "titre": "Gestion des droits",
+                "descriptif": "Permet de gérer/créer/supprimer les droits des utilisateurs de l'Intranet",
+                "buttonid": "Gdr",
+                "onclick": "gestion_droits"
+            },
+            {
+                "classe": 2,
+                "titre": "Gestion des utilisateurs",
+                "descriptif": "Permet de gérer les utilisateurs déjà existant de l'Intranet",
+                "buttonid": "Gdu",
+                "onclick": "gestion_utilisateurs"
+            },
+            {
+                "classe": 2,
+                "titre": "Gestion des contrats",
+                "descriptif": "Permet de gérer/accéder aux contrats en cours pour l'établissement et d'en gérer les documents et évènements",
+                "buttonid": "Ddc",
+                "onclick": "contracts_bp.contrats"
+            },
+            {
+                "classe": 3,
+                "titre": "Espace réservé",
+                "descriptif": "Espace réservé pour les professeurs principaux des classes (en construction)",
+                "buttonid": "Erpp",
+                "onclick": "erpp"
+            },
+            {
+                "classe": 4,
+                "titre": "Espace réservé",
+                "descriptif": "Espace réservé pour les professeurs de l'établissement (en construction)",
+                "buttonid": "Erp",
+                "onclick": "erp"
+            },
+            {
+                "classe": 6,
+                "titre": "Espace impressions",
+                "descriptif": "Espace de lancement des impressions à distance",
+                "buttonid": "Ei",
+                "onclick": "ei"
+            },
+            {
+                "classe": 5,
+                "titre": "Espace réservé",
+                "descriptif": "Espace réservé pour les élèves de l'établissement (en construction)",
+                "buttonid": "Ere",
+                "onclick": "ere"
+            }
+        ]
+    }
+]

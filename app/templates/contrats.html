@@ -85,13 +85,7 @@
                 <form id="filterForm" class="d-flex col-md-6 align-items-center" action="" onsubmit="filterTable(event)">
                     <div class="col-md-3">
                         <select class="form-select" aria-label="Filtrer" name="TypeFiltre" id="TypeFiltre" onchange="updateSousFiltre()">
-                            <option value="" selected>Filtrer par type</option>
-                            <option value="Finance">Finance</option>
-                            <option value="Juridique">Juridique</option>
-                            <option value="RH">Ressources Humaines</option>
-                            <option value="Materiel">Matériel</option>
-                            <option value="Services">Services</option>
-                            <option value="Autre">Autre</option>
+                            <!-- Options de type de contrat mis à jour en JavaScript -->
                         </select>
                     </div>
                     <div class="col-md-3">
@@ -127,7 +121,7 @@
                         {% for contract in contracts %}
                             <tr data-type="{{ contract['type_contrat'] }}" data-stype="{{ contract['sous_type_contrat'] }}">
                                 <td class="align-middle">
-                                    <a href="{{ url_for('contrats_by_num', id_contrat=contract['id']) }}">
+                                    <a href="{{ url_for('contracts_bp.contrats_by_num', id_contrat=contract['id']) }}">
                                         {{ contract['id'] }}
                                     </a>
                                 </td>
@@ -159,17 +153,11 @@
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div class="modal-body">
-                        <form action="{{ url_for('contrats') }}" method="post">
+                        <form action="{{ url_for('contracts_bp.contrats') }}" method="post">
                             <div class="mb-3">
                                 <label for="Type0" class="form-label">Type *</label>
                                 <select name="Type0" class="form-control" id="Type0" data-contract-id="0" onchange="updateSousMenu(this)" data-contract-id="0" required>
-                                    <option value=""></option>
-                                    <option value="Finance">Finance</option>
-                                    <option value="Juridique">Juridique</option>
-                                    <option value="RH">Ressources Humaines</option>
-                                    <option value="Materiel">Matériel</option>
-                                    <option value="Services">Services</option>
-                                    <option value="Autre">Autre</option>
+                                    <!-- Options de type de contrat mis à jour en JavaScript -->
                                 </select>
                             </div>
                             <div class="mb-3">
@@ -221,24 +209,20 @@
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div class="modal-body">
-                        <form action="{{ url_for('contrats_by_num', id_contrat=contract['id']) }}" method="POST">
+                        <form action="{{ url_for('contracts_bp.contrats_by_num', id_contrat=contract['id']) }}" method="POST">
                             <input type="hidden" name="_method" value="PUT">
                             <div class="mb-3">
                                 <label for="Type{{ contract['id'] }}" class="form-label">Type</label>
                                 <select name="Type{{ contract['id'] }}" class="form-control" id="Type{{ contract['id'] }}"
-                                        data-contract-id="{{ contract['id'] }}" onchange="updateSousMenu(this)" required>
-                                    <option value="" {% if contract['type_contrat'] == "" %}selected{% endif %}></option>
-                                    <option value="Finance" {% if contract['type_contrat'] == "Finance" %}selected{% endif %}>Finance</option>
-                                    <option value="Juridique" {% if contract['type_contrat'] == "Juridique" %}selected{% endif %}>Juridique</option>
-                                    <option value="RH" {% if contract['type_contrat'] == "RH" %}selected{% endif %}>Ressources Humaines</option>
-                                    <option value="Materiel" {% if contract['type_contrat'] == "Materiel" %}selected{% endif %}>Matériel</option>
-                                    <option value="Services" {% if contract['type_contrat'] == "Services" %}selected{% endif %}>Services</option>
-                                    <option value="Autre" {% if contract['type_contrat'] == "Autre" %}selected{% endif %}>Autre</option>
+                                        data-contract-id="{{ contract['id'] }}" data-contract-value="{{ contract['type_contrat'] }}" onchange="updateSousMenu(this)" required>
+                                <!-- Options de type de contrat mis à jour en JavaScript -->
                                 </select>
                             </div>
                             <div class="mb-3">
                                 <label for="SType{{ contract['id'] }}" class="form-label">Sous-Type *</label>
-                                <select name="SType{{ contract['id'] }}" class="form-control" id="SType{{ contract['id'] }}" data-contract-id="{{ contract['id'] }}" onfocus="updateSousMenu(this)" required>
+                                <select name="SType{{ contract['id'] }}" class="form-control" id="SType{{ contract['id'] }}"
+                                        data-contract-id="{{ contract['id'] }}" data-s-type-value="{{ contract['sous_type_contrat'] }}"
+                                        onfocus="updateSousMenu(this)" required>
                                     <option value="{{ contract['sous_type_contrat'] }}" selected>{{ contract['sous_type_contrat'] }}</option>
                                 </select>
                             </div>
@@ -286,6 +270,12 @@
     <!-- Scripts JQuery-->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <!--Scripts Propriétaire-->
+    <script>
+        /* eslint-disable */
+        // jshint ignore:line
+        const menusData = {{ menus_data|safe }};
+        /* eslint-enable */
+    </script>
     <Script src="{{ url_for('static', filename='js/contrats.js') }}"></Script>
     <!--Scripts Bootstrap-->
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>

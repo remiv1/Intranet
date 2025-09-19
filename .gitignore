@@ -15,3 +15,7 @@ sql/test_user.sql
 *.bak
 *.backup
 *.old
+
+# Tous les documents uploadés sauf .gitkeep
+documents/*
+!documents/.gitkeep
