@@ -20,13 +20,6 @@ jobs:
     - name: Build and start containers
       run: docker compose up -d --build
 
-    - name: Wait for DB to be ready
-      run: |
-        until docker compose exec -T intranet_db mysqladmin ping -h "localhost" --silent; do
-          echo "Waiting for database connection..."
-          sleep 5
-        done
-
     - name: Run tests in app container
       run: docker compose exec -T intranet_app pytest -v --cov=app --cov-report=xml
 
