@@ -1,0 +1,57 @@
+name: Docker Workflow
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Récupération du code
+        uses: actions/checkout@v4
+      - name: Configuration de l'environnement
+        run: cp .env.example .env
+      - name: Build des containers
+        env:
+          WEB_PORTS: 5000:5000
+          DB_PORTS: 3306:3306
+          EXPOSE_PORTS: Workflow
+        run: docker compose -f docker-compose.dev.yaml up -d --build web db
+      - name: Vérification que le conteneur web est vivant
+        run: |
+          response=$(curl -s -o /dev/null -w "%{http_code} %{redirect_url}" -L -I http://localhost:5000/)
+          if [ "$code" = "302"] && [[ "$location" == */login ]]; then
+            echo "Le conteneur web répond correctement."
+          else
+            echo "Le conteneur web ne répond pas comme prévu. Code: $code, Location: $location"
+            exit 1
+          fi
+      - name: Vérification que le conteneur db est vivant avec tests
+        run: |
+          # Attendre que le conteneur db soit prêt
+          for i in {1..30}; do
+            if docker compose exec -T db mariadb -u ${DB_USER} -p${DB_PASSWORD} -e "SELECT 1" ${DB_NAME}; then
+              echo "Le conteneur db est prêt."
+              break
+            fi
+            echo "Attente du conteneur db..."
+            sleep 2
+          done
+          
+          # Vérifier la colonne identifiant dans 99_users
+          identifiant=$(docker compose exec -T db mariadb -u ${DB_USER} -p${DB_PASSWORD} -D intranet_db -N -e "SELECT identifiant FROM 99_users LIMIT 1;")
+          if [ "$identifiant" = "admin" ]; then
+            echo "La colonne identifiant dans 99_users est correcte."
+          else
+            echo "La colonne identifiant dans 99_users n'est pas correcte. Valeur trouvée: $identifiant"
+            exit 1
+          fi
+
+          # Vérifier l'erreur sur une table inexistante
+          if docker compose exec -T db mariadb -u ${DB_USER} -p${DB_PASSWORD} -D intranet_db -e "SELECT * FROM table_inexistante;" 2>&1 | grep -q "ERROR"; then
+            echo "Erreur correctement détectée sur table inexistante."
+          else
+            echo "Erreur non détectée sur table inexistante."
+            exit 1
+          fi
+      - name: Arrêt des containers
+        run: docker compose down -v
