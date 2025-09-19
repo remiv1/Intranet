@@ -1,0 +1,167 @@
+<!--
+=================================================================
+MODELE DE COURRIEL HTML POUR LES CONTRATS À RENÉGOCIER
+=================================================================
+Ce modèle HTML est conçu pour être utilisé dans les courriels envoyés à la direction
+pour lister les contrats arrivant à échéance dans un délai de 4 à 6 mois.
+Il inclut une table formatée pour afficher les détails des contrats, ainsi que des
+éléments de style pour améliorer la présentation.
+    Eléments Jinja attendus :
+    - date_4_mois : Date de début de la période (4 mois à partir d'aujourd'hui)
+    - date_6_mois : Date de fin de la période (6 mois à partir d'aujourd'hui)
+    - contrats : Liste des contrats à afficher, chaque contrat étant un objet ORM avec les clés
+      suivantes : id, type_contrat, sous_type_contrat, entreprise, intitule, date_debut,
+      date_fin_preavis, date_fin.
+-->
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Liste des contrats à renégocier</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background-color: #f8fafc;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            background: #fff;
+            max-width: 900px;
+            margin: 30px auto;
+            border-radius: 12px;
+            box-shadow: 0 2px 12px rgba(44, 62, 80, 0.08);
+            padding: 32px 24px 24px 24px;
+        }
+        .header {
+            background: #e9ecef;
+            border-radius: 8px 8px 0 0;
+            padding: 18px 0 10px 0;
+            text-align: center;
+            margin-bottom: 24px;
+        }
+        h1 {
+            color: #2e6c80;
+            font-family: 'Fenix', 'Segoe UI', Arial, sans-serif;
+            font-size: 2.1em;
+            margin: 0;
+            letter-spacing: 1px;
+        }
+        .intranet-link-container {
+            text-align:center;
+        }
+        .intranet-link {
+            display: inline-block;
+            margin: 10px 0 20px 0;
+            padding: 8px 18px;
+            background: #2e6c80;
+            color: #fff !important;
+            border-radius: 6px;
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 1em;
+            transition: background 0.2s;
+        }
+        .intranet-link:hover {
+            background: #17455c;
+        }
+        table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            margin-top: 18px;
+            margin-bottom: 18px;
+            background: #fff;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 1px 4px rgba(44, 62, 80, 0.06);
+        }
+        th, td {
+            padding: 10px 8px;
+            text-align: left;
+        }
+        th {
+            background: #2e6c80;
+            color: #fff;
+            font-weight: 600;
+            font-size: 1em;
+            border-bottom: 2px solid #17455c;
+        }
+        tr:nth-child(even) td {
+            background: #f2f6fa;
+        }
+        tr:nth-child(odd) td {
+            background: #fff;
+        }
+        tr:hover td {
+            background: #e3eef7;
+            color: #17455c;
+        }
+        td {
+            border-bottom: 1px solid #e0e6ed;
+            font-size: 0.98em;
+        }
+        .footer {
+            margin-top: 32px;
+            text-align: center;
+            font-size: 0.95em;
+            color: #888;
+        }
+        @media (max-width: 700px) {
+            .container { padding: 10px; }
+            table, thead, tbody, th, td, tr { font-size: 0.95em; }
+        }
+    </style>
+</head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>Liste des contrats à renégocier</h1>
+            </div>
+            <div class="intranet-link-container">
+                <a class="intranet-link" href="https://intraraudiere.data-fan.fr" title="Accès Intranet">
+                    Accéder à l'Intranet
+                </a>
+            </div>
+            <main>
+                <p>Bonjour,</p>
+                <p>
+                    Voici la liste des contrats à renégocier entre <strong>{{ date_4_mois }}</strong> et <strong>{{ date_6_mois }}</strong> :
+                </p>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Type</th>
+                            <th>Sous-type</th>
+                            <th>Entreprise</th>
+                            <th>Intitulé</th>
+                            <th>Date début</th>
+                            <th>Date fin préavis</th>
+                            <th>Date fin</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    {% for c in contrats %}
+                        <tr>
+                            <td>{{ c.id }}</td>
+                            <td>{{ c.type_contrat }}</td>
+                            <td>{{ c.sous_type_contrat }}</td>
+                            <td>{{ c.entreprise }}</td>
+                            <td>{{ c.intitule }}</td>
+                            <td>{{ c.date_debut }}</td>
+                            <td>{{ c.date_fin_preavis }}</td>
+                            <td>{{ c.date_fin }}</td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+                <p>Cordialement,<br>L'équipe</p>
+            </main>
+            <div class="footer">
+                &copy; 2025 La Péraudière. Tous droits réservés.
+            </div>
+        </div>
+    </body>
+</html>

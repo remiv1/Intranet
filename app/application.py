@@ -217,13 +217,22 @@ def before_request() -> Any:
     if 'db_session' not in g:
         g.db_session = Session()
     # Autoriser l'accès aux fichiers CSS et autres fichiers statiques
-    if (
-        ('prenom' not in session and 'nom' not in session and request.endpoint != 'login')
-        and not (request.endpoint == 'static' and request.path.endswith('.css'))
-    ):
-        session.clear()
-        error_message = 'Merci de vous connecter pour accéder à cette ressource'
-        return redirect(url_for('login', error_message=error_message))
+    match request.endpoint:
+        case 'rapport_contrats':
+            api_token = request.headers.get('X-API-TOKEN')
+            if api_token and api_token == peraudiere.config['API_MAIL_TOKEN']:
+                return None
+        case 'static':
+            return None
+        case 'login':
+            return None
+        case 'logout':
+            return None
+        case _:
+            if 'prenom' not in session or 'nom' not in session:
+                session.clear()
+                error_message = 'Merci de vous connecter pour accéder à cette ressource'
+                return redirect(url_for('login', error_message=error_message))
 
 @peraudiere.teardown_appcontext
 def teardown_request(exception: Optional[BaseException]) -> None:
@@ -642,6 +651,6 @@ def rapport_contrats() -> Response:
     email: str = request.args.get('email', '')
     try:
         envoi_contrats_renego(email)
-        return jsonify(f"Rapport envoyé à {email}", 200)
+        return jsonify(f"Rapport envoye a {email}", 200)
     except Exception as e:
-        return jsonify(f"Erreur lors de l'envoi du rapport à {email} : {e}", 500)
+        return jsonify(f"Erreur lors de l envoi du rapport a {email} : {e}", 500)
