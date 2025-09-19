@@ -227,7 +227,7 @@ class Bill(Base):
         Arguments : None
         Returns: self
         """
-        # Réupération de l'extension du fichier
+        # Récupération de l'extension du fichier
         extention = self._get_extension(binary_file)
 
         # Création de la partie date au format JJMMYYYY
