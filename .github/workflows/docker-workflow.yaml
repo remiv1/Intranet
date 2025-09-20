@@ -41,10 +41,15 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: docker-images
-      - name: Chargement des images Docker
+      - name: Configuration de l'environnement
         run: |
           echo "Fichiers téléchargés:"
           ls -la
+          echo "Configuration des variables d'environnement..."
+          # Le fichier .env est inclus dans les artifacts
+          cat .env
+      - name: Chargement des images Docker
+        run: |
           echo "Chargement des images Docker..."
           docker load < intranet-web.tar
           docker load < intranet-db.tar
@@ -111,10 +116,14 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: docker-images
-      - name: Chargement des images Docker
+      - name: Configuration de l'environnement
         run: |
           echo "Fichiers téléchargés:"
           ls -la
+          echo "Configuration des variables d'environnement..."
+          cat .env
+      - name: Chargement des images Docker
+        run: |
           echo "Chargement des images Docker..."
           docker load < intranet-web.tar
           docker load < intranet-db.tar
