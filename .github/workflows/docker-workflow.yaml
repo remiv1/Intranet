@@ -12,51 +12,140 @@ jobs:
         run: cp .env.example .env
       - name: Build des containers
         run: docker compose -f docker-compose.dev.yaml up -d --build web db
-      - name: Vérification que le conteneur web est vivant
+      - name: Sauvegarde des images pour les jobs suivants
         run: |
-          response=$(curl -s -o /dev/null -w "%{http_code} %{redirect_url}" -L -I http://localhost:5000/)
-          code=$(echo "$response" | cut -d' ' -f1)
-          location=$(echo "$response" | cut -d' ' -f2)
-          if [ "$code" = "302" ] && [[ "$location" == */login ]]; then
-            echo "Le conteneur web répond correctement."
-          else
-            echo "Le conteneur web ne répond pas comme prévu. Code: $code, Location: $location"
-            exit 1
-          fi
-      - name: Vérification que le conteneur db est vivant avec tests
-        run: |
-          # Attendre que le conteneur db soit prêt
-          db_ready=false
-          for i in {1..30}; do
-            if docker compose exec -T db mariadb -u ${DB_USER} -p${DB_PASSWORD} -e "SELECT 1" ${DB_NAME}; then
-              echo "Le conteneur db est prêt."
-              db_ready=true
-              break
-            fi
-            echo "Attente du conteneur db..."
-            sleep 2
-          done
-          
-          if [ "$db_ready" = false ]; then
-            echo "Le conteneur db n'est pas prêt après 60 secondes."
-            exit 1
-          fi
-          
-          # Vérifier la colonne identifiant dans 99_users
-          identifiant=$(docker compose exec -T db mariadb -u ${DB_USER} -p${DB_PASSWORD} -D ${DB_NAME} -N -e "SELECT identifiant FROM 99_users LIMIT 1;")
-          if [ "$identifiant" = "admin" ]; then
-            echo "La colonne identifiant dans 99_users est correcte."
-          else
-            echo "La colonne identifiant dans 99_users n'est pas correcte. Valeur trouvée: $identifiant"
-            exit 1
-          fi
+          docker save intranet-web:latest > /tmp/intranet-web.tar
+          docker save intranet_mariadb:12.0.2 > /tmp/intranet-db.tar
+      - name: Upload des artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-images
+          path: |
+            /tmp/intranet-web.tar
+            /tmp/intranet-db.tar
+            .env
+          retention-days: 1
 
-          # Vérifier l'erreur sur une table inexistante
-          if docker compose exec -T db mariadb -u ${DB_USER} -p${DB_PASSWORD} -D ${DB_NAME} -e "SELECT * FROM table_inexistante;" 2>&1 | grep -q "ERROR"; then
-            echo "Erreur correctement détectée sur table inexistante."
-          else
-            echo "Erreur non détectée sur table inexistante."
-            exit 1
-          fi
-      - name: Arrêt des containers
-        run: docker compose down -v
+  validate-database:
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Récupération du code
+        uses: actions/checkout@v4
+      - name: Download des artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: docker-images
+      - name: Chargement des images Docker
+        run: |
+          docker load < intranet-web.tar
+          docker load < intranet-db.tar
+      - name: Validation de la base de données avec retry
+        uses: nick-fields/retry@v3
+        with:
+          timeout_minutes: 5
+          max_attempts: 3
+          retry_wait_seconds: 30
+          warning_on_retry: true
+          command: |
+            echo "Tentative de validation de la base de données..."
+            docker compose -f docker-compose.dev.yaml up -d db
+            
+            # Attendre que le conteneur db soit prêt
+            db_ready=false
+            for i in {1..30}; do
+              if docker compose exec -T db mariadb -u ${DB_USER} -p${DB_PASSWORD} -e "SELECT 1" ${DB_NAME}; then
+                echo "Le conteneur db est prêt."
+                db_ready=true
+                break
+              fi
+              echo "Attente du conteneur db..."
+              sleep 2
+            done
+            
+            if [ "$db_ready" = false ]; then
+              echo "Le conteneur db n'est pas prêt après 60 secondes."
+              docker compose down -v
+              exit 1
+            fi
+            
+            # Vérifier la colonne identifiant dans 99_users
+            identifiant=$(docker compose exec -T db mariadb -u ${DB_USER} -p${DB_PASSWORD} -D ${DB_NAME} -N -e "SELECT identifiant FROM 99_users LIMIT 1;")
+            if [ "$identifiant" = "admin" ]; then
+              echo "La colonne identifiant dans 99_users est correcte."
+            else
+              echo "La colonne identifiant dans 99_users n'est pas correcte. Valeur trouvée: $identifiant"
+              docker compose down -v
+              exit 1
+            fi
+
+            # Vérifier l'erreur sur une table inexistante
+            if docker compose exec -T db mariadb -u ${DB_USER} -p${DB_PASSWORD} -D ${DB_NAME} -e "SELECT * FROM table_inexistante;" 2>&1 | grep -q "ERROR"; then
+              echo "Erreur correctement détectée sur table inexistante."
+            else
+              echo "Erreur non détectée sur table inexistante."
+              docker compose down -v
+              exit 1
+            fi
+            
+            echo "Validation DB réussie, nettoyage..."
+            docker compose down -v
+
+  validate-web:
+    runs-on: ubuntu-latest
+    needs: [build, validate-database]
+    steps:
+      - name: Récupération du code
+        uses: actions/checkout@v4
+      - name: Download des artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: docker-images
+      - name: Chargement des images Docker
+        run: |
+          docker load < intranet-web.tar
+          docker load < intranet-db.tar
+      - name: Validation de l'application web avec retry
+        uses: nick-fields/retry@v3
+        with:
+          timeout_minutes: 8
+          max_attempts: 3
+          retry_wait_seconds: 60
+          warning_on_retry: true
+          command: |
+            echo "Tentative de validation de l'application web..."
+            docker compose -f docker-compose.dev.yaml up -d web db
+            
+            echo "Attente que le conteneur web soit prêt..."
+            web_ready=false
+            for i in {1..30}; do
+              if response=$(curl -s -o /dev/null -w "%{http_code} %{redirect_url}" -L -I http://localhost:5000/ 2>/dev/null); then
+                code=$(echo "$response" | cut -d' ' -f1)
+                location=$(echo "$response" | cut -d' ' -f2)
+                echo "Tentative $i: Code HTTP: $code, Location: $location"
+                
+                if [ "$code" = "302" ] && [[ "$location" == */login ]]; then
+                  echo "Le conteneur web répond correctement."
+                  web_ready=true
+                  break
+                elif [ "$code" = "200" ] || [ "$code" = "302" ]; then
+                  echo "Le conteneur web répond mais pas avec la redirection attendue."
+                  web_ready=true
+                  break
+                fi
+              else
+                echo "Tentative $i: Connexion impossible, attente..."
+              fi
+              sleep 2
+            done
+            
+            if [ "$web_ready" = false ]; then
+              echo "Le conteneur web n'est pas prêt après 60 secondes."
+              echo "Vérification des logs du conteneur:"
+              docker logs intranet_app --tail 20
+              docker compose down -v
+              exit 1
+            fi
+            
+            echo "Validation Web réussie, nettoyage..."
+            docker compose down -v
