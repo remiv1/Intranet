@@ -104,6 +104,7 @@ docker compose up -d
 ### 📋 Variables d'environnement détaillées
 
 Le fichier `.env` contient toutes les variables de configuration nécessaires :
+
 | Variable           | Description                        | Exemple                       |
 |--------------------|------------------------------------|-------------------------------|
 | `DB_USER`          | Utilisateur de la base de données  | `intranet_user`               |
