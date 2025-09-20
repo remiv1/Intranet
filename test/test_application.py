@@ -5,7 +5,7 @@ Ces tests montrent comment utiliser les fixtures mockées pour tester
 les fonctionnalités de l'application sans base de données réelle.
 """
 
-from werkzeug import Client
+from flask.testing import FlaskClient
 from datetime import date, timedelta
 from unittest.mock import patch, MagicMock, Mock
 from app.models import User, Contract, Document, Event
@@ -105,25 +105,29 @@ class TestContractOperations:
 class TestFlaskRoutes:
     """Tests pour les routes Flask."""
     
-    def test_login_page(self, client: Client):
+    def test_login_page(self, client: FlaskClient):
         """Test de la page de connexion."""
         response = client.get('/login')
         assert response.status_code == 200
 
-    def test_index_redirect_when_not_authenticated(self, client: Client):
+    def test_index_redirect_when_not_authenticated(self, client: FlaskClient):
         """Test de redirection vers login quand non authentifié."""
         with patch('flask.session', {}):
             response = client.get('/')
             # Should redirect to login when not authenticated
             assert response.status_code in [302, 401]  # Redirect or Unauthorized
     
-    @patch('flask.session')
-    def test_authenticated_access(self, mock_session: Mock, client: Client, mock_authenticated_session: Dict[str, Any]):
+    def test_authenticated_access(self, client: FlaskClient, mock_authenticated_session: Dict[str, Any]):
         """Test d'accès authentifié à la page d'accueil."""
-        mock_session.update(mock_authenticated_session)
         
         with patch('application.Session') as mock_db_session_class:
             mock_db_session_class.return_value = MagicMock()
+            
+            # Utiliser le contexte de session Flask pour simuler l'authentification
+            with client.session_transaction() as sess:
+                for key, value in mock_authenticated_session.items():
+                    sess[key] = value
+            
             response = client.get('/')
             
             # Should allow access when authenticated

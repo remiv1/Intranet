@@ -283,14 +283,14 @@ def mock_authenticated_session() -> Dict[str, Any]:
     Fixture pour simuler une session utilisateur authentifiée.
     
     Returns:
-        dict: Données de session simulées
+        dict: Données de session simulées avec les clés attendues par l'application
     """
     dict_return: Dict[str, Any] = {
-        'user_id': 1,
-        'user_prenom': 'Test',
-        'user_nom': 'User',
-        'user_habilitation': 1,  # Administrateur
-        'authenticated': True
+        'identifiant': 'testuser',
+        'prenom': 'Test',
+        'nom': 'User',
+        'mail': 'test.user@example.com',
+        'habilitation': '1',  # Administrateur (string comme attendu par l'app)
     }
     return dict_return
 

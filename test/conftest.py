@@ -20,6 +20,159 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'app'))
 from app.models import User, Contract, Document, Event
 from app.config import Config
 
+# Import des fixtures supplémentaires
+sys.path.insert(0, os.path.join(os.path.dirname(__file__)))
+from fixtures import (
+    create_test_user, create_admin_user, create_test_contract,              # type: ignore
+    create_expiring_contract, create_test_document, create_test_event,     # type: ignore
+    create_multiple_users, create_multiple_contracts,           # type: ignore
+    create_contract_with_documents_and_events, mock_authenticated_session,   # type: ignore
+    mock_flask_session  # type: ignore
+)
+
+
+class MockQuery:
+    """Classe pour simuler les requêtes SQLAlchemy."""
+    
+    def __init__(self, data_list: List[Any]):
+        self.data_list = data_list
+    
+    def all(self) -> List[Any]:
+        """Retourne tous les éléments."""
+        return self.data_list
+    
+    def first(self) -> Any:
+        """Retourne le premier élément ou None."""
+        return self.data_list[0] if self.data_list else None
+    
+    def count(self) -> int:
+        """Retourne le nombre d'éléments."""
+        return len(self.data_list)
+    
+    def get(self, obj_id: int) -> Any:
+        """Récupère un objet par son ID."""
+        for item in self.data_list:
+            if hasattr(item, 'id') and item.id == obj_id:
+                return item
+        return None
+    
+    def filter_by(self, **kwargs: Any) -> 'MockQuery':
+        """Filtre les éléments par attributs."""
+        filtered_list: List[Any] = []
+        for item in self.data_list:
+            match = True
+            for key, value in kwargs.items():
+                if not hasattr(item, key) or getattr(item, key) != value:
+                    match = False
+                    break
+            if match:
+                filtered_list.append(item)
+        return MockQuery(filtered_list)
+    
+    def filter(self, condition: Any) -> 'MockQuery':
+        """Filtre simple (retourne tous les éléments pour simplicité)."""
+        return MockQuery(self.data_list)
+    
+    def delete(self) -> None:
+        """Supprime tous les éléments de la liste."""
+        self.data_list.clear()
+
+
+class MockSession:
+    """Session de base de données mockée pour les tests."""
+    
+    def __init__(self):
+        self._users: List[User] = []
+        self._contracts: List[Contract] = []
+        self._documents: List[Document] = []
+        self._events: List[Event] = []
+        self._next_id = 1
+    
+    def add(self, obj: Any) -> None:
+        """Ajoute un objet à la session."""
+        # Assigner un ID si l'objet n'en a pas
+        if not hasattr(obj, 'id') or obj.id is None:
+            obj.id = self._next_id
+            self._next_id += 1
+        
+        # Ajouter à la liste appropriée
+        if isinstance(obj, User):
+            self._users.append(obj)
+        elif isinstance(obj, Contract):
+            self._contracts.append(obj)
+        elif isinstance(obj, Document):
+            self._documents.append(obj)
+        elif isinstance(obj, Event):
+            self._events.append(obj)
+    
+    def query(self, model_class: Any) -> MockQuery:
+        """Crée une requête pour un modèle donné."""
+        data_list = self._get_data_for_model(model_class)
+        return MockQuery(data_list)
+    
+    def commit(self) -> None:
+        """Simule le commit de la transaction."""
+        pass
+    
+    def rollback(self) -> None:
+        """Simule le rollback de la transaction."""
+        pass
+    
+    def refresh(self, obj: Any) -> None:
+        """Simule le refresh d'un objet."""
+        pass
+    
+    def close(self) -> None:
+        """Simule la fermeture de la session."""
+        pass
+    
+    def clear(self) -> None:
+        """Nettoie toutes les données de la session."""
+        self._users.clear()
+        self._contracts.clear()
+        self._documents.clear()
+        self._events.clear()
+        self._next_id = 1
+    
+    def _get_data_for_model(self, model_class: Any) -> List[Any]:
+        """Retourne la liste de données pour un modèle donné."""
+        if model_class == User:
+            return self._users
+        elif model_class == Contract:
+            return self._contracts
+        elif model_class == Document:
+            return self._documents
+        elif model_class == Event:
+            return self._events
+        else:
+            return []
+    
+    # Propriétés publiques pour l'accès aux données (pour les tests)
+    @property
+    def users(self) -> List[User]:
+        """Accès public à la liste des utilisateurs."""
+        return self._users
+    
+    @property
+    def contracts(self) -> List[Contract]:
+        """Accès public à la liste des contrats."""
+        return self._contracts
+    
+    @property
+    def documents(self) -> List[Document]:
+        """Accès public à la liste des documents."""
+        return self._documents
+    
+    @property
+    def events(self) -> List[Event]:
+        """Accès public à la liste des événements."""
+        return self._events
+    
+    @property
+    def next_id(self) -> int:
+        """Accès public au prochain ID."""
+        return self._next_id
+
 
 class TestConfig(Config):
     """Configuration spécifique aux tests."""
@@ -41,123 +194,34 @@ class TestConfig(Config):
 
 
 @pytest.fixture(scope="function")
-def mock_db_session():
+def mock_db_session() -> MagicMock:
     """
     Fixture pour créer une session de base de données mockée.
     
-    Simule les méthodes de SQLAlchemy Session sans vraie base de données.
+    Utilise la classe MockSession pour une gestion plus claire,
+    mais retourne un MagicMock pour la compatibilité avec les tests existants.
     """
-    session_mock = MagicMock()
+    # Créer l'instance de MockSession
+    mock_session = MockSession()
     
-    # Mock des données en mémoire pour simuler la base
-    session_mock._users = []
-    session_mock._contracts = []
-    session_mock._documents = []
-    session_mock._events = []
-    session_mock._next_id = 1
+    # Créer un MagicMock qui wrape notre MockSession
+    session_mock = MagicMock(spec=MockSession)
     
-    def mock_add(obj: Any):
-        """Simule l'ajout d'un objet en session."""
-        if not hasattr(obj, 'id') or obj.id is None:
-            obj.id = session_mock._next_id
-            session_mock._next_id += 1
-        
-        if isinstance(obj, User):
-            session_mock._users.append(obj)
-        elif isinstance(obj, Contract):
-            session_mock._contracts.append(obj)
-        elif isinstance(obj, Document):
-            session_mock._documents.append(obj)
-        elif isinstance(obj, Event):
-            session_mock._events.append(obj)
-
-    def mock_query(model_class: Any):
-        """Simule une requête sur un modèle."""
-        query_mock = MagicMock()
-        
-        if model_class == User:
-            data_list = session_mock._users
-        elif model_class == Contract:
-            data_list = session_mock._contracts
-        elif model_class == Document:
-            data_list = session_mock._documents
-        elif model_class == Event:
-            data_list = session_mock._events
-        else:
-            data_list: List[Any] = []
-        
-        # Mock des méthodes de query
-        query_mock.all.return_value = data_list
-        query_mock.first.return_value = data_list[0] if data_list else None
-        query_mock.count.return_value = len(data_list)
-
-        def mock_filter(condition: Any):
-            # Simulation simple de filtrage
-            filtered_query = MagicMock()
-            filtered_query.all.return_value = data_list
-            filtered_query.first.return_value = data_list[0] if data_list else None
-            filtered_query.count.return_value = len(data_list)
-            return filtered_query
-
-        def mock_filter_by(**kwargs: Any):
-            # Simulation simple de filtrage par attributs
-            filtered_list: List[Any] = []
-            for item in data_list:
-                match = True
-                for key, value in kwargs.items():
-                    if not hasattr(item, key) or getattr(item, key) != value:
-                        match = False
-                        break
-                if match:
-                    filtered_list.append(item)
-            
-            filtered_query = MagicMock()
-            filtered_query.all.return_value = filtered_list
-            filtered_query.first.return_value = filtered_list[0] if filtered_list else None
-            filtered_query.count.return_value = len(filtered_list)
-            return filtered_query
-
-        def mock_get(obj_id: int):
-            """Simule la récupération par ID."""
-            for item in data_list:
-                if hasattr(item, 'id') and item.id == obj_id:
-                    return item
-            return None
-        
-        def mock_delete():
-            """Simule la suppression de tous les objets."""
-            data_list.clear()
-        
-        query_mock.filter = mock_filter
-        query_mock.filter_by = mock_filter_by
-        query_mock.get = mock_get
-        query_mock.delete = mock_delete
-        
-        return query_mock
+    # Déléguer les appels vers notre MockSession
+    session_mock.add.side_effect = mock_session.add
+    session_mock.query.side_effect = mock_session.query
+    session_mock.commit.side_effect = mock_session.commit
+    session_mock.rollback.side_effect = mock_session.rollback
+    session_mock.refresh.side_effect = mock_session.refresh
+    session_mock.close.side_effect = mock_session.close
     
-    def mock_commit():
-        """Simule le commit de la transaction."""
-        pass
-    
-    def mock_rollback():
-        """Simule le rollback de la transaction."""
-        pass
-    
-    def mock_refresh(obj: Any):
-        """Simule le refresh d'un objet."""
-        pass
-    
-    def mock_close():
-        """Simule la fermeture de la session."""
-        pass
-    
-    # Configurer les mocks
-    session_mock.add = mock_add
-    session_mock.query = mock_query
-    session_mock.commit = mock_commit
-    session_mock.rollback = mock_rollback
-    session_mock.refresh = mock_refresh
-    session_mock.close = mock_close
+    # Exposer les données pour les tests qui en ont besoin
+    session_mock._users = mock_session.users
+    session_mock._contracts = mock_session.contracts
+    session_mock._documents = mock_session.documents
+    session_mock._events = mock_session.events
+    session_mock._next_id = mock_session.next_id
+    session_mock.clear = mock_session.clear
     
     return session_mock
 
@@ -167,11 +231,7 @@ def clean_mock_db(mock_db_session: MagicMock):
     """
     Fixture pour nettoyer la base de données mockée avant chaque test.
     """
-    mock_db_session._users.clear()
-    mock_db_session._contracts.clear()
-    mock_db_session._documents.clear()
-    mock_db_session._events.clear()
-    mock_db_session._next_id = 1
+    mock_db_session.clear()
 
 
 
@@ -180,22 +240,32 @@ def app() -> Flask:
     """
     Fixture pour créer une instance de l'application Flask de test.
     """
-    # Mock de l'engine et de la session avant l'import de l'application
-    with patch('app.application.engine'), \
-         patch('app.application.Session') as mock_session_class:
-        mock_session_class.return_value = mock_db_session
-        # Import de l'application (après configuration du path)
-        from app.application import peraudiere as app
+    # Mock des modules SQLAlchemy avant tout import
+    with patch('sqlalchemy.create_engine') as mock_create_engine, \
+         patch('sqlalchemy.orm.sessionmaker') as mock_sessionmaker:
+        
+        # Configurer les mocks
+        mock_engine = MagicMock()
+        mock_create_engine.return_value = mock_engine
+        mock_session_class = MagicMock()
+        mock_sessionmaker.return_value = mock_session_class
+        
+        # Ajouter le chemin de l'app pour l'import direct
+        import sys
+        import os
+        app_path = os.path.join(os.path.dirname(__file__), '..', 'app')
+        if app_path not in sys.path:
+            sys.path.insert(0, app_path)
+        
+        # Import de l'application maintenant que tout est mocké
+        import application              # type: ignore
+        app = application.peraudiere    # type: ignore
         
         # Configuration de test
-        app.config.from_object(TestConfig)
-        app.config['TESTING'] = True
+        app.config.from_object(TestConfig)      # type: ignore
+        app.config['TESTING'] = True            # type: ignore
         
-        # Mock de la session de base de données
-        mock_session_instance = MagicMock()
-        mock_session_class.return_value = mock_session_instance
-        
-        return app
+        return app      # type: ignore
 
 
 @pytest.fixture
