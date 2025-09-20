@@ -251,8 +251,8 @@ def app() -> Flask:
         mock_sessionmaker.return_value = mock_session_class
         
         # Ajouter le chemin de l'app pour l'import direct
-        import sys
-        import os
+        
+        
         app_path = os.path.join(os.path.dirname(__file__), '..', 'app')
         if app_path not in sys.path:
             sys.path.insert(0, app_path)
