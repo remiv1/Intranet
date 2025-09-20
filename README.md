@@ -215,6 +215,18 @@ L'application utilise **MariaDB** avec 4 tables principales interconnectées :
 | `sous_type_evenement`  | VARCHAR(50)  | Sous-type d'événement      |
 | `descriptif`           | VARCHAR(255) | Description de l'événement |
 
+#### Table `13_factures` - Factures liées aux contrats
+
+| Champ               | Type         | Description               |
+|---------------------|--------------|---------------------------|
+| `id`                | INT(11) PK   | Identifiant unique        |
+| `id_contrat`        | INT(11) FK   | Référence vers le contrat |
+| `date_facture`      | DATE         | Date de la facture        |
+| `titre_facture`     | VARCHAR(255) | Titre de la facture       |
+| `montant`           | DECIMAL(10,2)| Montant de la facture     |
+| `str_lien`          | VARCHAR(255) | Chemin vers le fichier    |
+| `name`              | VARCHAR(30)  | Nom de la facture         |
+
 ### 🔐 Système d'Habilitations
 
 L'application utilise un système d'habilitations numérique flexible :
