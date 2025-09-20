@@ -41,6 +41,17 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: '3.12'
+      - name: Installation des dépendances système
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libcups2-dev
+      - name: Cache des packages Python
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
       - name: Installation des dépendances Python
         run: |
           python -m pip install --upgrade pip
