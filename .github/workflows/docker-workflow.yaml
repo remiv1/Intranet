@@ -31,6 +31,87 @@ jobs:
             .env
           retention-days: 1
 
+  run-tests:
+    runs-on: ubuntu-latest
+    needs: [build, validate-database, validate-web]
+    if: always()  # Exécuter même si les validations échouent
+    steps:
+      - name: Récupération du code
+        uses: actions/checkout@v4
+      - name: Configuration de Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+      - name: Download des artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: docker-images
+      - name: Configuration de l'environnement
+        run: |
+          echo "Fichiers téléchargés:"
+          ls -la
+          echo "Configuration de l'environnement de test"
+          if [ -f .env ]; then
+            echo "Fichier .env trouvé dans les artifacts"
+            cat .env
+          else
+            echo "Fichier .env non trouvé, création à partir de .env.example"
+            cp .env.example .env
+            cat .env
+          fi
+      - name: Chargement des images Docker
+        run: |
+          echo "Chargement des images Docker..."
+          docker load < intranet-web.tar
+          docker load < intranet-db.tar
+          echo "Images chargées:"
+          docker images
+      - name: Installation des dépendances Python
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then
+            pip install -r requirements.txt
+          fi
+          pip install pytest pytest-cov
+      - name: Démarrage des services pour les tests
+        run: |
+          echo "Démarrage des services Docker pour les tests..."
+          source .env
+          docker compose -f docker-compose.dev.yaml up -d db
+          
+          # Attendre que la base de données soit prête
+          echo "Attente que la base de données soit prête..."
+          for i in {1..30}; do
+            if docker compose exec -T db mariadb -u "${DB_USER}" -p"${DB_PASSWORD}" -e "SELECT 1" "${DB_NAME}" > /dev/null 2>&1; then
+              echo "Base de données prête."
+              break
+            fi
+            echo "Attente de la base de données... ($i/30)"
+            sleep 2
+          done
+      - name: Exécution des tests avec retry
+        uses: nick-fields/retry@v3
+        with:
+          timeout_minutes: 10
+          max_attempts: 3
+          retry_wait_seconds: 30
+          warning_on_retry: true
+          command: |
+            echo "Exécution des tests pytest..."
+            cd test
+            python -m pytest -v --tb=short --cov=../app --cov-report=xml --cov-report=term
+      - name: Upload des résultats de couverture
+        uses: codecov/codecov-action@v3
+        if: always()
+        with:
+          file: ./test/coverage.xml
+          fail_ci_if_error: false
+      - name: Nettoyage après les tests
+        if: always()
+        run: |
+          echo "Nettoyage des services Docker..."
+          docker compose down -v
+
   validate-database:
     runs-on: ubuntu-latest
     needs: build
@@ -120,7 +201,7 @@ jobs:
 
   validate-web:
     runs-on: ubuntu-latest
-    needs: [build, validate-database]
+    needs: build
     steps:
       - name: Récupération du code
         uses: actions/checkout@v4
