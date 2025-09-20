@@ -11,15 +11,13 @@ jobs:
       - name: Configuration de l'environnement
         run: cp .env.example .env
       - name: Build des containers
-        env:
-          WEB_PORTS: 5000:5000
-          DB_PORTS: 3306:3306
-          EXPOSE_PORTS: Workflow
         run: docker compose -f docker-compose.dev.yaml up -d --build web db
       - name: Vérification que le conteneur web est vivant
         run: |
           response=$(curl -s -o /dev/null -w "%{http_code} %{redirect_url}" -L -I http://localhost:5000/)
-          if [ "$code" = "302"] && [[ "$location" == */login ]]; then
+          code=$(echo "$response" | cut -d' ' -f1)
+          location=$(echo "$response" | cut -d' ' -f2)
+          if [ "$code" = "302" ] && [[ "$location" == */login ]]; then
             echo "Le conteneur web répond correctement."
           else
             echo "Le conteneur web ne répond pas comme prévu. Code: $code, Location: $location"
@@ -28,17 +26,24 @@ jobs:
       - name: Vérification que le conteneur db est vivant avec tests
         run: |
           # Attendre que le conteneur db soit prêt
+          db_ready=false
           for i in {1..30}; do
             if docker compose exec -T db mariadb -u ${DB_USER} -p${DB_PASSWORD} -e "SELECT 1" ${DB_NAME}; then
               echo "Le conteneur db est prêt."
+              db_ready=true
               break
             fi
             echo "Attente du conteneur db..."
             sleep 2
           done
           
+          if [ "$db_ready" = false ]; then
+            echo "Le conteneur db n'est pas prêt après 60 secondes."
+            exit 1
+          fi
+          
           # Vérifier la colonne identifiant dans 99_users
-          identifiant=$(docker compose exec -T db mariadb -u ${DB_USER} -p${DB_PASSWORD} -D intranet_db -N -e "SELECT identifiant FROM 99_users LIMIT 1;")
+          identifiant=$(docker compose exec -T db mariadb -u ${DB_USER} -p${DB_PASSWORD} -D ${DB_NAME} -N -e "SELECT identifiant FROM 99_users LIMIT 1;")
           if [ "$identifiant" = "admin" ]; then
             echo "La colonne identifiant dans 99_users est correcte."
           else
@@ -47,7 +52,7 @@ jobs:
           fi
 
           # Vérifier l'erreur sur une table inexistante
-          if docker compose exec -T db mariadb -u ${DB_USER} -p${DB_PASSWORD} -D intranet_db -e "SELECT * FROM table_inexistante;" 2>&1 | grep -q "ERROR"; then
+          if docker compose exec -T db mariadb -u ${DB_USER} -p${DB_PASSWORD} -D ${DB_NAME} -e "SELECT * FROM table_inexistante;" 2>&1 | grep -q "ERROR"; then
             echo "Erreur correctement détectée sur table inexistante."
           else
             echo "Erreur non détectée sur table inexistante."
