@@ -1,0 +1,241 @@
+name: Docker Workflow
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Récupération du code
+        uses: actions/checkout@v4
+      - name: Configuration de l'environnement
+        run: cp .env.example .env
+      - name: Build des containers
+        run: docker compose -f docker-compose.dev.yaml up -d --build web db
+      - name: Sauvegarde des images pour les jobs suivants
+        run: |
+          echo "Images Docker disponibles:"
+          docker images
+          echo "Sauvegarde des images..."
+          # Sauvegarde déterministe de l'image web grâce à un tag explicite
+          docker save intranet-web:latest > intranet-web.tar
+          docker save intranet_mariadb:12.0.2 > intranet-db.tar
+          ls -la *.tar
+      - name: Upload des artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-images
+          path: |
+            intranet-web.tar
+            intranet-db.tar
+            .env
+          retention-days: 1
+
+  run-tests:
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Récupération du code
+        uses: actions/checkout@v4
+      - name: Configuration de Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+      - name: Installation des dépendances système
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libcups2-dev
+      - name: Cache des packages Python
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+      - name: Installation des dépendances Python
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then
+            pip install -r requirements.txt
+          fi
+          pip install pytest pytest-cov
+      - name: Exécution des tests pytest
+        run: |
+          echo "Exécution des tests pytest sans conteneurs..."
+          echo "Contenu du répertoire racine:"
+          ls -la
+          echo "Contenu du répertoire app:"
+          ls -la app/
+          cd test
+          python -m pytest -v --tb=short --cov=../app --cov-report=xml --cov-report=term
+      - name: Upload des résultats de couverture
+        uses: codecov/codecov-action@v3
+        if: always()
+        with:
+          file: ./test/coverage.xml
+          fail_ci_if_error: false
+
+  validate-database:
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Récupération du code
+        uses: actions/checkout@v4
+      - name: Download des artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: docker-images
+      - name: Configuration de l'environnement
+        run: |
+          echo "Fichiers téléchargés:"
+          ls -la
+          echo "Vérification du fichier .env des artifacts:"
+          if [ -f .env ]; then
+            echo "Fichier .env trouvé dans les artifacts"
+            cat .env
+          else
+            echo "Fichier .env non trouvé, création à partir de .env.example"
+            cp .env.example .env
+            cat .env
+          fi
+          echo "Chargement des variables d'environnement:"
+          source .env
+          echo "DB_USER=$DB_USER"
+          echo "DB_NAME=$DB_NAME"
+          echo "DB_HOST=$DB_HOST"
+      - name: Chargement des images Docker
+        run: |
+          echo "Chargement des images Docker..."
+          docker load < intranet-web.tar
+          docker load < intranet-db.tar
+          echo "Images chargées:"
+          docker images
+      - name: Validation de la base de données avec retry
+        uses: nick-fields/retry@v3
+        with:
+          timeout_minutes: 5
+          max_attempts: 3
+          retry_wait_seconds: 30
+          warning_on_retry: true
+          command: |
+            echo "Tentative de validation de la base de données..."
+            source .env
+            docker compose -f docker-compose.dev.yaml up -d db
+            
+            # Attendre que le conteneur db soit prêt
+            db_ready=false
+            for i in {1..30}; do
+              if docker compose exec -T db mariadb -u "${DB_USER}" -p"${DB_PASSWORD}" -e "SELECT 1" "${DB_NAME}"; then
+                echo "Le conteneur db est prêt."
+                db_ready=true
+                break
+              fi
+              echo "Attente du conteneur db..."
+              sleep 2
+            done
+            
+            if [ "$db_ready" = false ]; then
+              echo "Le conteneur db n'est pas prêt après 60 secondes."
+              docker compose down -v
+              exit 1
+            fi
+            
+            # Vérifier la colonne identifiant dans 99_users
+            identifiant=$(docker compose exec -T db mariadb -u "${DB_USER}" -p"${DB_PASSWORD}" -D "${DB_NAME}" -N -e "SELECT identifiant FROM 99_users LIMIT 1;")
+            if [ "$identifiant" = "admin" ]; then
+              echo "La colonne identifiant dans 99_users est correcte."
+            else
+              echo "La colonne identifiant dans 99_users n'est pas correcte. Valeur trouvée: $identifiant"
+              docker compose down -v
+              exit 1
+            fi
+
+            # Vérifier l'erreur sur une table inexistante
+            if docker compose exec -T db mariadb -u "${DB_USER}" -p"${DB_PASSWORD}" -D "${DB_NAME}" -e "SELECT * FROM table_inexistante;" 2>&1 | grep -q "ERROR"; then
+              echo "Erreur correctement détectée sur table inexistante."
+            else
+              echo "Erreur non détectée sur table inexistante."
+              docker compose down -v
+              exit 1
+            fi
+            
+            echo "Validation DB réussie, nettoyage..."
+            docker compose down -v
+
+  validate-web:
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Récupération du code
+        uses: actions/checkout@v4
+      - name: Download des artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: docker-images
+      - name: Configuration de l'environnement
+        run: |
+          echo "Fichiers téléchargés:"
+          ls -la
+          echo "Vérification du fichier .env des artifacts:"
+          if [ -f .env ]; then
+            echo "Fichier .env trouvé dans les artifacts"
+            cat .env
+          else
+            echo "Fichier .env non trouvé, création à partir de .env.example"
+            cp .env.example .env
+            cat .env
+          fi
+          echo "Chargement des variables d'environnement:"
+          source .env
+      - name: Chargement des images Docker
+        run: |
+          echo "Chargement des images Docker..."
+          docker load < intranet-web.tar
+          docker load < intranet-db.tar
+          echo "Images chargées:"
+          docker images
+      - name: Validation de l'application web avec retry
+        uses: nick-fields/retry@v3
+        with:
+          timeout_minutes: 8
+          max_attempts: 3
+          retry_wait_seconds: 60
+          warning_on_retry: true
+          command: |
+            echo "Tentative de validation de l'application web..."
+            source .env
+            docker compose -f docker-compose.dev.yaml up -d web db
+            
+            echo "Attente que le conteneur web soit prêt..."
+            web_ready=false
+            for i in {1..30}; do
+              if response=$(curl -s -o /dev/null -w "%{http_code} %{redirect_url}" -L -I http://localhost:5000/ 2>/dev/null); then
+                code=$(echo "$response" | cut -d' ' -f1)
+                location=$(echo "$response" | cut -d' ' -f2)
+                echo "Tentative $i: Code HTTP: $code, Location: $location"
+                
+                if [ "$code" = "302" ] && [[ "$location" == */login ]]; then
+                  echo "Le conteneur web répond correctement."
+                  web_ready=true
+                  break
+                elif [ "$code" = "200" ] || [ "$code" = "302" ]; then
+                  echo "Le conteneur web répond mais pas avec la redirection attendue."
+                  web_ready=true
+                  break
+                fi
+              else
+                echo "Tentative $i: Connexion impossible, attente..."
+              fi
+              sleep 2
+            done
+            
+            if [ "$web_ready" = false ]; then
+              echo "Le conteneur web n'est pas prêt après 60 secondes."
+              echo "Vérification des logs du conteneur:"
+              docker logs intranet_app --tail 20
+              docker compose down -v
+              exit 1
+            fi
+            
+            echo "Validation Web réussie, nettoyage..."
+            docker compose down -v

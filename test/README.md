@@ -4,14 +4,14 @@ Ce dossier contient tous les tests pour l'application Intranet, conçus pour fon
 
 ## Structure des tests
 
-```
+```text
 test/
-├── conftest.py              # Configuration globale et fixtures principales
-├── fixtures.py              # Fixtures spécialisées pour les données de test
-├── test_example.py          # Exemples de tests pour démonstration
-├── pytest.ini              # Configuration pytest
-├── docker-compose.test.yaml # Configuration Docker pour tests locaux (optionnel)
-└── README.md               # Cette documentation
+├── conftest.py                 # Configuration globale et fixtures principales
+├── fixtures.py                 # Fixtures spécialisées pour les données de test
+├── test_application.py         # Tests des principales fonctionnalités de l'application
+├── test_authentication.py      # Tests liés à l'authentification et aux sessions
+├── pytest.ini                  # Configuration pytest
+└── README.md                   # Cette documentation
 ```
 
 ## Fixtures disponibles
@@ -39,8 +39,6 @@ test/
 ### Fixtures d'application Flask
 
 - `app` : Instance de l'application Flask configurée pour les tests
-- `client` : Client de test Flask
-- `mock_session_context` : Contexte de session mockée pour l'application
 
 ### Fixtures d'opérations externes
 
@@ -116,7 +114,8 @@ python -m pytest -m "unit and not slow"
 Les tests sont automatiquement lancés lors des push/pull requests vers les branches `main` et `develop`.
 
 Le workflow GitHub Actions :
-- Teste sur Python 3.9, 3.10, et 3.11
+
+- Teste sur Python 3.12
 - Lance les tests avec couverture de code
 - Effectue un scan de sécurité avec bandit
 - Vérifie les dépendances avec safety
@@ -148,6 +147,7 @@ def test_authentication():
 ### Isolation des tests
 
 Chaque test doit être indépendant :
+
 - Utilisez `clean_mock_db` pour avoir une base vide
 - Ne partagez pas d'état entre les tests
 - Utilisez des fixtures pour les données communes
@@ -161,6 +161,7 @@ Chaque test doit être indépendant :
 ### Mocks
 
 Les mocks simulent les dépendances externes :
+
 - Base de données : automatiquement mockée
 - Fichiers : utilisez `mock_file_operations`
 - SSH : utilisez `mock_ssh_operations`
@@ -193,7 +194,7 @@ def test_feature_name(fixtures):
 
 Les dépendances suivantes sont requises pour les tests :
 
-```
+```text
 pytest>=7.0.0
 pytest-flask>=1.2.0
 pytest-cov>=4.0.0
