@@ -17,8 +17,8 @@ jobs:
           echo "Images Docker disponibles:"
           docker images
           echo "Sauvegarde des images..."
-          # Le nom de l'image web est généralement [dossier]-web
-          docker save intranet-web:latest > intranet-web.tar || docker save intranet_web:latest > intranet-web.tar || docker save $(docker images --format "{{.Repository}}:{{.Tag}}" | grep -E "(intranet.*web|web)" | head -1) > intranet-web.tar
+          # Sauvegarde déterministe de l'image web grâce à un tag explicite
+          docker save intranet-web:latest > intranet-web.tar
           docker save intranet_mariadb:12.0.2 > intranet-db.tar
           ls -la *.tar
       - name: Upload des artifacts
