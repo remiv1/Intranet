@@ -77,8 +77,9 @@ Voir le fichier [INSTALL.md](INSTALL.md) pour un guide d'installation détaillé
 ### 🔧 Commandes utiles
 
 ```bash
-# Arrêter l'application
+# Arrêter l'application + arrêt et suppression des données
 docker compose down
+docker compose down -v
 
 # Redémarrer l'application
 docker compose restart
@@ -136,29 +137,31 @@ Le fichier `.env` contient toutes les variables de configuration nécessaires :
 
 ### Architecture de la base de données
 
-L'application utilise **MariaDB** avec 4 tables principales interconnectées :
+L'application utilise **MariaDB** avec 5 tables principales interconnectées :
 
 ```sql
-┌──────────────────────┐    ┌──────────────────────┐    ┌───────────────────┐
-│   99_Users           │    │  01_Contrats         │    │ 11_Documents      │
-│                      │    │                      │    │                   │
-│ ├─ id (PK)           │    │ ├─ id (PK)           │ ◄──┤ ├─ id_contrat(FK) │
-│ ├─ identifiant       │    │ ├─ type_contrat      │    │ ├─ type_document  │
-│ ├─ sha_mdp           │    │ ├─ sous_type_contrat │    │ ├─ descriptif     │
-│ ├─ habilitation      │    │ ├─ entreprise        │    │ ├─ str_lien       │
-│ └─ locked            │    │ ├─ date_debut        │    │ └─ date_document  │
-└──────────────────────┘    │ └─ date_fin          │    └───────────────────┘
-                            └──────────────────────┘
-                                        │
-                                        │
-                            ┌───────────────────────┐
-                            │ 12_Evenements         │
-                            │                       │
-                            │ ├─ id_contrat(FK)     │
-                            │ ├─ type_evenement     │
-                            │ ├─ sous_type_evenement│
-                            │ └─ descriptif         │
-                            └───────────────────────┘
+┌──────────────────────┐    ┌──────────────────────┐    ┌───────────────────────┐
+│   99_Users           │    │  01_Contrats         │    │ 11_Documents          │
+│                      │    │                      │    │ ├─ id (PK)            │
+│ ├─ id (PK)           │    │ ├─ id (PK)           │ ◄──┤ ├─ id_contrat(FK)     │
+│ ├─ identifiant       │    │ ├─ type_contrat      │    │ ├─ type_document      │
+│ ├─ sha_mdp           │    │ ├─ sous_type_contrat │    │ ├─ sous_type_document │
+│ ├─ habilitation      │    │ ├─ entreprise        │    │ ├─ descriptif         │
+│ └─ locked            │    │ ├─ date_debut        │    │ ├─ str_lien           │
+└──────────────────────┘    │ └─ date_fin          │    │ └─ date_document      │
+                            └──────────────────────┘    └───────────────────────┘
+                                │             |
+                                │             │       
+            ┌───────────────────────┐       ┌───────────────────────┐
+            │ 12_Evenements         │       │  13_factures          │
+            │ ├─ id (PK)            │       │ ├─ id (PK)            │
+            │ ├─ id_contrat(FK)     │       │ ├─ id_contrat(FK)     │
+            │ ├─ type_evenement     │       │ ├─ date_facture       │
+            │ ├─ sous_type_evenement│       │ ├─ titre_facture      │
+            │ ├─ date_evenement     │       │ ├─ str_lien           │
+            │ └─ descriptif         │       │ ├─ montant            │
+            │                       │       │ └─ name               │
+            └───────────────────────┘       └───────────────────────┘
 ```
 
 ### 📊 Structure détaillée des tables
@@ -261,7 +264,6 @@ L'application utilise un système d'habilitations numérique flexible :
 - [x] **Classification** par type et sous-type
 - [x] **Liaison avec entreprises** et partenaires
 - [x] **Historique complet** des modifications
-- [x] **Tableau de bord** avec indicateurs
 
 ### 📄 Gestion Documentaire
 
@@ -270,8 +272,7 @@ L'application utilise un système d'habilitations numérique flexible :
 - [x] **Classification** par type et sous-type
 - [x] **Téléchargement sécurisé** avec contrôle d'accès
 - [x] **Support multi-formats** : PDF, images, Office
-- [x] **Aperçu en ligne** pour certains formats
-- [x] **Versioning** et historique des documents
+- [x] **Gestion parallèle** des documents et des liens en base
 
 ### 📅 Gestion des Événements
 
@@ -279,8 +280,8 @@ L'application utilise un système d'habilitations numérique flexible :
 - [x] **Chronologie interactive** des événements
 - [x] **Classification** des types d'événements
 - [x] **Notifications automatiques** d'échéances
-- [x] **Recherche temporelle** par périodes
-- [x] **Export** des données au format CSV/PDF
+- [ ] **Recherche temporelle** par périodes
+- [ ] **Export** des données au format CSV/PDF
 
 ### 🖨️ Impression à Distance
 
@@ -298,20 +299,20 @@ L'application utilise un système d'habilitations numérique flexible :
 
 ### 📊 Tableaux de Bord et Rapports
 
-- [x] **Dashboard principal** avec métriques clés
-- [x] **Graphiques interactifs** (contrats, échéances)
+- [ ] **Dashboard principal** avec métriques clés
+- [ ] **Graphiques interactifs** (contrats, échéances)
 - [x] **Rapports automatisés** d'échéances
-- [x] **Export de données** (CSV, PDF, Excel)
-- [x] **Statistiques d'utilisation** par utilisateur
-- [x] **Alertes visuelles** pour les actions urgentes
+- [ ] **Export de données** (CSV, PDF, Excel)
+- [ ] **Statistiques d'utilisation** par utilisateur
+- [ ] **Alertes visuelles** pour les actions urgentes
 
 ### 🌐 Interface Utilisateur
 
 - [x] **Design responsive** adaptatif mobile/desktop
 - [x] **Interface intuitive** avec navigation claire
 - [x] **Thème sombre/clair** selon préférences
-- [x] **Recherche globale** dans tous les modules
-- [x] **Raccourcis clavier** pour actions fréquentes
+- [ ] **Recherche globale** dans tous les modules
+- [ ] **Raccourcis clavier** pour actions fréquentes
 - [x] **Notifications toast** pour feedback utilisateur
 
 ## 🔧 Maintenance et Monitoring
@@ -362,7 +363,7 @@ docker-compose top                  # Processus actifs
 
 ### 💾 Stratégie de Sauvegarde
 
-#### Sauvegarde automatique quotidienne
+#### Sauvegarde automatique quotidienne (à venir)
 
 ```bash
 #!/bin/bash
@@ -449,8 +450,8 @@ curl -I http://localhost    # Test de connectivité
 ```bash
 # Sécuriser les fichiers de configuration
 chmod 600 .env
-chmod 600 app/nginx/certs/privkey.pem
-chmod 644 app/nginx/certs/cert.pem
+chmod 600 /etc/nginx/certs/intraraudiere.crt
+chmod 644 /etc/nginx/certs/intraraudiere.key
 
 # Sécuriser les répertoires de données
 chown -R 999:999 $(grep DB_LOCAL_PATH .env | cut -d'=' -f2)
@@ -560,20 +561,6 @@ cp .env.example .env.dev
 nano .env.dev  # Adapter pour environnement local
 ```
 
-#### Lancement en mode développement
-
-```bash
-# Variables d'environnement de développement
-export FLASK_ENV=development
-export FLASK_DEBUG=1
-
-# Lancement direct (sans Docker)
-python run.py
-
-# Ou avec Docker en mode dev
-docker-compose -f docker-compose.dev.yml up
-```
-
 ### 📝 Ajout de Nouvelles Fonctionnalités
 
 #### 1. Nouveau modèle de données
@@ -648,12 +635,10 @@ app.logger.error("Erreur")
 
 ```bash
 # Exécution des tests
-python -m pytest tests/
-python -m pytest tests/ -v --coverage
+python -m pytest test/
 
 # Tests spécifiques
-python -m pytest tests/test_models.py
-python -m pytest tests/test_routes.py
+python -m pytest tests/test_application.py
 ```
 
 ### 📊 Métriques et Performance
@@ -688,7 +673,7 @@ def after_request(response):
 # Diagnostic
 docker-compose ps db                           # Conteneur actif ?
 docker-compose logs db                         # Logs d'erreur ?
-docker-compose exec db mysql -u root -p        # Connexion directe
+docker-compose exec db mariadb -u root -p      # Connexion directe
 ```
 
 **Solution** :
@@ -710,10 +695,10 @@ UPDATE 99_Users SET habilitation=126 WHERE identifiant='admin';
 
 ```bash
 # Vérifier l'expiration
-openssl x509 -in app/nginx/certs/cert.pem -text -noout | grep "Not After"
+openssl x509 -in /etc/nginx/certs/intraraudiere.crt -text -noout | grep "Not After"
 
 # Renouveler avec Let's Encrypt
--certbot renew
+certbot renew
 docker-compose restart nginx
 ```
 
@@ -754,14 +739,14 @@ Ce projet open-source a été créé bénévolement pour répondre aux besoins s
 
 ### 📈 Roadmap
 
-#### Version actuelle : 1.0
+#### Version actuelle : 1.x
 
 - [x] Gestion complète des contrats
 - [x] Système d'impression à distance  
 - [x] Interface responsive
 - [x] Sécurité renforcée
 
-#### Version future : 2.0
+#### Version future : 2.x
 
 - [ ] API REST complète
 - [ ] Application mobile

@@ -17,6 +17,7 @@ Avant de commencer, assurez-vous d'avoir :
 #### Étape 1 : Préparation de l'environnement
 
 Vérifier les prérequis
+
 ```bash
 docker --version
 docker compose version
@@ -26,6 +27,7 @@ git --version
 #### Étape 2 : Clonage du projet
 
 Cloner le dépôt
+
 ```bash
 git clone https://github.com/remiv1/Intranet.git
 cd Intranet
@@ -34,6 +36,7 @@ cd Intranet
 #### Étape 3 : Configuration automatique
 
 Générer automatiquement la configuration avec mots de passe sécurisés
+
 ```bash
 ./generate-env.sh
 ```
@@ -62,6 +65,7 @@ sudo chmod 755 $(grep FILES_LOCAL_PATH .env | cut -d'=' -f2)
 #### Étape 6 : Configuration SSL (Optionnel mais recommandé)
 
 Placer vos certificats SSL dans app/nginx/certs/
+
 ```bash
 sudo cp votre-certificat.pem app/nginx/certs/cert.pem
 sudo cp votre-cle-privee.pem app/nginx/certs/privkey.pem
@@ -71,6 +75,7 @@ sudo chmod 600 app/nginx/certs/privkey.pem
 #### Étape 7 : Construction et lancement
 
 Construire et lancer l'application
+
 ```bash
 docker compose up --build -d
 ```
@@ -78,6 +83,7 @@ docker compose up --build -d
 #### Étape 8 : Vérification du déploiement
 
 Vérifier que tous les conteneurs sont en cours d'exécution
+
 ```bash
 docker compose ps
 
@@ -90,6 +96,7 @@ docker compose logs nginx
 #### Étape 9 : Premier accès
 
 Accéder à l'application
+
 ```txt
 Ouvrir http://localhost (ou https://localhost si SSL configuré)
 Tester la connexion avec un compte administrateur
@@ -98,6 +105,7 @@ Tester la connexion avec un compte administrateur
 ## Dépannage rapide
 
 ### Problème : Port déjà utilisé
+
 ```bash
 # Trouver le processus utilisant le port 80
 sudo lsof -i :80
@@ -105,6 +113,7 @@ sudo lsof -i :80
 ```
 
 ### Problème : Permissions insuffisantes
+
 ```bash
 # Corriger les permissions
 sudo chown -R $USER:$USER .
@@ -112,6 +121,7 @@ chmod +x *.sh
 ```
 
 ### Problème : Base de données inaccessible
+
 ```bash
 # Redémarrer uniquement la base de données
 docker-compose restart db
@@ -122,6 +132,7 @@ docker-compose logs db
 ### Problème : Erreurs de lecture des fichiers *.sh
 
 #### Sous Linux / macOS
+
 ```bash
 # Utiliser dos2unix pour convertir les fins de ligne
 # Version Debian/Ubuntu
@@ -134,6 +145,7 @@ dos2unix *.sh
 ```
 
 #### Sous Windows
+
 ```Powershell (Administrateur)
 # Version Windows (Git Bash)
 # Installation de Chocolatey
