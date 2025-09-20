@@ -45,9 +45,15 @@ jobs:
         run: |
           echo "Fichiers téléchargés:"
           ls -la
-          echo "Configuration des variables d'environnement..."
-          # Le fichier .env est inclus dans les artifacts
-          cat .env
+          echo "Vérification du fichier .env des artifacts:"
+          if [ -f .env ]; then
+            echo "Fichier .env trouvé dans les artifacts"
+            cat .env
+          else
+            echo "Fichier .env non trouvé, création à partir de .env.example"
+            cp .env.example .env
+            cat .env
+          fi
       - name: Chargement des images Docker
         run: |
           echo "Chargement des images Docker..."
@@ -120,8 +126,15 @@ jobs:
         run: |
           echo "Fichiers téléchargés:"
           ls -la
-          echo "Configuration des variables d'environnement..."
-          cat .env
+          echo "Vérification du fichier .env des artifacts:"
+          if [ -f .env ]; then
+            echo "Fichier .env trouvé dans les artifacts"
+            cat .env
+          else
+            echo "Fichier .env non trouvé, création à partir de .env.example"
+            cp .env.example .env
+            cat .env
+          fi
       - name: Chargement des images Docker
         run: |
           echo "Chargement des images Docker..."
