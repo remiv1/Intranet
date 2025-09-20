@@ -14,8 +14,8 @@ from unittest.mock import MagicMock, patch
 from flask import Flask
 from flask.testing import FlaskClient
 
-# Ajouter le répertoire app au path pour les imports
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'app'))
+# Ajouter le répertoire racine au path pour les imports
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 from app.models import User, Contract, Document, Event
 from app.config import Config
