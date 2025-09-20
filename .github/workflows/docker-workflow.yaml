@@ -54,6 +54,11 @@ jobs:
             cp .env.example .env
             cat .env
           fi
+          echo "Chargement des variables d'environnement:"
+          source .env
+          echo "DB_USER=$DB_USER"
+          echo "DB_NAME=$DB_NAME"
+          echo "DB_HOST=$DB_HOST"
       - name: Chargement des images Docker
         run: |
           echo "Chargement des images Docker..."
@@ -70,12 +75,13 @@ jobs:
           warning_on_retry: true
           command: |
             echo "Tentative de validation de la base de données..."
+            source .env
             docker compose -f docker-compose.dev.yaml up -d db
             
             # Attendre que le conteneur db soit prêt
             db_ready=false
             for i in {1..30}; do
-              if docker compose exec -T db mariadb -u ${DB_USER} -p${DB_PASSWORD} -e "SELECT 1" ${DB_NAME}; then
+              if docker compose exec -T db mariadb -u "${DB_USER}" -p"${DB_PASSWORD}" -e "SELECT 1" "${DB_NAME}"; then
                 echo "Le conteneur db est prêt."
                 db_ready=true
                 break
@@ -91,7 +97,7 @@ jobs:
             fi
             
             # Vérifier la colonne identifiant dans 99_users
-            identifiant=$(docker compose exec -T db mariadb -u ${DB_USER} -p${DB_PASSWORD} -D ${DB_NAME} -N -e "SELECT identifiant FROM 99_users LIMIT 1;")
+            identifiant=$(docker compose exec -T db mariadb -u "${DB_USER}" -p"${DB_PASSWORD}" -D "${DB_NAME}" -N -e "SELECT identifiant FROM 99_users LIMIT 1;")
             if [ "$identifiant" = "admin" ]; then
               echo "La colonne identifiant dans 99_users est correcte."
             else
@@ -101,7 +107,7 @@ jobs:
             fi
 
             # Vérifier l'erreur sur une table inexistante
-            if docker compose exec -T db mariadb -u ${DB_USER} -p${DB_PASSWORD} -D ${DB_NAME} -e "SELECT * FROM table_inexistante;" 2>&1 | grep -q "ERROR"; then
+            if docker compose exec -T db mariadb -u "${DB_USER}" -p"${DB_PASSWORD}" -D "${DB_NAME}" -e "SELECT * FROM table_inexistante;" 2>&1 | grep -q "ERROR"; then
               echo "Erreur correctement détectée sur table inexistante."
             else
               echo "Erreur non détectée sur table inexistante."
@@ -135,6 +141,8 @@ jobs:
             cp .env.example .env
             cat .env
           fi
+          echo "Chargement des variables d'environnement:"
+          source .env
       - name: Chargement des images Docker
         run: |
           echo "Chargement des images Docker..."
@@ -151,6 +159,7 @@ jobs:
           warning_on_retry: true
           command: |
             echo "Tentative de validation de l'application web..."
+            source .env
             docker compose -f docker-compose.dev.yaml up -d web db
             
             echo "Attente que le conteneur web soit prêt..."
