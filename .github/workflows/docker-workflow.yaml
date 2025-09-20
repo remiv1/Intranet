@@ -14,15 +14,20 @@ jobs:
         run: docker compose -f docker-compose.dev.yaml up -d --build web db
       - name: Sauvegarde des images pour les jobs suivants
         run: |
-          docker save intranet-web:latest > /tmp/intranet-web.tar
-          docker save intranet_mariadb:12.0.2 > /tmp/intranet-db.tar
+          echo "Images Docker disponibles:"
+          docker images
+          echo "Sauvegarde des images..."
+          # Le nom de l'image web est généralement [dossier]-web
+          docker save intranet-web:latest > intranet-web.tar || docker save intranet_web:latest > intranet-web.tar || docker save $(docker images --format "{{.Repository}}:{{.Tag}}" | grep -E "(intranet.*web|web)" | head -1) > intranet-web.tar
+          docker save intranet_mariadb:12.0.2 > intranet-db.tar
+          ls -la *.tar
       - name: Upload des artifacts
         uses: actions/upload-artifact@v4
         with:
           name: docker-images
           path: |
-            /tmp/intranet-web.tar
-            /tmp/intranet-db.tar
+            intranet-web.tar
+            intranet-db.tar
             .env
           retention-days: 1
 
@@ -38,8 +43,13 @@ jobs:
           name: docker-images
       - name: Chargement des images Docker
         run: |
+          echo "Fichiers téléchargés:"
+          ls -la
+          echo "Chargement des images Docker..."
           docker load < intranet-web.tar
           docker load < intranet-db.tar
+          echo "Images chargées:"
+          docker images
       - name: Validation de la base de données avec retry
         uses: nick-fields/retry@v3
         with:
@@ -103,8 +113,13 @@ jobs:
           name: docker-images
       - name: Chargement des images Docker
         run: |
+          echo "Fichiers téléchargés:"
+          ls -la
+          echo "Chargement des images Docker..."
           docker load < intranet-web.tar
           docker load < intranet-db.tar
+          echo "Images chargées:"
+          docker images
       - name: Validation de l'application web avec retry
         uses: nick-fields/retry@v3
         with:
