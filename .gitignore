@@ -2,8 +2,10 @@
 .secret
 venveraudiere/
 veraudiere/
-__pycache__/
-app/__pycache__
+*.pyc
+*.pyo
+**/*.pyc
+**/__pycache__/
 *.pem
 venv/
 
