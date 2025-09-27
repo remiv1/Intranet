@@ -4,7 +4,7 @@ from sqlalchemy.orm import mapped_column, relationship
 from sqlalchemy.sql import func
 from werkzeug.datastructures import FileStorage
 from werkzeug.utils import secure_filename
-from typing import Optional
+from typing import Optional, Dict, Any
 from datetime import datetime
 from os.path import splitext
 
@@ -12,6 +12,19 @@ Base = declarative_base()
 CONTRACT_KEY = '01_contrats.id'
 
 class User(Base):
+    """
+    Modèle représentant un utilisateur dans la base de données.
+    Attributs :
+        id (int): Identifiant unique de l'utilisateur.
+        prenom (str): Prénom de l'utilisateur.
+        nom (str): Nom de l'utilisateur.
+        mail (str): Adresse e-mail de l'utilisateur.
+        identifiant (str): Identifiant de connexion de l'utilisateur.
+        sha_mdp (str): Mot de passe hashé de l'utilisateur.
+        habilitation (int): Niveau d'habilitation de l'utilisateur.
+        debut (date): Date de début de validité de l'utilisateur.
+        fin (date): Date de fin de validité de l'utilisateur.
+    """
     __tablename__ = '99_users'
     id = mapped_column(Integer, primary_key=True)
     prenom = mapped_column(String(255), nullable=False)
@@ -24,6 +37,22 @@ class User(Base):
     fin = mapped_column(Date, nullable=True)
     false_test = mapped_column(Integer, nullable=True, default=0)
     locked = mapped_column(Boolean, nullable=True, default=False)
+
+    def to_dict(self, with_mdp: bool = False) -> Dict[str, Optional[Any]]:
+        user_dict: Dict[str, Optional[Any]] = {
+            "id": self.id,
+            "prenom": self.prenom,
+            "nom": self.nom,
+            "mail": self.mail,
+            "identifiant": self.identifiant,
+            "habilitation": self.habilitation,
+            "debut": self.debut.isoformat() if self.debut else None,
+            "fin": self.fin.isoformat() if self.fin else None,
+            "locked": self.locked
+        }
+        if with_mdp:
+            user_dict["sha_mdp"] = self.sha_mdp
+        return user_dict
 
     def __repr__(self) -> str:
         return (f"<User(id={self.id}, prenom='{self.prenom}', nom='{self.nom}', "

@@ -60,3 +60,38 @@
     border: 1px solid #ccc;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
+
+/* Marqueurs de signature */
+.signature-marker {
+    position: absolute;
+    width: 24px;
+    height: 24px;
+    background-color: #ff4444;
+    border: 2px solid #cc0000;
+    border-radius: 50%;
+    cursor: pointer;
+    z-index: 1000;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: bold;
+    color: white;
+    text-shadow: 1px 1px 1px rgba(0,0,0,0.5);
+}
+
+.signature-marker:hover {
+    transform: scale(1.2);
+    box-shadow: 0 2px 8px rgba(255, 68, 68, 0.4);
+}
+
+.signature-marker.validated {
+    background-color: #44ff44;
+    border-color: #00cc00;
+}
+
+/* Canvas PDF cliquable */
+.pdf-page canvas {
+    cursor: crosshair;
+}
