@@ -224,7 +224,15 @@ def upload_document() -> Any:
             SecureDocumentAccess.cleanup_expired_temp_files()
             
             # Sauvegarde du fichier pdf
+            filename = Path(filename).name
+            
+            # Sécuriser le nom de fichier
             folder_path = SecureDocumentAccess.TEMP_DIR
+            
+            # Vérifier que le dossier existe
+            Path(folder_path).mkdir(parents=True, exist_ok=True)
+
+            # Sauvegarder le fichier PDF
             file_path = f"{folder_path}/{filename}"
             pdf_document.save(file_path)
             

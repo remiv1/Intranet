@@ -108,6 +108,7 @@
                 <div class="modal-dialog">
                     <form method="POST" action="{{ url_for('signature.upload_document') }}" enctype="multipart/form-data">
                         <div class="modal-content">
+                            <input type="hidden" name="temp_dir" value="True">
                             <div class="modal-header">
                                 <h5 class="modal-title">Téléverser un document PDF</h5>
                                 <button type="button" class="btn-close" data-bs-dismiss="modal" title="Fermer"></button>

@@ -6,7 +6,7 @@ document.addEventListener("DOMContentLoaded", function() {
 
     // construction de l'URL du PDF à partir du nom de fichier
     const filename = pdfContainer.getAttribute('data-filename');
-    const url = `/signature/download/${filename}`;
+    const url = `/signature/download/${filename}?temp_dir=True`;
 
     // Handler for rendering a page
     function handlePageRender(pageNum, numPages, loader, pdfContainer, page, scale) {
