@@ -38,6 +38,7 @@ from sqlalchemy.engine.url import URL
 from habilitations import (validate_habilitation, ADMINISTRATEUR, GESTIONNAIRE, PROFESSEURS_PRINCIPAUX,
                            PROFESSEURS, ELEVES, IMPRESSIONS)
 from bp_contracts import contracts_bp
+from bp_signature import signatures_bp
 from config import Config
 from models import Base, User
 from docs import print_document, delete_file
@@ -67,6 +68,7 @@ peraudiere = Flask(__name__)
 
 # Enregistrement du blueprint pour les contrats
 peraudiere.register_blueprint(contracts_bp)
+peraudiere.register_blueprint(signatures_bp)
 
 # Charger la configuration depuis config.py
 peraudiere.config.from_object(Config)
@@ -427,6 +429,28 @@ def ei(message: Optional[str] = None, success_message: Optional[str] = None,
     """
     return render_template('ei.html', message=message, success_message=success_message,
                            error_message=error_message)
+
+@peraudiere.route('/ea')
+@validate_habilitation(GESTIONNAIRE)
+def ea(message: Optional[str] = None, success_message: Optional[str] = None,
+        error_message: Optional[str] = None, context: Optional[str] = None) -> str | Response:
+    """
+    Route pour l'espace réservé aux administrateurs.
+    Gère l'affichage de l'espace réservé aux administrateurs.
+    Args:
+        None
+    Returns:
+        Response: La page de l'espace réservé aux administratifs.
+    """
+    message = request.args.get('message', message)
+    success_message = request.args.get('success_message', success_message)
+    error_message = request.args.get('error_message', error_message)
+    context = request.args.get('context', context)
+    # définition des sections disponibles en fonction des habilitations
+    sections: List[Dict[str, Any]] = get_jsoned_datas(file='admin_modules.json', level_one='modules', dumped=False)
+
+    return render_template('ea.html', message=message, success_message=success_message,
+                           error_message=error_message, sections=sections, context=context)
 
 @peraudiere.route('/print-doc', methods=['POST'])
 @validate_habilitation(IMPRESSIONS)

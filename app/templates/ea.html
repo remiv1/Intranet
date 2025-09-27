@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <link rel="shortcut icon" href="{{ url_for('static', filename='img/favicone.svg') }}" type="image/x-icon">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!--Titre du document-->
+    <title>La Peraudière | Service Impression</title>
+    <!-- CSS Bootstrap-->
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+    <!--CSS propriétaires-->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style-impression.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style-general.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style-accueil.css') }}">
+    <!--Jeux de polices-->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fenix&family=Pattaya&display=swap" rel="stylesheet">
+    <!-- Sprite SVG Bootstrap -->
+    <svg class="d-none" xmlns="http://www.w3.org/2000/svg">
+        <symbol id="house-door-fill" viewBox="0 0 16 16">
+            <path d="M8 1.52l6 5V14h-4V9H6v5H2V6.52l6-5zm8 5.67v6.11a1 1 0 0 1-1 1h-4a1 1 0 0 1-1-1v-4H6v4a1 1 0 0 1-1 1H1a1 1 0 0 1-1-1V7.19l-.94-.73a.8.8 0 0 1-.06-1.14l7-5.33a1.16 1.16 0 0 1 1.4 0l7 5.33a.8.8 0 0 1-.06 1.14L16 7.19z">
+        </symbol>
+    </svg>
+</head>
+<body>
+    <header>
+        <h1>Espace Administratif</h1>
+    </header>
+    <main>
+        <!-- Fil d'Ariane -->
+        <div class="container-fluid my-5">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb breadcrumb-custom overflow-hidden text-center bg-body-tertiary border rounded-3">
+                    <li class="breadcrumb-item">
+                        <a class="link-body-emphasis fw-semibold text-decoration-none"
+                           href="{{ url_for('home') }}" title="accueil">
+                            <svg class="bi" width="16" height="16">
+                                <use xlink:href="#house-door-fill"></use>
+                            </svg>
+                        </a>
+                    </li>
+                    <li class="breadcrumb-item bi">
+                        Espace Administratif
+                    </li>
+                    <li class="breadcrumb-item active">
+                        {% if not context %}
+                        Accueil
+                        {% elif context == 'signature_make' %}
+                        Déposer un document à signer
+                        {% elif context == 'signature_do' %}
+                        Signer un document
+                        {% endif %}
+                    </li>
+                </ol>
+            </nav>
+        </div> 
+        {% if message %}
+        <div class="alert alert-info alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close">X</button>
+        </div>
+        {% endif %}
+        {% if error_message %}
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            {{ error_message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close">X</button>
+        </div>
+        {% endif %}
+        {% if success_message %}
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            {{ success_message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close">X</button>
+        </div>
+        {% endif %}
+        <!-- Conteneur de paramétrage de l'espace d'impression -->
+        <div class="container-fluid">
+            {% if message %}
+                <div class="alert alert-{{ message.type }}" role="alert">
+                    {{ message.text }}
+                </div>
+            {% endif %}
+            {% if not context %}
+            <h2>Accueil de l'espace administratif</h2>
+            <p>Bienvenue dans l'espace administratif. Veuillez choisir une action ci-dessous :</p>
+            <div class="row">
+                {% for section in sections %}
+                    <div class="col-xxl-2 col-lg-3 col-md-4 col-sm-6 col-12 mb-4">
+                        <div class="rectangle card-environnement">
+                            <h2 class="card-title">{{ section['titre'] }}</h2>
+                            <p class="card-text">{{ section['descriptif'] }}</p>
+                            <div class="button-container">
+                                <a class="btn btn-primary button"
+                                   id="{{ section['button_id'] }}"
+                                   href="{{ url_for(section['onclick']) }}"
+                                   {% if section['buttonid'] == 'signature_make' %} data-bs-toggle="modal" data-bs-target="#uploadModal"{% endif %}>
+                                   Accéder
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+            <!-- Modale d’upload -->
+            <div class="modal fade" id="uploadModal" tabindex="-1">
+                <div class="modal-dialog">
+                    <form method="POST" action="{{ url_for('signature.upload_document') }}" enctype="multipart/form-data">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title">Téléverser un document PDF</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" title="Fermer"></button>
+                            </div>
+                            <div class="modal-body">
+                                <input type="file" name="pdf" accept="application/pdf" title="Choisir un fichier PDF" required>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="submit" class="btn btn-success">Envoyer</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            {% elif context == 'signature_make' %}
+                {% include 'signatures/signature_make.html' %}
+            {% elif context == 'signature_do' %}
+                {% include 'signatures/signature_do.html' %}
+            {% endif %}
+        </main>
+        <footer>
+            <p>© 2025 - La Péraudière - Tous droits réservés</p>
+        </footer>
+    <!--Scripts propriétaires-->
+    <script src="{{ url_for('static', filename='js/signatures.js') }}"></script>
+    <!--Scripts Bootstrap-->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-kenU1KFdBIe4zVF0s0G1M5b4hcpxyD9F7jL+jjXkk+Q2h455rYXK/7HAuoJl+0I4" crossorigin="anonymous"></script>
+</body>
+</html>

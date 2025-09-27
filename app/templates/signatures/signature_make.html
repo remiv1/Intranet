@@ -1,0 +1,14 @@
+<div id="pdf-container"></div>
+
+<form method="POST" action="{{ url_for('signature.signature_make') }}">
+    <input type="hidden" name="doc_id" value="{{ document_name }}">
+    <div id="signer-form"></div>
+    <button type="submit">Valider les signataires</button>
+</form>
+    <!-- Généré dynamiquement en JS -->
+</div>
+<script src="https://mozilla.github.io/pdf.js/build/pdf.js"></script>
+<script>
+    const PDF_URL = "{{ url_for('static', filename=document.file_path) }}";
+    const users = {{ users | tojson }}; // liste des utilisateurs injectée depuis Flask
+</script>

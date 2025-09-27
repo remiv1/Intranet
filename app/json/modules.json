@@ -3,7 +3,7 @@
         "metadonnees":
         {
             "__comment": "Modules accessibles via la page d'accueil de l'Intranet",
-            "__version": "1.0.0",
+            "__version": "1.1.0",
             "__auteur": "Rémi VERSCHUUR"
         }
     },
@@ -57,6 +57,13 @@
                 "descriptif": "Espace réservé pour les élèves de l'établissement (en construction)",
                 "buttonid": "Ere",
                 "onclick": "ere"
+            },
+            {
+                "classe": 2,
+                "titre": "Espace administratif",
+                "descriptif": "Espace réservé pour le personnel administratif de l'établissement (en construction)",
+                "buttonid": "Ea",
+                "onclick": "ea"
             }
         ]
     }
