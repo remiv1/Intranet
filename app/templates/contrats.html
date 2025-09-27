@@ -120,11 +120,7 @@
                     <tbody>
                         {% for contract in contracts %}
                             <tr data-type="{{ contract['type_contrat'] }}" data-stype="{{ contract['sous_type_contrat'] }}">
-                                <td class="align-middle">
-                                    <a href="{{ url_for('contracts_bp.contrats_by_num', id_contrat=contract['id']) }}">
-                                        {{ contract['id'] }}
-                                    </a>
-                                </td>
+                                <td class="align-middle">{{ contract['id'] }}</td>
                                 <td class="align-middle">{{ contract['type_contrat'] }}</td>
                                 <td class="align-middle">{{ contract['sous_type_contrat'] }}</td>
                                 <td class="align-middle">{{ contract['entreprise'] }}</td>
@@ -134,9 +130,14 @@
                                 <td class="align-middle">{{ contract['date_fin_preavis'] }}</td>
                                 <td class="align-middle">{{ contract['date_fin'] }}</td>
                                 <td class="align-middle">
-                                    <button type="button" class="button" data-bs-toggle="modal" data-bs-target="#modalModif{{ contract['id'] }}">
-                                        Modifier
+                                    <button type="button" class="button" data-bs-toggle="modal" data-bs-target="#modalModif{{ contract['id'] }}" title="Modifier">
+                                        <i class="bi bi-pencil-square"></i>
                                     </button>
+                                    <form action="{{ url_for('contracts_bp.contrats_by_num', id_contrat=contract['id']) }}" method="get" class="d-inline">
+                                        <button type="submit" class="button d-inline" title="Détail">
+                                            <i class="bi bi-eye"></i>
+                                        </button>
+                                    </form>
                                 </td>
                             </tr>
                         {% endfor %}

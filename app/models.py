@@ -1,6 +1,6 @@
 from sqlalchemy import Integer, String, Date, Boolean, ForeignKey, Numeric
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import mapped_column
+from sqlalchemy.orm import mapped_column, relationship
 from sqlalchemy.sql import func
 from werkzeug.datastructures import FileStorage
 from werkzeug.utils import secure_filename
@@ -42,13 +42,34 @@ class Contract(Base):
     date_debut = mapped_column(Date, nullable=False)
     date_fin_preavis = mapped_column(Date, nullable=False)
     date_fin = mapped_column(Date, nullable=True)
+    contacts = relationship("Contacts", back_populates="contrat", cascade="all, delete-orphan")
 
     def __repr__(self) -> str:
         return (f"<Contract(id={self.id}, type_contrat='{self.type_contrat}', sous_type_contrat='{self.sous_type_contrat}', "
             f"entreprise='{self.entreprise}', id_externe_contrat='{self.id_externe_contrat}', "
             f"intitule='{self.intitule}', date_debut={self.date_debut}, date_fin_preavis={self.date_fin_preavis}, "
             f"date_fin={self.date_fin})>")
-    
+
+class Contacts(Base):
+    __tablename__ = '02_contacts'
+    id = mapped_column(Integer, primary_key=True)
+    id_contrat = mapped_column(Integer, ForeignKey(CONTRACT_KEY), nullable=False)
+    contrat = relationship("Contract", back_populates="contacts")
+    nom = mapped_column(String(255), nullable=False)
+    fonction = mapped_column(String(100), nullable=True)
+    mail = mapped_column(String(255), nullable=False)
+    tel_fixe = mapped_column(String(20), nullable=True)
+    tel_portable = mapped_column(String(20), nullable=True)
+    adresse = mapped_column(String(255), nullable=True)
+    code_postal = mapped_column(String(10), nullable=True)
+    ville = mapped_column(String(100), nullable=True)
+
+    def __repr__(self) -> str:
+        return (f"<Contacts(id={self.id}, id_contrat={self.id_contrat}, nom='{self.nom}', prenom='{self.prenom}', "
+            f"fonction='{self.fonction}', mail='{self.mail}', tel_fixe='{self.tel_fixe}', "
+            f"tel_portable='{self.tel_portable}', adresse='{self.adresse}', code_postal='{self.code_postal}', "
+            f"ville='{self.ville}', pays='{self.pays}')>")
+
 class Document(Base):
     __tablename__ = '11_documents'
     id = mapped_column(Integer, primary_key=True)

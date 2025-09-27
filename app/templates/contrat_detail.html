@@ -82,14 +82,104 @@
             {% endif %}
             <!-- Onglets de gestion des contrats : Evènements & Documents -->
             <div class="tab">
-                <button class="tablinks{{' active' if tab == 'e' else ''}}"
+                <button class="tablinks{{ ' active' if tab == 'c' else '' }}"
+                        onclick="openTab(event, 'Contacts')">Contacts</button>
+                <button class="tablinks{{ ' active' if tab == 'e' else '' }}"
                         onclick="openTab(event, 'Events')" id="defaultOpen">Evènements</button>
-                <button class="tablinks{{' active' if tab == 'd' else ''}}"
+                <button class="tablinks{{ ' active' if tab == 'd' else '' }}"
                         onclick="openTab(event, 'Documents')">Documents</button>
-                <button class="tablinks{{' active' if tab == 'f' else ''}}"
+                <button class="tablinks{{ ' active' if tab == 'f' else '' }}"
                         onclick="openTab(event, 'Bills')">Factures</button>
             </div>
-            <!-- Conteneur du premier onglet (Evènements) -->
+            <!-- Conteneur du premier onglet (Contacts) -->
+            <div id="Contacts" class="tabcontent{{' d-block' if tab == 'c' else ' d-none'}}">
+                <!-- Contenu -->
+                <div id="collapseOne" class="show" aria-labelledby="headingOne" data-parent="#accordion">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-start">
+                            <button type="button" class="button" data-bs-toggle="modal" data-bs-target="#modalAjoutContact">Ajouter</button>
+                        </div>
+                        <table class="table table-bordered">
+                            <thead>
+                                <tr>
+                                    <th class="d-none">id</th>
+                                    <th>Nom</th>
+                                    <th>Fonction</th>
+                                    <th>Mail</th>
+                                    <th>Téléphones</th>
+                                    <th>Adresse</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% if contacts|length > 0 %}
+                                    {% for contact in contacts|sort(attribute='nom', reverse=False) %}
+                                    <tr>
+                                        <td class="d-none">{{ contact['id'] }}</td>
+                                        <td class="align-middle">{{ contact['nom'] }}</td>
+                                        <td class="align-middle">{{ contact['fonction'] }}</td>
+                                        <td class="align-middle">
+                                            <a href="mailto:{{ contact['mail'] }}">
+                                                {{ contact['mail'] }}
+                                            </a>
+                                        <td class="align-middle">
+                                            {% if contact['tel_fixe'] and contact['tel_portable'] %}
+                                            <a href="tel:{{ contact['tel_fixe'] }}">
+                                                {{ contact['tel_fixe'] -}}
+                                            </a>
+                                            <a href="tel:{{ contact['tel_portable'] }}">
+                                                <br>{{ contact['tel_portable'] }}
+                                            </a>
+                                            {% elif contact['tel_fixe'] %}
+                                            <a href="tel:{{ contact['tel_fixe'] }}">
+                                                {{ contact['tel_fixe'] }}
+                                            </a>
+                                            {% elif contact['tel_portable'] %}
+                                            <a href="tel:{{ contact['tel_portable'] }}">
+                                                {{ contact['tel_portable'] }}
+                                            </a>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if contact['adresse'] %}
+                                                {{ contact['adresse'] }}<br>
+                                            {% endif %}
+                                            {% if contact['code_postal'] %}
+                                                {{ contact['code_postal'] }} 
+                                            {% endif %}
+                                            {% if contact['ville'] %}
+                                                {{ contact['ville'] }}
+                                            {% endif %}
+                                        </td>
+                                        <td class="align-middle">
+                                            <button type="button" class="button" data-bs-toggle="modal"
+                                                    data-bs-target="#modalModifContact{{ contact['id'] }}"
+                                                    title="Modifier le contact {{ contact['nom'] }}">
+                                                <i class="bi bi-pencil-square"></i>
+                                            </button>
+                                            <form class="d-inline" action="{{ url_for('contracts_bp.delete_contact_id', id_contrat=contact['id_contrat'], id_contact=contact['id'], tab='c') }}" method="post">
+                                                <input type="hidden" name="_method" value="DELETE">
+                                                <button type="submit" class="button" title="Supprimer le contact {{ contact['nom'] }}" onclick="return confirm('Êtes-vous sûr de vouloir supprimer ce contact ?');">
+                                                    <i class="bi bi-trash-fill"></i>
+                                                </button>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                {% else %}
+                                    <tr>
+                                        <td colspan="6" class="text-center">
+                                            <i class="bi bi-person"></i>
+                                            Aucun contact disponible.
+                                        </td>
+                                    </tr>
+                                {% endif %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <!-- Conteneur du deuxième onglet (Evènements) -->
             <div id="Events" class="tabcontent{{' d-block' if tab == 'e' else ' d-none'}}">
                 <!-- Contenu -->
                 <div id="collapseOne" class="show" aria-labelledby="headingOne" data-parent="#accordion">
@@ -137,7 +227,7 @@
                     </div>
                 </div>
             </div>
-            <!-- Conteneur du deuxième onglet (Documents) -->
+            <!-- Conteneur du troisième onglet (Documents) -->
             <div id="Documents" class="tabcontent{{' d-block' if tab == 'd' else ' d-none'}}">
                 <!-- Contenu -->
                 <div id="collapseTwo" class="show" aria-labelledby="headingTwo" data-parent="#accordion">
@@ -197,7 +287,7 @@
                     </div>
                 </div>
             </div>
-            <!-- Conteneur du troisième onglet (Factures) -->
+            <!-- Conteneur du quatrième onglet (Factures) -->
             <div id="Bills" class="tabcontent{{' d-block' if tab == 'f' else ' d-none'}}">
                 <!-- Contenu -->
                 <div id="collapseThree" class="show" aria-labelledby="headingThree" data-parent="#accordion">
@@ -246,6 +336,65 @@
                                 {% endif %}
                             </tbody>
                         </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- Modal d'ajout de contact -->
+        <div class="modal fade" id="modalAjoutContact" tabindex="-1" aria-labelledby="modalAjoutLabel" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="modalAjoutLabel">Ajouter un contact</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <form action="{{ url_for('contracts_bp.add_contrats_contact', id_contrat=contract['id'], tab='e') }}" method="post">
+                            <!-- id Contrat -->
+                            <div class="mb-3 d-none">
+                                <input type="text" name="idContratC" id="idContratC" value="{{ contract['id'] }}">
+                            </div>
+                            <!-- Nom du contact -->
+                            <div class="mb-3">
+                                <label for="nomC" class="form-label">Nom du contact *</label>
+                                <input type="text" name="nomC" id="nomC" class="form-control" required>
+                            </div>
+                            <!-- Fonction du contact -->
+                            <div class="mb-3">
+                                <label for="fonctionC" class="form-label">Fonction</label>
+                                <input type="text" name="fonctionC" id="fonctionC" class="form-control">
+                            </div>
+                            <!-- Mail du contact -->
+                            <div class="mb-3">
+                                <label for="mailC" class="form-label">Mail *</label>
+                                <input type="email" name="mailC" id="mailC" class="form-control" required>
+                            </div>
+                            <!-- Téléphone fixe du contact -->
+                            <div class="mb-3">
+                                <label for="telFixeC" class="form-label">Téléphone fixe</label>
+                                <input type="tel" name="telFixeC" id="telFixeC" class="form-control">
+                            </div>
+                            <!-- Téléphone portable du contact -->
+                            <div class="mb-3">
+                                <label for="telPortableC" class="form-label">Téléphone portable</label>
+                                <input type="tel" name="telPortableC" id="telPortableC" class="form-control">
+                            </div>
+                            <!-- Adresse du contact -->
+                            <div class="mb-3">
+                                <label for="adresseC" class="form-label">Adresse</label>
+                                <input type="text" name="adresseC" id="adresseC" class="form-control">
+                            </div>
+                            <!-- Code postal et ville du contact -->
+                            <div class="mb-3">
+                                <label for="codePostalC" class="form-label">Code Postal</label>
+                                <input type="number" name="codePostalC" id="codePostalC" class="form-control">
+                            </div>
+                            <div class="mb-3">
+                                <label for="villeC" class="form-label">Ville</label>
+                                <input type="text" name="villeC" id="villeC" class="form-control">
+                            </div>
+                            <button type="submit" class="btn btn-primary">Ajouter</button>
+                        </form>
                     </div>
                 </div>
             </div>
@@ -391,6 +540,68 @@
                 </div>
             </div>
         </div>
+        <!-- Modaux de modification de contacts-->
+        {% for contact in contacts %}
+        <div class="modal fade" id="modalModifContact{{ contact['id'] }}" tabindex="-1" aria-labelledby="modalModif{{ contact['id'] }}Label" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="modalModif{{ contact['id'] }}Label">Modifier contact {{ contact['nom'] }}</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <form action="{{ url_for('contracts_bp.modif_contact_id', id_contrat=contact['id_contrat'], id_contact=contact['id'], tab='c') }}" method="post">
+                            <input type="hidden" name="_method" value="PUT">
+                            <!-- id Contrat -->
+                            <div class="mb-3 d-none">
+                                <input type="text" name="idContratC{{ contact['id'] }}" id="idContratC{{ contact['id'] }}" value="{{ contact['id_contrat'] }}">
+                            </div>
+                            <!-- Nom du contact -->
+                            <div class="mb-3">
+                                <label for="nomC{{ contact['id'] }}" class="form-label">Nom du contact *</label>
+                                <input type="text" name="nomC{{ contact['id'] }}" id="nomC{{ contact['id'] }}" class="form-control" value="{{ contact['nom'] }}" required>
+                            </div>
+                            <!-- Fonction du contact -->
+                            <div class="mb-3">
+                                <label for="fonctionC{{ contact['id'] }}" class="form-label">Fonction</label>
+                                <input type="text" name="fonctionC{{ contact['id'] }}" id="fonctionC{{ contact['id'] }}" class="form-control" value="{{ contact['fonction'] }}">
+                            </div>
+                            <!-- Mail du contact -->
+                            <div class="mb-3">
+                                <label for="mailC{{ contact['id'] }}" class="form-label">Mail *</label>
+                                <input type="email" name="mailC{{ contact['id'] }}" id="mailC{{ contact['id'] }}" class="form-control" value="{{ contact['mail'] }}" required>
+                            </div>
+                            <!-- Téléphone fixe du contact -->
+                            <div class="mb-3">
+                                <label for="telFixeC{{ contact['id'] }}" class="form-label">Téléphone fixe</label>
+                                <input type="tel" name="telFixeC{{ contact['id'] }}" id="telFixeC{{ contact['id'] }}" class="form-control" value="{{ contact['tel_fixe'] }}">
+                            </div>
+                            <!-- Téléphone portable du contact -->
+                            <div class="mb-3">
+                                <label for="telPortableC{{ contact['id'] }}" class="form-label">Téléphone portable</label>
+                                <input type="tel" name="telPortableC{{ contact['id'] }}" id="telPortableC{{ contact['id'] }}" class="form-control" value="{{ contact['tel_portable'] }}">
+                            </div>
+                            <!-- Adresse du contact -->
+                            <div class="mb-3">
+                                <label for="adresseC{{ contact['id'] }}" class="form-label">Adresse</label>
+                                <input type="text" name="adresseC{{ contact['id'] }}" id="adresseC{{ contact['id'] }}" class="form-control" value="{{ contact['adresse'] }}">
+                            </div>
+                            <!-- Code postal et ville du contact -->
+                            <div class="mb-3">
+                                <label for="codePostalC{{ contact['id'] }}" class="form-label">Code postal</label>
+                                <input type="text" name="codePostalC{{ contact['id'] }}" id="codePostalC{{ contact['id'] }}" class="form-control" value="{{ contact['code_postal'] }}">
+                            </div>
+                            <div class="mb-3">
+                                <label for="villeC{{ contact['id'] }}" class="form-label">Ville</label>
+                                <input type="text" name="villeC{{ contact['id'] }}" id="villeC{{ contact['id'] }}" class="form-control" value="{{ contact['ville'] }}">
+                            </div>
+                            <button type="submit" class="btn btn-primary">Modifier</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
         <!-- Modaux de modification d'évènements-->
         {% for event in events %}
         <div class="modal fade" id="modalModifEvent{{ event['id'] }}" tabindex="-1" aria-labelledby="modalModif{{ event['id'] }}Label" aria-hidden="true">
