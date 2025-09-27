@@ -1,57 +1,69 @@
-const signaturePoints = [];
-const container = document.getElementById('pdf-container');
-const formContainer = document.getElementById('signer-form');
+document.addEventListener("DOMContentLoaded", function() {
+    const loader = document.getElementById('pdf-loader');
+    const pdfContainer = document.getElementById('pdf-container');
+    loader.style.display = "flex";
+    pdfContainer.style.display = "none";
 
-pdfjsLib.getDocument(PDF_URL).promise.then(pdf => {
-    for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
-        pdf.getPage(pageNum).then(page => {
-        const viewport = page.getViewport({ scale: 1.5 });
+    // construction de l'URL du PDF à partir du nom de fichier
+    const filename = pdfContainer.getAttribute('data-filename');
+    const url = `/signature/download/${filename}`;
+
+    // Handler for rendering a page
+    function handlePageRender(pageNum, numPages, loader, pdfContainer, page, scale) {
+        const viewport = page.getViewport({ scale: scale });
+
+        // Créer un conteneur pour cette page
+        const pageDiv = document.createElement('div');
+        pageDiv.className = 'pdf-page';
+        pageDiv.style.marginBottom = '10px';
+        
+        // Préparation du canvas
         const canvas = document.createElement('canvas');
-        canvas.classList.add('pdf-page');
-        canvas.dataset.pageNumber = pageNum;
-        canvas.width = viewport.width;
-        canvas.height = viewport.height;
-
         const context = canvas.getContext('2d');
-        page.render({ canvasContext: context, viewport: viewport });
+        canvas.height = viewport.height;
+        canvas.width = viewport.width;
+        
+        pageDiv.appendChild(canvas);
+        pdfContainer.appendChild(pageDiv);
 
-        canvas.addEventListener('click', function(e) {
-            const rect = canvas.getBoundingClientRect();
-            const x = e.clientX - rect.left;
-            const y = e.clientY - rect.top;
-            const page = parseInt(canvas.dataset.pageNumber);
-
-            const index = signaturePoints.length;
-            signaturePoints.push({ x, y, page });
-
-            // Créer le menu déroulant
-            const div = document.createElement('div');
-            div.innerHTML = `
-            <label>Signataire pour point ${index + 1} (Page ${page})</label>
-            <select name="signer_${index}" required>
-                ${users.map(u => `<option value="${u.id}">${u.name}</option>`).join('')}
-            </select>
-            <input type="hidden" name="x_${index}" value="${x}">
-            <input type="hidden" name="y_${index}" value="${y}">
-            <input type="hidden" name="page_${index}" value="${page}">
-            `;
-            formContainer.appendChild(div);
-
-            // Marqueur visuel
-            const marker = document.createElement('div');
-            marker.style.position = 'absolute';
-            marker.style.left = `${canvas.offsetLeft + x}px`;
-            marker.style.top = `${canvas.offsetTop + y}px`;
-            marker.style.width = '10px';
-            marker.style.height = '10px';
-            marker.style.background = 'red';
-            marker.style.borderRadius = '50%';
-            marker.style.zIndex = '10';
-            marker.style.pointerEvents = 'none';
-            document.body.appendChild(marker);
-        });
-
-        container.appendChild(canvas);
+        // Rendu de la page
+        const renderContext = {
+            canvasContext: context,
+            viewport: viewport
+        };
+        
+        page.render(renderContext).promise.then(function() {
+            // Si c'est la dernière page, masquer le loader
+            if (pageNum === numPages) {
+                loader.style.display = "none";
+                pdfContainer.style.display = "block";
+            }
         });
     }
+
+    // Fonction pour rendre une page
+    function renderPage(pdf, pageNum, numPages, loader, pdfContainer, scale) {
+        pdf.getPage(pageNum).then(function(page) {
+            handlePageRender(pageNum, numPages, loader, pdfContainer, page, scale);
+        });
+    }
+
+    // Chargement du PDF avec PDF.js
+    const loadingTask = pdfjsLib.getDocument(url);
+    loadingTask.promise.then(function(pdf) {
+        const scale = 1.5;
+        const numPages = pdf.numPages;
+        
+        // Vider le conteneur
+        pdfContainer.innerHTML = '';
+        
+        // Rendre toutes les pages
+        for (let pageNum = 1; pageNum <= numPages; pageNum++) {
+            renderPage(pdf, pageNum, numPages, loader, pdfContainer, scale);
+        }
+        
+    }, function(reason) {
+        // Erreur lors du chargement du PDF
+        console.error(reason);
+    });
 });

@@ -1,14 +1,37 @@
-<div id="pdf-container"></div>
-
-<form method="POST" action="{{ url_for('signature.signature_make') }}">
-    <input type="hidden" name="doc_id" value="{{ document_name }}">
-    <div id="signer-form"></div>
-    <button type="submit">Valider les signataires</button>
-</form>
-    <!-- Généré dynamiquement en JS -->
+<!-- Conteneur principal avec division 75% / 25% -->
+<div class="container-fluid">
+    <div class="row">
+        <!-- Partie gauche - PDF (75%) -->
+        <div class="col-9">
+            <div id="pdf-container" data-filename="{{ document_name }}" class="pdf-viewer-container">
+                <!-- Le loader sera affiché ici -->
+                <div id="pdf-loader" class="text-center">
+                    <svg width="60" height="60" viewBox="0 0 50 50">
+                        <circle cx="25" cy="25" r="20" fill="none" stroke="#1976d2" stroke-width="5" stroke-linecap="round">
+                        <animateTransform attributeName="transform" type="rotate" from="0 25 25" to="360 25 25" dur="1s" repeatCount="indefinite"/>
+                        </circle>
+                    </svg>
+                    <p>Chargement du PDF...</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Partie droite - Panel des signataires (25%) -->
+        <div class="col-3">
+            <div id="signature-panel" class="signature-panel">
+                <h5>Points de signature</h5>
+                <div id="signature-points-list">
+                    <!-- Les points de signature seront ajoutés ici par JavaScript -->
+                </div>
+                
+                <form method="POST" action="{{ url_for('signature.signature_make') }}">
+                    <input type="hidden" id="doc_id" name="doc_id" value="{{ document_name }}">
+                    <div id="signer-form">
+                        <!-- Les champs cachés pour les points de signature seront générés ici -->
+                    </div>
+                    <button type="submit" class="btn btn-success mt-3">Valider les signataires</button>
+                </form>
+            </div>
+        </div>
+    </div>
 </div>
-<script src="https://mozilla.github.io/pdf.js/build/pdf.js"></script>
-<script>
-    const PDF_URL = "{{ url_for('static', filename=document.file_path) }}";
-    const users = {{ users | tojson }}; // liste des utilisateurs injectée depuis Flask
-</script>

@@ -11,9 +11,9 @@
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
     <!--CSS propriétaires-->
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style-impression.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style-general.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style-accueil.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style-signature.css') }}">
     <!--Jeux de polices-->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -131,6 +131,8 @@
         <footer>
             <p>© 2025 - La Péraudière - Tous droits réservés</p>
         </footer>
+    <!--Scripts PDF.js (pour les signatures)-->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <!--Scripts propriétaires-->
     <script src="{{ url_for('static', filename='js/signatures.js') }}"></script>
     <!--Scripts Bootstrap-->

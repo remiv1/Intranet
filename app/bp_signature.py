@@ -23,7 +23,7 @@ def signature_make() -> Any:
         # Logique pour traiter le dépôt du document
         pass
     elif request.method == 'GET':
-        users = g.db_session.query(User).order_by(User.name).all()
+        users = list(g.db_session.query(User).order_by(User.nom).all())
         return render_template(ADMINISTRATION, context='signature_make', users=users)
     else:
         return render_template(ADMINISTRATION, context=None, error_message="Méthode non autorisée")
