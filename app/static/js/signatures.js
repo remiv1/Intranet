@@ -1,3 +1,7 @@
+// Variables globales pour la gestion des points de signature
+let signaturePoints = [];
+let signaturePointCounter = 0;
+
 document.addEventListener("DOMContentLoaded", function() {
     const loader = document.getElementById('pdf-loader');
     const pdfContainer = document.getElementById('pdf-container');
@@ -7,6 +11,9 @@ document.addEventListener("DOMContentLoaded", function() {
     // construction de l'URL du PDF à partir du nom de fichier
     const filename = pdfContainer.getAttribute('data-filename');
     const url = `/signature/download/${filename}?temp_dir=True`;
+    
+    // Initialiser les event listeners
+    initializeEventListeners();
 
     // Handler for rendering a page
     function handlePageRender(pageNum, numPages, loader, pdfContainer, page, scale) {
@@ -39,6 +46,8 @@ document.addEventListener("DOMContentLoaded", function() {
                 pdfContainer.style.display = "block";
                 // Activer l'écoute des clics sur le PDF
                 addClickListenerToPDF();
+                // Initialiser l'état du bouton de configuration
+                updateConfigureButton();
             }
         });
     }
@@ -70,26 +79,46 @@ document.addEventListener("DOMContentLoaded", function() {
     });
 });
 
-// Variables globales pour la gestion des points de signature
-let signaturePoints = [];
-let signaturePointCounter = 0;
+// Fonction pour mettre à jour l'état du bouton de configuration
+function updateConfigureButton() {
+    const configureBtn = document.getElementById('configure-document');
+    if (!configureBtn) return;
+    
+    const hasPoints = signaturePoints.length > 0;
+    const allValidated = signaturePoints.every(point => point.validated);
+    
+    if (hasPoints && allValidated) {
+        configureBtn.disabled = false;
+        configureBtn.innerHTML = `<i class="fas fa-cog"></i> Configurer le document (${signaturePoints.length} signature${signaturePoints.length > 1 ? 's' : ''})`;
+        configureBtn.className = 'btn btn-success mt-3';
+    } else if (hasPoints && !allValidated) {
+        configureBtn.disabled = true;
+        const validatedCount = signaturePoints.filter(p => p.validated).length;
+        configureBtn.innerHTML = `<i class="fas fa-exclamation-triangle"></i> ${validatedCount}/${signaturePoints.length} points validés`;
+        configureBtn.className = 'btn btn-warning mt-3';
+    } else {
+        configureBtn.disabled = true;
+        configureBtn.innerHTML = '<i class="fas fa-info-circle"></i> Ajoutez des points de signature';
+        configureBtn.className = 'btn btn-secondary mt-3';
+    }
+}
 
 // Fonction pour créer un point de signature
 function createSignaturePoint(x, y, pageNum, pageDiv) {
     signaturePointCounter++;
-    const pointId = `signature-point-${signaturePointCounter}`;
+    const pointId = signaturePointCounter;
     
     // Créer le marqueur visuel sur le PDF
     const marker = document.createElement('div');
     marker.className = 'signature-marker';
-    marker.id = pointId;
+    marker.id = `marker-${pointId}`;
     marker.style.position = 'absolute';
-    marker.style.left = `${x - 10}px`;
-    marker.style.top = `${y - 10}px`;
+    marker.style.left = `${x - 12}px`;
+    marker.style.top = `${y - 12}px`;
     marker.style.width = '24px';
     marker.style.height = '24px';
-    marker.style.backgroundColor = '#ff4444';
-    marker.style.border = '2px solid #cc0000';
+    marker.style.backgroundColor = '#dc3545';
+    marker.style.border = '2px solid #fff';
     marker.style.borderRadius = '50%';
     marker.style.cursor = 'pointer';
     marker.style.zIndex = '1000';
@@ -99,9 +128,9 @@ function createSignaturePoint(x, y, pageNum, pageDiv) {
     marker.style.fontSize = '12px';
     marker.style.fontWeight = 'bold';
     marker.style.color = 'white';
-    marker.style.textShadow = '1px 1px 1px rgba(0,0,0,0.5)';
-    marker.textContent = signaturePointCounter;
-    marker.title = `Point de signature ${signaturePointCounter}`;
+    marker.style.boxShadow = '0 2px 4px rgba(0,0,0,0.2)';
+    marker.textContent = pointId;
+    marker.title = `Point de signature ${pointId}`;
     
     // Positionner le conteneur de page en relatif
     pageDiv.style.position = 'relative';
@@ -110,11 +139,11 @@ function createSignaturePoint(x, y, pageNum, pageDiv) {
     // Créer l'objet point de signature
     const signaturePoint = {
         id: pointId,
-        counter: signaturePointCounter,
         x: x,
         y: y,
         pageNum: pageNum,
-        userId: null,
+        user_id: null,
+        user_name: null,
         validated: false,
         marker: marker
     };
@@ -124,6 +153,9 @@ function createSignaturePoint(x, y, pageNum, pageDiv) {
     // Ajouter dans le panel de droite
     addSignaturePointToPanel(signaturePoint);
     
+    // Mettre à jour le bouton de configuration
+    updateConfigureButton();
+    
     return signaturePoint;
 }
 
@@ -131,32 +163,44 @@ function createSignaturePoint(x, y, pageNum, pageDiv) {
 function addSignaturePointToPanel(signaturePoint) {
     const pointsList = document.getElementById('signature-points-list');
     
-    const pointItem = document.createElement('div');
-    pointItem.className = 'signature-point-item';
-    pointItem.id = `panel-${signaturePoint.id}`;
+    const pointElement = document.createElement('div');
+    pointElement.id = `signature-point-${signaturePoint.id}`;
+    pointElement.className = 'signature-point mb-3 p-3 border rounded bg-light';
     
-    pointItem.innerHTML = `
-        <h6>Point ${signaturePoint.counter} (Page ${signaturePoint.pageNum})</h6>
-        <div class="mb-2">
-            <select class="form-select form-select-sm" id="user-select-${signaturePoint.id}">
-                <option value="">Sélectionner un signataire</option>
-                <!-- Les options seront ajoutées dynamiquement -->
-            </select>
-        </div>
-        <div class="btn-group w-100" role="group">
-            <button type="button" class="btn btn-sm btn-success" onclick="validateSignaturePoint('${signaturePoint.id}')">
-                Valider
+    pointElement.innerHTML = `
+        <div class="d-flex justify-content-between align-items-start mb-2">
+            <strong>Point ${signaturePoint.id}</strong>
+            <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeSignaturePoint(${signaturePoint.id})">
+                <i class="fas fa-times"></i>
             </button>
-            <button type="button" class="btn btn-sm btn-danger" onclick="removeSignaturePoint('${signaturePoint.id}')">
-                Supprimer
+        </div>
+        <small class="text-muted">Page ${signaturePoint.pageNum} - Position (${Math.round(signaturePoint.x)}, ${Math.round(signaturePoint.y)})</small>
+        <div class="mt-2">
+            <select id="user-select-${signaturePoint.id}" class="form-select form-select-sm mb-2" onchange="onUserSelected(${signaturePoint.id})">
+                <option value="">Sélectionner un signataire...</option>
+            </select>
+            <button type="button" id="validate-${signaturePoint.id}" class="btn btn-sm btn-success" onclick="validateSignaturePoint(${signaturePoint.id})" disabled>
+                Valider
             </button>
         </div>
     `;
     
-    pointsList.appendChild(pointItem);
+    pointsList.appendChild(pointElement);
     
-    // Ajouter les options utilisateurs (à implémenter selon tes données)
+    // Ajouter les options utilisateurs
     populateUserSelect(`user-select-${signaturePoint.id}`);
+}
+
+// Fonction appelée quand un utilisateur est sélectionné
+function onUserSelected(pointId) {
+    const select = document.getElementById(`user-select-${pointId}`);
+    const validateBtn = document.getElementById(`validate-${pointId}`);
+    
+    if (select.value) {
+        validateBtn.disabled = false;
+    } else {
+        validateBtn.disabled = true;
+    }
 }
 
 // Fonction pour peupler la liste des utilisateurs
@@ -168,7 +212,7 @@ function populateUserSelect(selectId) {
         users.forEach(user => {
             const option = document.createElement('option');
             option.value = user.id;
-            option.textContent = user.nom + ' ' + user.prenom;
+            option.textContent = `${user.nom} ${user.prenom}`;
             select.appendChild(option);
         });
     } else {
@@ -183,113 +227,198 @@ function populateUserSelect(selectId) {
 // Fonction pour valider un point de signature
 function validateSignaturePoint(pointId) {
     const point = signaturePoints.find(p => p.id === pointId);
+    if (!point) return;
+
     const userSelect = document.getElementById(`user-select-${pointId}`);
+    const selectedUserId = userSelect.value;
     
-    if (!userSelect.value) {
-        alert('Veuillez sélectionner un signataire');
+    if (!selectedUserId) {
+        alert('Veuillez sélectionner un utilisateur.');
         return;
     }
-    
-    point.userId = userSelect.value;
+
+    const selectedUser = users.find(u => u.id == selectedUserId);
+    if (!selectedUser) return;
+
+    // Marquer comme validé
     point.validated = true;
-    
-    // Changer l'apparence du marqueur
-    point.marker.style.backgroundColor = '#44ff44';
-    point.marker.style.border = '2px solid #00cc00';
-    
-    // Modifier les boutons dans le panel
-    const panelItem = document.getElementById(`panel-${pointId}`);
-    const buttonGroup = panelItem.querySelector('.btn-group');
-    buttonGroup.innerHTML = `
-        <button type="button" class="btn btn-sm btn-warning" onclick="editSignaturePoint('${pointId}')">
-            Modifier
-        </button>
-        <button type="button" class="btn btn-sm btn-danger" onclick="removeSignaturePoint('${pointId}')">
-            Supprimer
-        </button>
-    `;
-    
+    point.user_id = selectedUserId;
+    point.user_name = `${selectedUser.nom} ${selectedUser.prenom}`;
+
+    // Mettre à jour l'affichage
+    const pointElement = document.getElementById(`signature-point-${pointId}`);
+    pointElement.classList.add('border-success', 'bg-success-subtle');
+
+    const validateBtn = document.getElementById(`validate-${pointId}`);
+    validateBtn.textContent = 'Modifier';
+    validateBtn.className = 'btn btn-sm btn-warning';
+    validateBtn.onclick = () => editSignaturePoint(pointId);
+
     // Désactiver le select
     userSelect.disabled = true;
     
-    // Ajouter un champ caché au formulaire
-    addHiddenInputToForm(point);
+    // Mettre à jour le marqueur visuel
+    updateVisualMarker(pointId, true);
+
+    // Mettre à jour le bouton de configuration
+    updateConfigureButton();
 }
 
 // Fonction pour éditer un point de signature
 function editSignaturePoint(pointId) {
     const point = signaturePoints.find(p => p.id === pointId);
-    const userSelect = document.getElementById(`user-select-${pointId}`);
-    
+    if (!point) return;
+
+    // Marquer comme non validé
     point.validated = false;
-    
-    // Remettre l'apparence originale du marqueur
-    point.marker.style.backgroundColor = '#ff4444';
-    point.marker.style.border = '2px solid #cc0000';
-    
-    // Remettre les boutons originaux
-    const panelItem = document.getElementById(`panel-${pointId}`);
-    const buttonGroup = panelItem.querySelector('.btn-group');
-    buttonGroup.innerHTML = `
-        <button type="button" class="btn btn-sm btn-success" onclick="validateSignaturePoint('${pointId}')">
-            Valider
-        </button>
-        <button type="button" class="btn btn-sm btn-danger" onclick="removeSignaturePoint('${pointId}')">
-            Supprimer
-        </button>
-    `;
-    
+    point.user_id = null;
+    point.user_name = null;
+
+    // Mettre à jour l'affichage
+    const pointElement = document.getElementById(`signature-point-${pointId}`);
+    pointElement.classList.remove('border-success', 'bg-success-subtle');
+
+    const validateBtn = document.getElementById(`validate-${pointId}`);
+    validateBtn.textContent = 'Valider';
+    validateBtn.className = 'btn btn-sm btn-success';
+    validateBtn.onclick = () => validateSignaturePoint(pointId);
+
     // Réactiver le select
+    const userSelect = document.getElementById(`user-select-${pointId}`);
     userSelect.disabled = false;
     
-    // Supprimer le champ caché du formulaire
-    removeHiddenInputFromForm(pointId);
+    // Mettre à jour le marqueur visuel
+    updateVisualMarker(pointId, false);
+
+    // Mettre à jour le bouton de configuration
+    updateConfigureButton();
 }
 
 // Fonction pour supprimer un point de signature
 function removeSignaturePoint(pointId) {
-    const pointIndex = signaturePoints.findIndex(p => p.id === pointId);
+    // Supprimer du DOM
+    const pointElement = document.getElementById(`signature-point-${pointId}`);
+    if (pointElement) pointElement.remove();
+
+    // Supprimer le marqueur visuel
+    const marker = document.getElementById(`marker-${pointId}`);
+    if (marker) marker.remove();
+
+    // Supprimer du tableau
+    const index = signaturePoints.findIndex(p => p.id === pointId);
+    if (index > -1) {
+        signaturePoints.splice(index, 1);
+    }
+
+    // Mettre à jour le bouton de configuration
+    updateConfigureButton();
+}
+
+// Fonction pour mettre à jour l'apparence du marqueur visuel
+function updateVisualMarker(pointId, validated) {
+    const marker = document.getElementById(`marker-${pointId}`);
+    if (!marker) return;
     
-    if (pointIndex !== -1) {
-        // Supprimer le marqueur du PDF
-        const point = signaturePoints[pointIndex];
-        point.marker.remove();
-        
-        // Supprimer du panel
-        const panelItem = document.getElementById(`panel-${pointId}`);
-        panelItem.remove();
-        
-        // Supprimer du tableau
-        signaturePoints.splice(pointIndex, 1);
-        
-        // Supprimer le champ caché du formulaire
-        removeHiddenInputFromForm(pointId);
+    if (validated) {
+        marker.style.backgroundColor = '#198754';
+    } else {
+        marker.style.backgroundColor = '#dc3545';
     }
 }
 
-// Fonction pour ajouter un champ caché au formulaire
-function addHiddenInputToForm(point) {
-    const form = document.getElementById('signer-form');
-    
-    const input = document.createElement('input');
-    input.type = 'hidden';
-    input.name = `signature_points[${point.counter}]`;
-    input.id = `hidden-${point.id}`;
-    input.value = JSON.stringify({
-        x: point.x,
-        y: point.y,
-        pageNum: point.pageNum,
-        userId: point.userId
-    });
-    
-    form.appendChild(input);
+// Fonction pour afficher la modale de configuration
+function showDocumentConfigModal() {
+    updateSignersSummary();
+    const modal = new bootstrap.Modal(document.getElementById('documentConfigModal'));
+    modal.show();
 }
 
-// Fonction pour supprimer un champ caché du formulaire
-function removeHiddenInputFromForm(pointId) {
-    const hiddenInput = document.getElementById(`hidden-${pointId}`);
-    if (hiddenInput) {
-        hiddenInput.remove();
+// Fonction pour mettre à jour le récapitulatif des signataires
+function updateSignersSummary() {
+    const summaryDiv = document.getElementById('signers-summary');
+    const validatedPoints = signaturePoints.filter(point => point.validated);
+    
+    if (validatedPoints.length === 0) {
+        summaryDiv.innerHTML = '<p class="text-muted">Aucun signataire configuré</p>';
+        return;
+    }
+    
+    let html = '<ul class="list-unstyled mb-0">';
+    validatedPoints.forEach((point, index) => {
+        html += `
+            <li class="d-flex justify-content-between align-items-center py-2 ${index > 0 ? 'border-top' : ''}">
+                <div>
+                    <strong>Point ${point.id}</strong> - ${point.user_name}
+                    <br><small class="text-muted">Page ${point.pageNum}, Position (${Math.round(point.x)}, ${Math.round(point.y)})</small>
+                </div>
+                <span class="badge bg-success">Configuré</span>
+            </li>
+        `;
+    });
+    html += '</ul>';
+    
+    summaryDiv.innerHTML = html;
+}
+
+// Fonction pour soumettre le document complet
+function submitCompleteDocument() {
+    const configForm = document.getElementById('document-config-form');
+    const signatureForm = document.getElementById('signature-form');
+    
+    // Valider le formulaire de configuration
+    if (!configForm.checkValidity()) {
+        configForm.reportValidity();
+        return;
+    }
+    
+    // Ajouter les données de configuration au formulaire principal
+    const formData = new FormData(configForm);
+    formData.forEach((value, key) => {
+        const hiddenInput = document.createElement('input');
+        hiddenInput.type = 'hidden';
+        hiddenInput.name = key;
+        hiddenInput.value = value;
+        signatureForm.appendChild(hiddenInput);
+    });
+    
+    // Ajouter les points de signature validés
+    const validatedPoints = signaturePoints.filter(point => point.validated);
+    validatedPoints.forEach((point, index) => {
+        ['x', 'y', 'pageNum', 'user_id'].forEach(field => {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = `signature_points[${index}][${field}]`;
+            input.value = point[field];
+            signatureForm.appendChild(input);
+        });
+    });
+    
+    // Fermer la modale
+    const modal = bootstrap.Modal.getInstance(document.getElementById('documentConfigModal'));
+    if (modal) {
+        modal.hide();
+    }
+    
+    // Soumettre le formulaire
+    signatureForm.submit();
+}
+
+// Fonction pour initialiser les event listeners
+function initializeEventListeners() {
+    // Bouton de configuration
+    const configureBtn = document.getElementById('configure-document');
+    if (configureBtn) {
+        configureBtn.addEventListener('click', function() {
+            if (!this.disabled) {
+                showDocumentConfigModal();
+            }
+        });
+    }
+    
+    // Bouton de soumission dans la modale
+    const submitBtn = document.getElementById('submit-document');
+    if (submitBtn) {
+        submitBtn.addEventListener('click', submitCompleteDocument);
     }
 }
 

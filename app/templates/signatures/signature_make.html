@@ -24,13 +24,120 @@
                     <!-- Les points de signature seront ajoutés ici par JavaScript -->
                 </div>
                 
-                <form method="POST" action="{{ url_for('signature.signature_make') }}">
+                <form id="signature-form" method="POST" action="{{ url_for('signature.signature_make') }}">
                     <input type="hidden" id="doc_id" name="doc_id" value="{{ document_name }}">
                     <div id="signer-form">
                         <!-- Les champs cachés pour les points de signature seront générés ici -->
                     </div>
-                    <button type="submit" class="btn btn-success mt-3">Valider les signataires</button>
+                    <button type="button" id="configure-document" class="btn btn-primary mt-3" disabled>
+                        <i class="fas fa-cog"></i> Configurer le document
+                    </button>
                 </form>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- Modal de configuration du document -->
+<div class="modal fade" id="documentConfigModal" tabindex="-1" aria-labelledby="documentConfigModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="documentConfigModalLabel">Configuration du document à signer</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="document-config-form">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="document-name" class="form-label">Nom du document *</label>
+                                <input type="text" class="form-control" id="document-name" name="document_name" 
+                                       value="{{ document_name }}" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="document-type" class="form-label">Type de document *</label>
+                                <select class="form-select" id="document-type" name="document_type" required>
+                                    <option value="">Sélectionner un type</option>
+                                    <option value="contrat">Contrat</option>
+                                    <option value="convention">Convention</option>
+                                    <option value="accord">Accord</option>
+                                    <option value="attestation">Attestation</option>
+                                    <option value="autorisation">Autorisation</option>
+                                    <option value="autre">Autre</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="document-subtype" class="form-label">Sous-type *</label>
+                                <input type="text" class="form-control" id="document-subtype" name="document_subtype" 
+                                       placeholder="Ex: Contrat de travail, Convention de stage..." required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="document-priority" class="form-label">Priorité *</label>
+                                <select class="form-select" id="document-priority" name="document_priority" required>
+                                    <option value="" disabled selected>Sélectionner une priorité</option>
+                                    <option value="basse">Basse</option>
+                                    <option value="normale">Normale</option>
+                                    <option value="haute">Haute</option>
+                                    <option value="urgente">Urgente</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="signing-deadline" class="form-label">Echéance de signature *</label>
+                                <div class="input-group">
+                                    <input type="number" class="form-control" id="signing-deadline" name="signing_deadline" 
+                                           min="1" max="15" value="3" required>
+                                    <span class="input-group-text">jours</span>
+                                </div>
+                                <div class="form-text">Entre 1 et 15 jours</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="document-validity" class="form-label">Durée d'archivage *</label>
+                                <div class="input-group">
+                                    <input type="number" class="form-control" id="document-validity" name="document_validity" 
+                                           min="1" max="3650" value="365" required>
+                                    <span class="input-group-text">jours</span>
+                                </div>
+                                <div class="form-text">Durée de conservation</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="document-description" class="form-label">Description</label>
+                        <textarea class="form-control" id="document-description" name="document_description" 
+                                  rows="3" placeholder="Description optionnelle du document..."></textarea>
+                    </div>
+                    
+                    <!-- Récapitulatif des signataires -->
+                    <div class="mt-4">
+                        <h6>Récapitulatif des signataires</h6>
+                        <div id="signers-summary" class="border rounded p-3 bg-light">
+                            <!-- Sera rempli par JavaScript -->
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                <button type="button" id="submit-document" class="btn btn-success">
+                    <i class="fas fa-paper-plane"></i> Envoyer pour signature
+                </button>
             </div>
         </div>
     </div>

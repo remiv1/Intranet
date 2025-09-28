@@ -11,7 +11,7 @@ Routes:
 
 Chaque route gère les méthodes GET et POST pour afficher les formulaires et traiter les soumissions.
 """
-from flask import Blueprint, render_template, request, g, send_from_directory, session
+from flask import Blueprint, render_template, request, Request, g, send_from_directory, session
 from werkzeug.datastructures import FileStorage
 from models import User
 from typing import Any, Dict
@@ -25,6 +25,38 @@ from pathlib import Path
 signatures_bp = Blueprint('signature', __name__, url_prefix='/signature')
 
 ADMINISTRATION = 'ea.html'
+
+class SignatureMaker:
+    """
+    Classe pour gérer la création de documents à signer.
+    """
+    def __init__(self, request: Request):
+        self.request = request
+
+    def get_request(self):
+        self.old_name = self.request.form.get('doc_id', None)
+        self.new_name = self.request.form.get('document_name', None)
+        self.type = self.request.form.get('document_type', None)
+        self.subtype = self.request.form.get('document_subtype', None)
+        self.priority = self.request.form.get('document_priority', None)
+        self.signing_deadline = self.request.form.get('signing_deadline', None)
+        self.validity = self.request.form.get('document_validity', None)
+        self.description = self.request.form.get('document_description', None)
+        return self
+    
+    def get_signature_points(self):
+        self.points: list[Dict[str, Any]] = []
+        i = 0
+        while f'signature_points[{i}][x]' in self.request.form:
+            point: Dict[str, float | int] = {
+                'x': float(self.request.form.get(f'signature_points[{i}][x]', 0)),
+                'y': float(self.request.form.get(f'signature_points[{i}][y]', 0)),
+                'page_num': int(self.request.form.get(f'signature_points[{i}][pageNum]', 1)),
+                'user_id': int(self.request.form.get(f'signature_points[{i}][user_id]', 1)),
+            }
+            self.points.append(point)
+            i += 1
+        return self
 
 class SecureDocumentAccess:
     """
@@ -160,8 +192,11 @@ def signature_make() -> Any:
     POST : Traite le dépôt du document.
     """
     if request.method == 'POST':
-        # Logique pour traiter le dépôt du document
-        pass
+        # Récupération du formulaire
+        # Récupérer les points de signature
+        document = SignatureMaker(request).get_request().get_signature_points()
+        
+
     elif request.method == 'GET':
         users = g.db_session.query(User).order_by(User.nom).all()
         users = [user.to_dict(with_mdp=False) for user in users]
