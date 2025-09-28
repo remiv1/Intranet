@@ -196,7 +196,6 @@ def signature_make() -> Any:
         # Récupérer les points de signature
         document = SignatureMaker(request).get_request().get_signature_points()
         
-
     elif request.method == 'GET':
         users = g.db_session.query(User).order_by(User.nom).all()
         users = [user.to_dict(with_mdp=False) for user in users]

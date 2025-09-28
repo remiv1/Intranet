@@ -116,7 +116,7 @@ class Document(Base):
             f"id_contrat={self.id_contrat}, type_document='{self.type_document}', "
             f"sous_type_document='{self.sous_type_document}', descriptif='{self.descriptif}')>")
     
-    def _get_extension(self, binary_file: Optional[FileStorage]) -> str:
+    def _get_extension(self, *, binary_file: Optional[FileStorage]=None) -> str:
         """
         Retourne l'extension du fichier lié au document.
         Si le lien est vide ou n'a pas d'extension, retourne '.any'.
@@ -135,7 +135,7 @@ class Document(Base):
         Returns: self
         """
         # Récupération de l'extension du fichier
-        extention = self._get_extension(binary_file)
+        extention = self._get_extension(binary_file=binary_file)
 
         # Création de la partie date au format JJMMYYYY
         date_date = datetime.strptime(str(self.date_document), '%Y-%m-%d')
@@ -151,7 +151,7 @@ class Document(Base):
         self.str_lien = self.name + extention
         return self
 
-    def upload(self, file_to_upload: FileStorage) -> bool:
+    def upload(self, *, file_to_upload: FileStorage) -> bool:
         """
         Fonction pour uploader le fichier du document.
         Utilise la fonction upload_file du module docs.py.
@@ -259,7 +259,7 @@ class Bill(Base):
         return (f"<Bill(id={self.id}, id_contrat={self.id_contrat}, date_facture={self.date_facture}, "
             f"titre_facture='{self.titre_facture}', montant={self.montant}, lien='{self.str_lien}')>")
     
-    def _get_extension(self, binary_file: Optional[FileStorage]) -> str:
+    def _get_extension(self, *, binary_file: Optional[FileStorage]=None) -> str:
         """
         Retourne l'extension du fichier lié à la facture.
         Si le lien est vide ou n'a pas d'extension, retourne '.any'.
@@ -278,7 +278,7 @@ class Bill(Base):
         Returns: self
         """
         # Récupération de l'extension du fichier
-        extention = self._get_extension(binary_file)
+        extention = self._get_extension(binary_file=binary_file)
 
         # Création de la partie date au format JJMMYYYY
         date_date = datetime.strptime(str(self.date_facture), '%Y-%m-%d')
@@ -294,7 +294,7 @@ class Bill(Base):
         self.str_lien = self.name + extention
         return self
 
-    def upload(self, file_to_upload: FileStorage) -> bool:
+    def upload(self, *, file_to_upload: FileStorage) -> bool:
         """
         Fonction pour uploader le fichier de la facture.
         Utilise la fonction upload_file du module docs.py.
@@ -373,3 +373,4 @@ class Bill(Base):
                 return False
         except Exception:
             return False
+

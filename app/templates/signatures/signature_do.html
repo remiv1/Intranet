@@ -1,0 +1,164 @@
+<!-- Template de signature électronique - Inclus dans ea.html -->
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-pen-fancy"></i> 
+                        Signature électronique : {{ document.document_name }}
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <!-- Informations du document -->
+                    <div class="alert alert-info mb-4">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <strong>Type :</strong> {{ document.document_type|title }}<br>
+                                {% if document.document_subtype %}
+                                <strong>Sous-type :</strong> {{ document.document_subtype }}<br>
+                                {% endif %}
+                                <strong>Priorité :</strong> 
+                                <span class="badge badge-{% if document.priority == 'urgente' %}danger{% elif document.priority == 'haute' %}warning{% else %}success{% endif %}">
+                                    {{ document.priority|title }}
+                                </span>
+                            </div>
+                            <div class="col-md-6">
+                                <strong>Échéance :</strong> {{ signing_deadline.strftime('%d/%m/%Y à %H:%M') }}<br>
+                                {% if document.description %}
+                                <strong>Description :</strong> {{ document.description }}
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Visualiseur PDF -->
+                    <div id="pdf-container" data-filename="{{ document.original_filename }}" data-points="{{ signature_points | tojson | safe }}" class="pdf-viewer-container mb-4">
+                        <!-- Le loader sera affiché ici -->
+                        <div id="pdf-loader" class="text-center py-5">
+                            <svg width="60" height="60" viewBox="0 0 50 50">
+                                <circle cx="25" cy="25" r="20" fill="none" stroke="#1976d2" stroke-width="5" stroke-linecap="round">
+                                <animateTransform attributeName="transform" type="rotate" from="0 25 25" to="360 25 25" dur="1s" repeatCount="indefinite"/>
+                                </circle>
+                            </svg>
+                            <p class="mt-3">Chargement du document...</p>
+                        </div>
+                    </div>
+
+                    <!-- Points de signature à effectuer -->
+                    <div id="signature-points-info" class="alert alert-warning mb-4 d-none">
+                        <h6><i class="fas fa-map-marker-alt"></i> Points de signature requis :</h6>
+                        <div id="points-list">
+                            <!-- Sera rempli par JavaScript -->
+                        </div>
+                    </div>
+
+                    <!-- Cases d'acceptation -->
+                    <div id="acceptance-section" class="card border-warning mb-4 d-none">
+                        <div class="card-header bg-warning text-dark">
+                            <h6 class="mb-0"><i class="fas fa-check-circle"></i> Validation requise</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="form-check mb-3">
+                                <input class="form-check-input" type="checkbox" id="accept-content" required>
+                                <label class="form-check-label" for="accept-content">
+                                    <strong>J'ai lu et j'accepte le contenu de ce document</strong>
+                                </label>
+                            </div>
+                            <div class="form-check mb-3">
+                                <input class="form-check-input" type="checkbox" id="accept-electronic-signature" required>
+                                <label class="form-check-label" for="accept-electronic-signature">
+                                    <strong>J'accepte de signer ce document électroniquement</strong>
+                                </label>
+                            </div>
+                            <div class="form-check mb-4">
+                                <input class="form-check-input" type="checkbox" id="accept-legal-value" required>
+                                <label class="form-check-label" for="accept-legal-value">
+                                    J'accepte que cette signature électronique ait la même valeur légale qu'une signature manuscrite
+                                </label>
+                            </div>
+                            
+                            <button type="button" id="btn-sign" class="btn btn-success btn-lg" disabled>
+                                <i class="fas fa-pen-fancy"></i> Procéder à la signature
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de signature -->
+<div class="modal fade" id="signatureModal" tabindex="-1" aria-labelledby="signatureModalLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="signatureModalLabel">
+                    <i class="fas fa-pen-fancy"></i> Tracer votre signature
+                </h5>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i>
+                    <strong>Instructions :</strong> Tracez votre signature dans le cadre ci-dessous. 
+                    Cette signature sera appliquée à tous vos points de signature sur le document.
+                </div>
+                
+                <!-- Canvas de signature -->
+                <div class="signature-canvas-container text-center mb-3">
+                    <canvas id="signature-canvas" width="600" height="200" style="border: 2px solid #dee2e6; border-radius: 8px; background: white; touch-action: none;"></canvas>
+                </div>
+                
+                <!-- Contrôles -->
+                <div class="text-center mb-3">
+                    <button type="button" id="clear-signature" class="btn btn-outline-secondary me-2">
+                        <i class="fas fa-eraser"></i> Effacer
+                    </button>
+                    <button type="button" id="undo-signature" class="btn btn-outline-warning">
+                        <i class="fas fa-undo"></i> Annuler dernier trait
+                    </button>
+                </div>
+                
+                <!-- Aperçu signature -->
+                <div id="signature-preview" class="alert alert-success d-none">
+                    <h6><i class="fas fa-eye"></i> Aperçu de votre signature :</h6>
+                    <div id="signature-preview-container" class="border rounded p-2 bg-white">
+                        <!-- L'aperçu sera affiché ici -->
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" id="btn-validate-signature" class="btn btn-success btn-lg" disabled>
+                    <i class="fas fa-check"></i> Valider la signature
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Variables JavaScript -->
+<script>
+    // Données injectées depuis le serveur
+    const documentData = {
+        id: {{ document.id }},
+        filename: "{{ document.original_filename }}",
+        name: "{{ document.document_name }}",
+        signaturePoints: {{ signature_points | tojson | safe }},
+        currentUser: {
+            id: {{ current_user_id }},
+            name: "{{ current_user_name }}"
+        }
+    };
+</script>
+
+<!-- Scripts PDF.js et SignaturePad -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+</script>
+<script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
+
+<!-- Scripts Signatures -->
+<script src="{{ url_for('static', filename='js/signatures-common.js') }}"></script>
+<script src="{{ url_for('static', filename='js/signatures-sign.js') }}"></script>
