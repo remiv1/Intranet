@@ -10,6 +10,10 @@
 [![HTML5](https://img.shields.io/badge/HTML5-orange.svg)](https://developer.mozilla.org/fr/docs/Web/HTML)
 [![JavaScript](https://img.shields.io/badge/JavaScript-yellow.svg)](https://developer.mozilla.org/fr/docs/Web/JavaScript)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![PDF.js](https://img.shields.io/badge/PDF.js-3.10.111-blue.svg)](https://mozilla.github.io/pdf.js/)
+[![jQuery](https://img.shields.io/badge/jQuery-3.7.1-blue.svg)](https://jquery.com/)
+[![Bootstrap](https://img.shields.io/badge/Bootstrap-5.3.3-purple.svg)](https://getbootstrap.com/)
+[![SignaturePad](https://img.shields.io/badge/SignaturePad-4.1.6-blue.svg)](https://github.com/szimek/signature_pad)
 
 ## 📋 Description
 
