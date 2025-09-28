@@ -11,7 +11,32 @@
 [![JavaScript](https://img.shields.io/badge/JavaScript-yellow.svg)](https://developer.mozilla.org/fr/docs/Web/JavaScript)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-## 📋 Description
+## 🛠️ Évolutions et Roadmap
+
+### ✅ Évolutions Récentes (Septembre 2025)
+
+- **🖋️ Module de Signature Électronique** : Système complet de signature PDF avec placement interactif des points, capture graphique haute fidélité et sécurisation HMAC
+- **👥 Gestion des Contacts** : CRUD complet pour les contacts liés aux contrats avec interface responsive
+- **📧 Système d'Emails Avancé** : Templates HTML, tokens API sécurisés et logging amélioré
+- **💰 Module de Factures** : Gestion complète des factures avec upload sécurisé et nomenclature automatique
+- **⚙️ CI/CD et Tests** : Pipeline GitHub Actions complet avec validation Docker et tests automatisés
+- **🔧 Refactorisation** : Nettoyage du code, migration snake_case, annotations de type et documentation API
+
+### 🚧 En Cours de Développement
+
+- **📊 Monitoring Avancé** : Intégration MongoDB pour les logs d'activité et dashboard de monitoring
+- **🔍 Finalisation Signatures** : Complétion du workflow de validation et notification par email
+
+### 📋 Prochaines Évolutions Prévues
+
+- **📈 Module de Reporting** : Tableaux de bord et statistiques avancées (Q4 2025)
+- **📱 Optimisation Mobile** : Amélioration de l'expérience utilisateur sur mobile
+- **⚡ Optimisation Performance** : Analyse et amélioration des performances sur gros volumes
+- **🔐 Sécurité Renforcée** : Audit sécurité et implémentation 2FA
+
+> 📖 **Rapport détaillé** : Consultez le [rapport d'évolution des branches](./documentation/rapport-evolution-branches.md) pour un historique complet du développement.
+
+## 📝 Description
 
 Cette application web développée avec Flask permet la gestion complète d'un établissement scolaire. Elle offre des fonctionnalités avancées de gestion des utilisateurs, des contrats, des documents et des impressions à distance.
 
