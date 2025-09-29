@@ -225,10 +225,10 @@
 
 ### 2.9 Branches Abandonnées/Suspendues
 
-#### depot_devoirs ⏸️
+#### depot_devoirs ❌
 
 **Période :** 25 mai 2025  
-**Raison :** Priorités projet modifiées  
+**Raison :** Remplacement par une solution partage de documents  
 **Travail :** Page HTML pour dépôt de devoirs (fonctionnalité éducative)
 
 #### cloud ❌
@@ -255,7 +255,7 @@ Sept 2025    : ~8000 lignes (+factures, contacts, signatures)
 |--------|------------|-------------|----------|
 | Bills | Élevée | 4 jours | ✅ 100% |
 | Code Cleaner | Moyenne | 4 jours | ✅ 100% |
-| Signature | Très Élevée | 2 jours | 🚧 95% |
+| Signature | Très Élevée | 2 jours | 🚧 60% |
 | Contacts | Faible | 1 jour | ✅ 100% |
 | Mails | Moyenne | 1 jour | ✅ 100% |
 | Workflows | Moyenne | 1 jour | ✅ 100% |
@@ -312,16 +312,21 @@ sprint_workflows : 1 jour → CI/CD complet (excellent)
 ### 5.2 Axes d'Amélioration
 
 1. **Tests unitaires** à généraliser sur tous les modules
-2. **Monitoring** à finaliser et déployer
-3. **Performance** à analyser sur les gros volumes
-4. **UX/UI** à améliorer sur mobile
+2. **Tests 2e2** à implémenter
+3. **Monitoring** à finaliser et déployer
+4. **Performance** à analyser sur les gros volumes
+5. **UX/UI** à améliorer sur mobile ou développement d'une app dédiée (flutter)
 
-### 5.3 Roadmap Suggérée
+### 5.3 Roadmap
 
 1. **Finalisation signature électronique** (semaine 40)
-2. **Déploiement monitoring** (octobre 2025)
-3. **Optimisation performance** (novembre 2025)
-4. **Module reporting avancé** (décembre 2025)
+2. **Partage de documents sécurisé** (T4 2025)
+3. **Génération de documents sur modèles** (T4 2025)
+4. **Automatisation** des sauvegardes (T4 2025)
+5. **Module reporting avancé** (T4 2025)
+6. **Tests 2e2** à implémenter (T1 2026)
+7. **Déploiement monitoring** (T1 2026)
+8. **Création app mobile** (T2 2026)
 
 ---
 
