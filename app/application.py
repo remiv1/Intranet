@@ -561,6 +561,10 @@ def suppr_utilisateurs() -> Response:
     try:
         user = g.db_session.query(User).filter(User.identifiant == identifiant).first()
         if user:
+            #TODO: vérifier les dépendances avant suppression
+            #TODO: prévoir un soft_delete des utilisateurs pour conservation pendant la durée de validité des documents
+            #user.fin = datetime.now()
+            #TODO: prévoir un nettoyage annuel des utilisateurs supprimés
             g.db_session.delete(user)
             g.db_session.commit()
         message = f'Utilisateur {identifiant} supprimé avec succès'
