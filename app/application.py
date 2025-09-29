@@ -40,7 +40,7 @@ from habilitations import (validate_habilitation, ADMINISTRATEUR, GESTIONNAIRE, 
 from bp_contracts import contracts_bp
 from bp_signature import signatures_bp
 from config import Config
-from models import Base, User
+from models import Base, User, Document, Signatures
 from docs import print_document, delete_file
 from rapport_echeances import envoi_contrats_renego
 from utilities import get_jsoned_datas
@@ -98,6 +98,15 @@ engine = create_engine(db_url,
 
 # Créer les tables de la base de données (avec retry en cas d'erreur de connexion)
 def initialize_database(max_retries: int = 10, retry_delay: int = 2) -> bool | None:
+    """
+    Fonction pour initialiser la base de données avec retry en cas d'erreur de connexion.
+    Sert aussi de healthcheck pour l'application.
+    Args:
+        max_retries (int): Le nombre maximum de tentatives de connexion.
+        retry_delay (int): Le délai entre chaque tentative de connexion (en secondes).
+    Returns:
+        bool | None: True si la connexion est réussie, None sinon.
+    """
     import time
     
     # Tenter de créer les tables avec des retries
@@ -120,10 +129,13 @@ initialize_database()
 class UsersMethods:
     """
     Classe pour gérer les méthodes liées aux utilisateurs.
-    Méthodes statiques :
-    - get_user_from_credentials : Récupère un utilisateur à partir des identifiants fournis dans une requête.
-    - valid_authentication : Valide l'authentification d'un utilisateur et initialise la session.
-    - generate_nb_false_pwd : Gère le compteur d'essais de mot de passe incorrects et verrouille l'utilisateur si nécessaire.
+    Méthodes statiques:
+        get_user_from_credentials:
+            Récupère un utilisateur à partir des identifiants fournis dans une requête.
+        valid_authentication:
+            Valide l'authentification d'un utilisateur et initialise la session.
+        generate_nb_false_pwd:
+            Gère le compteur d'essais de mot de passe incorrects et verrouille l'utilisateur si nécessaire.
     """
     
     @staticmethod
@@ -174,6 +186,7 @@ class UsersMethods:
             session['nom'] = user.nom
             session['mail'] = user.mail
             session['habilitation'] = str(user.habilitation)
+            session['id'] = user.id
             try:
                 # Stocker les informations de l'utilisateur dans la session
                 user.false_test=0
@@ -557,18 +570,36 @@ def suppr_utilisateurs() -> Response:
     Returns:
         Response: Redirection vers la page de gestion des utilisateurs.
     """
+    # Récupération des données du formulaire
     identifiant = request.form.get('identifiant', '')
     try:
+        # Récupération de l'utilisateur
         user = g.db_session.query(User).filter(User.identifiant == identifiant).first()
         if user:
-            #TODO: vérifier les dépendances avant suppression
-            #TODO: prévoir un soft_delete des utilisateurs pour conservation pendant la durée de validité des documents
-            #user.fin = datetime.now()
-            #TODO: prévoir un nettoyage annuel des utilisateurs supprimés
-            g.db_session.delete(user)
-            g.db_session.commit()
-        message = f'Utilisateur {identifiant} supprimé avec succès'
-        return redirect(url_for('gestion_utilisateurs', success_message=message))
+            # Vérification des liens avec les documents à signer et les signatures
+            docs = g.db_session.query(Document).filter(Document.user_id == user.id).count()
+            sigs = g.db_session.query(Signatures).filter(Signatures.user_id == user.id).count()
+            
+            # Si des liens existent, désactivation du compte au lieu de la suppression
+            if docs + sigs > 0:
+                user.fin = datetime.now()
+                g.db_session.commit()
+                message = f'L\'utilisateur {identifiant} ne peut pas être supprimé car il est lié à des documents ou des signatures. Son compte a été désactivé.'
+                return redirect(url_for('gestion_utilisateurs', message=message))
+            
+            # Sinon, suppression pure et simple de l'utilisateur
+            else:
+                g.db_session.delete(user)
+                g.db_session.commit()
+                message = f'Utilisateur {identifiant} supprimé avec succès'
+                return redirect(url_for('gestion_utilisateurs', success_message=message))
+        
+        # Si l'utilisateur n'existe pas (peu possible car le formulaire est généré dynamiquement)
+        else:
+            message = f'L\'utilisateur {identifiant} n\'existe pas'
+            return redirect(url_for('gestion_utilisateurs', error_message=message))
+    
+    # Gestion des erreurs
     except Exception as e:
         message = f'Erreur lors de la suppression de l\'utilisateur {identifiant} : {e}'
         return redirect(url_for('gestion_utilisateurs', error_message=message))
@@ -591,9 +622,6 @@ def modif_utilisateurs() -> Response:
     mdp = request.form.get('mdp', '')
     unlock = int(request.form.get('unlock', 0)) if request.form.get('unlock') == '1' else 0
     try:
-        # Hachage du mot de passe
-        mdp = sha256(mdp.encode()).hexdigest()
-
         # Création du niveau d'habilitation
         habilitation_values: List[str] = []
         habilitation_values.extend(value for key, value in request.form.items() if key.startswith('habil'))
@@ -609,7 +637,7 @@ def modif_utilisateurs() -> Response:
             user.nom = nom
             user.mail = mail
             user.identifiant = identifiant
-            user.sha_mdp = mdp if mdp != '' else user.sha_mdp
+            user.sha_mdp = sha256(mdp.encode()).hexdigest() if len(mdp) > 0 else user.sha_mdp
             if unlock == 1:
                 user.false_test = 0
                 user.locked = False
@@ -642,8 +670,6 @@ def gestion_droits_post() -> Response:
     mdp = request.form.get('mdp', '')
 
     try:
-        # Hachage du mot de passe
-        mdp = sha256(mdp.encode()).hexdigest()
         habilitation_values: List[str] = []  # Création du niveau d'habilitation
         habilitation_values.extend(value for key, value in request.form.items() if key.startswith('habil'))
         sorted_habil = sorted(habilitation_values, key=int)     # Tri des valeurs d'habilitation
@@ -654,7 +680,7 @@ def gestion_droits_post() -> Response:
 
         # Modification des informations de l'utilisateur
         if user:
-            user.sha_mdp = mdp if mdp != '' else user.sha_mdp
+            user.sha_mdp = sha256(mdp.encode()).hexdigest() if len(mdp) > 0 else user.sha_mdp
             user.habilitation = habilitation
             g.db_session.commit()
 

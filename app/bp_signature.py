@@ -13,7 +13,7 @@ Chaque route gère les méthodes GET et POST pour afficher les formulaires et tr
 """
 from flask import Blueprint, render_template, request, Request, g, send_from_directory, session
 from werkzeug.datastructures import FileStorage
-from models import User
+from models import User, DocToSigne, Signatures, Points
 from typing import Any, Dict
 from os import getenv
 import hashlib
@@ -21,6 +21,7 @@ import hmac
 import json
 from datetime import datetime
 from pathlib import Path
+import shutil
 
 signatures_bp = Blueprint('signature', __name__, url_prefix='/signature')
 
@@ -29,13 +30,37 @@ ADMINISTRATION = 'ea.html'
 class SignatureMaker:
     """
     Classe pour gérer la création de documents à signer.
+    Attributes:
+        request (Request): L'objet request Flask.
+        old_name (str | None): Le nom original du document.
+        new_name (str | None): Le nouveau nom du document.
+        type (str | None): Le type de document.
+        subtype (str | None): Le sous-type de document.
+        priority (str | None): La priorité du document.
+        signing_deadline (str | None): La date limite de signature.
+        validity (str | None): La durée de validité du document.
+        description (str | None): La description du document.
+        points (list[Dict[str, Any]]): Liste des points de signature.
+    Methods:
+        get_request():
+            Récupère les données du formulaire de la requête.
+        get_signature_points():
+            Récupère les points de signature du formulaire de la requête.
+        fix_documents():
+            Renomme le document dans le dossier temporaire vers le dossier final.
     """
     def __init__(self, request: Request):
+        """Initialise avec l'objet request Flask."""
         self.request = request
 
-    def get_request(self):
+    def get_request(self) -> 'SignatureMaker':
+        """
+        Récupère les données du formulaire de la requête.
+        Returns:
+            self: SignatureMaker
+        """
         self.old_name = self.request.form.get('doc_id', None)
-        self.new_name = self.request.form.get('document_name', None)
+        self.new_name = self.request.form.get('document_name', None) or self.old_name
         self.type = self.request.form.get('document_type', None)
         self.subtype = self.request.form.get('document_subtype', None)
         self.priority = self.request.form.get('document_priority', None)
@@ -44,7 +69,12 @@ class SignatureMaker:
         self.description = self.request.form.get('document_description', None)
         return self
     
-    def get_signature_points(self):
+    def get_signature_points(self) -> 'SignatureMaker':
+        """
+        Récupère les points de signature du formulaire de la requête.
+        Returns:
+            self: SignatureMaker
+        """
         self.points: list[Dict[str, Any]] = []
         i = 0
         while f'signature_points[{i}][x]' in self.request.form:
@@ -57,12 +87,80 @@ class SignatureMaker:
             self.points.append(point)
             i += 1
         return self
+    
+    def create_document(self) -> 'SignatureMaker':
+        """
+        Crée un document à signer.
+        Returns:
+            self: SignatureMaker
+        """
+        self.doc_to_signe: DocToSigne = DocToSigne(
+            doc_nom=self.new_name,
+            doc_type=self.type,
+            doc_sous_type=self.subtype,
+            priorite=int(self.priority) if self.priority and self.priority.isdigit() else 0,
+            echeance=self.signing_deadline,
+            duree_archivage=int(self.validity) if self.validity and self.validity.isdigit() else 3660,
+            description=self.description,
+            chemin_fichier='temp',  # Sera mis à jour après le renommage
+            hash_fichier='temp',    # Sera mis à jour après le renommage
+            id_user=session.get('id', 0),
+        )
+        g.db_session.add(self.doc_to_signe)
+        g.db_session.flush()
+        return self
+    
+    def create_points(self) -> 'SignatureMaker':
+        """
+        Crée les points de signature dans la base de données.
+        Returns:
+            self: SignatureMaker
+        """
+        for point in self.points:
+            signature_point: Points = Points(
+                id_document=self.doc_to_signe.id,
+                id_user=point['user_id'],
+                page_num=point['page_num'],
+                x=point['x'],
+                y=point['y']
+            )
+            g.db_session.add(signature_point)
+        return self
+    
+    def fix_documents(self) -> 'SignatureMaker':
+        """
+        Renomme le document dans le dossier temporaire vers le dossier final.
+        Returns:
+            self: SignatureMaker
+        Raises:
+            FileNotFoundError: Si le fichier source n'existe pas.
+            IOError: Si une erreur survient lors du renommage du fichier.
+        """
+        if self.old_name and self.new_name:
+            temp_dir = SecureDocumentAccess.TEMP_DIR
+            final_dir = getenv('SIGNATURE_DOCKER_PATH', '/tmp/')
+            Path(final_dir).mkdir(parents=True, exist_ok=True)
+            old_path = Path(temp_dir) / self.old_name
+            new_path = Path(final_dir) / self.new_name
+            if old_path.exists():
+                try:
+                    file_path = shutil.move(str(old_path), str(new_path))
+                    with open(new_path, "rb") as f:
+                        file_hash = hashlib.sha256(f.read()).hexdigest()
+                        self.doc_to_signe.chemin_fichier = file_path
+                        self.doc_to_signe.hash_fichier = file_hash
+                    return self
+                except Exception:
+                    raise IOError("Erreur lors du renommage du fichier.")
+            else:
+                raise FileNotFoundError("Le fichier source n'existe pas.")
+        raise FileNotFoundError("Le fichier source n'existe pas ou les noms sont invalides.")
 
 class SecureDocumentAccess:
     """
     Classe pour gérer l'accès sécurisé aux documents via fichiers temporaires.
     """
-    TEMP_DIR = getenv('SIGNATURE_DOCKER_PATH', './documents/signatures') + '/temp'  # Constante pour le dossier temporaire
+    TEMP_DIR = getenv('TEMP_DOCKER_PATH', '/tmp') + '/signature'  # Constante pour le dossier temporaire
     
     @staticmethod
     def get_user_identifier() -> str:
@@ -191,15 +289,30 @@ def signature_make() -> Any:
     GET : Affiche le formulaire de dépôt de document.
     POST : Traite le dépôt du document.
     """
+    # === Gestion de l'envoi du formulaire en créant un document à signer ===
     if request.method == 'POST':
         # Récupération du formulaire
         # Récupérer les points de signature
-        document = SignatureMaker(request).get_request().get_signature_points()
-        
+        try:
+            _ = SignatureMaker(request) \
+                            .get_request() \
+                            .get_signature_points() \
+                            .create_document() \
+                            .create_points() \
+                            .fix_documents()
+        except (IOError, FileNotFoundError) as e:
+            return render_template(ADMINISTRATION, error_message=str(e))
+        g.db_session.commit()
+        return render_template(ADMINISTRATION,
+                               success_message="Document à signer créé avec succès.")
+
+    # === Affichage du formulaire de dépôt de document ===
     elif request.method == 'GET':
         users = g.db_session.query(User).order_by(User.nom).all()
         users = [user.to_dict(with_mdp=False) for user in users]
         return render_template(ADMINISTRATION, context='signature_make', users=users, document_name=None)
+    
+    # === Méthodes non autorisée ===
     else:
         return render_template(ADMINISTRATION, context=None, error_message="Méthode non autorisée")
 
