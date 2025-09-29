@@ -6,47 +6,26 @@ Fonctions:
 - Stockage temporaire des documents avant signature.
 - Enregistrement des ashages des documents signés pour vérification ultérieure.
 """
+from sqlalchemy import Integer, String, DateTime, ForeignKey, Boolean, Text, Numeric
+from sqlalchemy.orm import relationship, declarative_base, mapped_column
+from sqlalchemy.sql import func
+Base = declarative_base()
 
-class SignatureDocument(Base):
-    __tablename__ = 'signature_documents'
+PK_DOC_TO_SIGNE = '20_documents_a_signer.id'
+
+class Points(Base):
+    __tablename__ = '21_points'
     
     id = mapped_column(Integer, primary_key=True)
-    original_filename = mapped_column(String(255), nullable=False)  # doc_id
-    document_name = mapped_column(String(255), nullable=False)      # new_name
-    document_type = mapped_column(String(50), nullable=False)       # contrat, convention, etc.
-    document_subtype = mapped_column(String(100), nullable=True)
-    priority = mapped_column(String(20), default='normale')         # basse, normale, haute, urgente
-    signing_deadline_days = mapped_column(Integer, nullable=False)  # 1-15 jours
-    validity_days = mapped_column(Integer, nullable=True)           # durée d'archivage
-    description = mapped_column(String(1000), nullable=True)
-    
-    # Métadonnées techniques
-    file_path = mapped_column(String(500), nullable=False)          # chemin du fichier
-    file_hash = mapped_column(String(64), nullable=False)           # hash du fichier pour intégrité
-    created_by = mapped_column(String(100), nullable=True)          # identifiant créateur
-    created_at = mapped_column(DateTime, default=func.now())
-    
-    # Statuts et dates
-    status = mapped_column(String(20), default='pending')           # pending, in_progress, completed, expired
-    signing_deadline = mapped_column(DateTime, nullable=False)      # date limite calculée
-    completed_at = mapped_column(DateTime, nullable=True)
-    
-    # Relations
-    signature_points = relationship("SignaturePoint", back_populates="document", cascade="all, delete-orphan")
-    signatures = relationship("DocumentSignature", back_populates="document", cascade="all, delete-orphan")
-
-class SignaturePoint(Base):
-    __tablename__ = 'signature_points'
-    
-    id = mapped_column(Integer, primary_key=True)
-    id_document = mapped_column(Integer, ForeignKey('signature_documents.id'), nullable=False)
+    id_document = mapped_column(Integer, ForeignKey(PK_DOC_TO_SIGNE), nullable=False)
     
     # Position sur le PDF
-    x = mapped_column(Numeric(10, 2), nullable=False)
-    y = mapped_column(Numeric(10, 2), nullable=False)
-    page_num = mapped_column(Integer, nullable=False)
+    x = mapped_column(Numeric(10, 2), nullable=False)           # position X en pixels (1/72 inch)
+    y = mapped_column(Numeric(10, 2), nullable=False)           # position Y en pixels (1/72 inch)
+    page_num = mapped_column(Integer, nullable=False)           # numéro de page (1-indexed)
     
     # Signataire assigné
+    #TODO: prévoir un soft_delete des utilisateurs pour conservation pendant la durée de validité des documents
     id_utilisateur = mapped_column(Integer, ForeignKey('99_users.id'), nullable=False)
     
     # Statut
@@ -54,13 +33,13 @@ class SignaturePoint(Base):
     signed_at = mapped_column(DateTime, nullable=True)
     
     # Relations
-    document = relationship("SignatureDocument", back_populates="signature_points")
+    document = relationship("DocToSigne", back_populates="points")
     user = relationship("User")
-    signature = relationship("DocumentSignature", back_populates="signature_point", uselist=False)
+    signature = relationship("Signatures", back_populates="points", uselist=False)
 
 
-class DocumentSignature(Base):
-    __tablename__ = 'document_signatures'
+class Signatures(Base):
+    __tablename__ = '22_signatures'
     
     id = mapped_column(Integer, primary_key=True)
     document_id = mapped_column(Integer, ForeignKey('signature_documents.id'), nullable=False)
@@ -87,16 +66,16 @@ class DocumentSignature(Base):
     is_valid = mapped_column(Boolean, default=True)
     
     # Relations
-    document = relationship("SignatureDocument", back_populates="signatures")
-    signature_point = relationship("SignaturePoint", back_populates="signature")
+    document = relationship("DocToSigne", back_populates="signatures")
+    points = relationship("Points", back_populates="signature")
     user = relationship("User")
 
 class SignatureInvitation(Base):
-    __tablename__ = 'signature_invitations'
+    __tablename__ = '23_invitations'
     
     id = mapped_column(Integer, primary_key=True)
-    document_id = mapped_column(Integer, ForeignKey('signature_documents.id'), nullable=False)
-    user_id = mapped_column(Integer, ForeignKey('users.id'), nullable=False)
+    document_id = mapped_column(Integer, ForeignKey('20_documents_a_signer.id'), nullable=False)
+    user_id = mapped_column(Integer, ForeignKey('99_users.id'), nullable=False)
     
     # Token sécurisé pour le lien
     invitation_token = mapped_column(String(128), unique=True, nullable=False)
@@ -115,12 +94,12 @@ class SignatureInvitation(Base):
     document = relationship("SignatureDocument")
     user = relationship("User")
 
-class SignatureAuditLog(Base):
-    __tablename__ = 'signature_audit_log'
+class AuditLog(Base):
+    __tablename__ = '24_audit_logs'
     
     id = mapped_column(Integer, primary_key=True)
-    document_id = mapped_column(Integer, ForeignKey('signature_documents.id'), nullable=False)
-    user_id = mapped_column(Integer, ForeignKey('users.id'), nullable=True)
+    document_id = mapped_column(Integer, ForeignKey('20_documents_a_signer.id'), nullable=False)
+    user_id = mapped_column(Integer, ForeignKey('99_users.id'), nullable=True)
     
     # Événement
     action = mapped_column(String(50), nullable=False)  # created, viewed, signed, expired, etc.
@@ -132,5 +111,5 @@ class SignatureAuditLog(Base):
     timestamp = mapped_column(DateTime, default=func.now())
     
     # Relations
-    document = relationship("SignatureDocument")
+    document = relationship("DocToSigne")
     user = relationship("User")

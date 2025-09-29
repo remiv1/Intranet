@@ -1,4 +1,4 @@
-from sqlalchemy import Integer, String, Date, Boolean, ForeignKey, Numeric
+from sqlalchemy import Integer, String, Date, Boolean, ForeignKey, Numeric, DateTime, Text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import mapped_column, relationship
 from sqlalchemy.sql import func
@@ -9,7 +9,8 @@ from datetime import datetime
 from os.path import splitext
 
 Base = declarative_base()
-CONTRACT_KEY = '01_contrats.id'
+PK_CONTRACT = '01_contrats.id'
+PK_DOC_TO_SIGNE = '20_documents_a_signer.id'
 
 class User(Base):
     """
@@ -24,19 +25,40 @@ class User(Base):
         habilitation (int): Niveau d'habilitation de l'utilisateur.
         debut (date): Date de début de validité de l'utilisateur.
         fin (date): Date de fin de validité de l'utilisateur.
+        false_test (int): Nombre d'essais de connexion échoués.
+        locked (bool): Indique si le compte est verrouillé.
+    Relations :
+        documents (List[DocToSigne]): Liste des documents créés pour signature par l'utilisateur.
+    Méthodes :
+        to_dict(with_mdp: bool = False) -> Dict[str, Optional[Any]]:
+            Retourne un dictionnaire représentant l'utilisateur.
+            Si with_mdp est True, inclut le mot de passe hashé dans le dictionnaire.
+        __repr__() -> str:
+            Retourne une représentation textuelle de l'objet User.
     """
     __tablename__ = '99_users'
+
+    # Données principales
     id = mapped_column(Integer, primary_key=True)
     prenom = mapped_column(String(255), nullable=False)
     nom = mapped_column(String(255), nullable=False)
-    mail = mapped_column(String(255), nullable=False)
+
+    # Authentification
     identifiant = mapped_column(String(25), nullable=True)
     sha_mdp = mapped_column(String(255), nullable=False)
     habilitation = mapped_column(Integer, nullable=True)
+
+    # Coordonnées
+    mail = mapped_column(String(255), nullable=False)
+
+    # Statut
     debut = mapped_column(Date, nullable=True, default=func.current_date())
     fin = mapped_column(Date, nullable=True)
-    false_test = mapped_column(Integer, nullable=True, default=0)
+    false_test = mapped_column(Integer, nullable=True, default=0)   # nombre d'essais de connexion échoués
     locked = mapped_column(Boolean, nullable=True, default=False)
+
+    # Relations
+    documents = relationship("DocToSigne", back_populates="user", cascade="all, delete-orphan")
 
     def to_dict(self, with_mdp: bool = False) -> Dict[str, Optional[Any]]:
         user_dict: Dict[str, Optional[Any]] = {
@@ -57,20 +79,45 @@ class User(Base):
     def __repr__(self) -> str:
         return (f"<User(id={self.id}, prenom='{self.prenom}', nom='{self.nom}', "
             f"mail='{self.mail}', identifiant='{self.identifiant}', "
-            f"sha_mdp='{self.sha_mdp}', habilitation={self.habilitation}, "
-            f"debut={self.debut}, fin={self.fin}, locked={self.locked})>")
+            f"habilitation={self.habilitation}, "
+            f"début={self.debut}, fin={self.fin}, bloqué={self.locked})>")
     
 class Contract(Base):
+    """
+    Représente un contrat dans le système.
+    Attributs :
+        id (int): Identifiant unique du contrat.
+        type_contrat (str): Type du contrat (Immobilier, Services, ...).
+        sous_type_contrat (str): Sous-type du contrat (Suivant dictionnaire des types et sous_type).
+        entreprise (str): Nom de l'entreprise associée au contrat.
+        id_externe_contrat (str): Identifiant externe du contrat (numéro de contrat).
+        intitule (str): Intitulé du contrat.
+        date_debut (date): Date de début de validité du contrat.
+        date_fin_preavis (date): Date de fin de préavis du contrat.
+        date_fin (date): Date de fin de validité du contrat (optionnelle).
+    Relations :
+        contacts (List[Contacts]): Liste des contacts associés au contrat.
+    Méthodes :
+        __repr__() -> str:
+            Retourne une représentation textuelle de l'objet Contract.
+    """
+    
     __tablename__ = '01_contrats'
+
+    # Données principales
     id = mapped_column(Integer, primary_key=True)
     type_contrat = mapped_column(String(50), nullable=False)
     sous_type_contrat = mapped_column(String(50), nullable=False)
     entreprise = mapped_column(String(255), nullable=False)
     id_externe_contrat = mapped_column(String(50), nullable=False)
     intitule = mapped_column(String(255), nullable=False)
+
+    # Dates
     date_debut = mapped_column(Date, nullable=False)
     date_fin_preavis = mapped_column(Date, nullable=False)
     date_fin = mapped_column(Date, nullable=True)
+
+    # Relations
     contacts = relationship("Contacts", back_populates="contrat", cascade="all, delete-orphan")
 
     def __repr__(self) -> str:
@@ -80,9 +127,24 @@ class Contract(Base):
             f"date_fin={self.date_fin})>")
 
 class Contacts(Base):
+    """
+    Représente un contact associé à un contrat.
+    Attributs :
+        id (int): Identifiant unique du contact.
+        id_contrat (int): Identifiant du contrat associé.
+        nom (str): Nom du contact.
+        fonction (str): Fonction du contact.
+        mail (str): Adresse e-mail du contact.
+        tel_fixe (str): Numéro de téléphone fixe du contact.
+        tel_portable (str): Numéro de téléphone portable du contact.
+        adresse (str): Adresse postale du contact.
+        code_postal (str): Code postal du contact.
+        ville (str): Ville du contact.
+    
+    """
     __tablename__ = '02_contacts'
     id = mapped_column(Integer, primary_key=True)
-    id_contrat = mapped_column(Integer, ForeignKey(CONTRACT_KEY), nullable=False)
+    id_contrat = mapped_column(Integer, ForeignKey(PK_CONTRACT), nullable=False)
     contrat = relationship("Contract", back_populates="contacts")
     nom = mapped_column(String(255), nullable=False)
     fonction = mapped_column(String(100), nullable=True)
@@ -102,7 +164,7 @@ class Contacts(Base):
 class Document(Base):
     __tablename__ = '11_documents'
     id = mapped_column(Integer, primary_key=True)
-    id_contrat = mapped_column(Integer, ForeignKey(CONTRACT_KEY), nullable=False)
+    id_contrat = mapped_column(Integer, ForeignKey(PK_CONTRACT), nullable=False)
     date_document = mapped_column(Date, nullable=False)
     type_document = mapped_column(String(50), nullable=False)
     sous_type_document = mapped_column(String(50), nullable=True)
@@ -234,7 +296,7 @@ class Document(Base):
 class Event(Base): 
     __tablename__ = '12_evenements'
     id = mapped_column(Integer, primary_key=True)
-    id_contrat = mapped_column(Integer, ForeignKey(CONTRACT_KEY), nullable=False)
+    id_contrat = mapped_column(Integer, ForeignKey(PK_CONTRACT), nullable=False)
     type_evenement = mapped_column(String(50), nullable=False)
     sous_type_evenement = mapped_column(String(50), nullable=False)
     date_evenement = mapped_column(Date, nullable=False)
@@ -247,7 +309,7 @@ class Event(Base):
 class Bill(Base):
     __tablename__ = '13_factures'
     id = mapped_column(Integer, primary_key=True, autoincrement=True)
-    id_contrat = mapped_column(Integer, ForeignKey(CONTRACT_KEY), nullable=False)
+    id_contrat = mapped_column(Integer, ForeignKey(PK_CONTRACT), nullable=False)
     date_facture = mapped_column(Date, nullable=False)
     titre_facture = mapped_column(String(255), nullable=False)
     montant = mapped_column(Numeric(10, 2), nullable=False)
@@ -373,4 +435,32 @@ class Bill(Base):
                 return False
         except Exception:
             return False
+
+class DocToSigne(Base):
+    __tablename__ = '20_documents_a_signer'
+    
+    id = mapped_column(Integer, primary_key=True)
+    doc_nom = mapped_column(String(255), nullable=False)            # nom_définitif du document
+    doc_type = mapped_column(String(50), nullable=False)            # contrat, convention, etc.
+    doc_sous_type = mapped_column(String(100), nullable=True)
+    priorite = mapped_column(Integer, default=0)                    # -1 : basse, 0 : normale, 1 : haute, 2 : urgente
+    echeance = mapped_column(Integer, nullable=False)               # 1-15 jours
+    duree_archivage = mapped_column(Integer, nullable=True)         # durée d'archivage
+    description = mapped_column(Text, nullable=True)
+    
+    # Métadonnées techniques
+    chemin_fichier = mapped_column(String(500), nullable=False)     # chemin du fichier
+    hash_fichier = mapped_column(String(64), nullable=False)        # hash du fichier pour intégrité
+    id_user = mapped_column(Integer, ForeignKey('99_users.id'), nullable=True) # identifiant créateur
+    cree_at = mapped_column(DateTime, default=func.now())
+    
+    # Statuts et dates
+    status = mapped_column(Integer, nullable=False, default=0)                      # -2: annulé, -1: expiré, 0: en attente, 1: signé
+    limite_signature = mapped_column(DateTime, nullable=False, computed="DATE_ADD(cree_at, INTERVAL echeance DAY)")
+    complete_at = mapped_column(DateTime, nullable=True)
+    
+    # Relations
+    user = relationship("User", back_populates="documents")
+    points = relationship("Points", back_populates="document", cascade="all, delete-orphan")
+    signatures = relationship("Signature", back_populates="document", cascade="all, delete-orphan")
 
