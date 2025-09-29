@@ -1,6 +1,6 @@
 # Rapport d'Évolution des Branches - Projet Intranet
 
-**Date du rapport :** 28 septembre 2025  
+**Date du rapport :** 29 septembre 2025  
 **Projet :** Intranet - Système de gestion des contrats et signatures électroniques  
 **Auteur :** Rémi Verschuur  
 
@@ -11,7 +11,7 @@
 | Branche | Période | Durée | Commits | Fonctionnalités Principales | État |
 |---------|---------|-------|---------|------------------------------|------|
 | **main** | Mars 2025 - Sept 2025 | 6 mois | 100+ | Base de l'application, gestion contrats | ✅ Stable |
-| **sprint_signature** | 27-28 Sept 2025 | 2 jours | 5 | Module signature électronique complet | 🚧 Actuel |
+| **sprint_signature** | 27-29 Sept 2025 | 3 jours | 10+ | Module signature électronique complet | 🚧 Actuel |
 | **sprint_contacts** | 27 Sept 2025 | 1 jour | 3 | Gestion des contacts contrats | ✅ Mergé |
 | **sprint_mails** | 19 Sept 2025 | 1 jour | 4 | Système d'envoi emails amélioré | ✅ Mergé |
 | **sprint_bills** | 15-19 Sept 2025 | 4 jours | 25+ | Gestion des factures | ✅ Mergé |
@@ -28,11 +28,11 @@
 
 ### 2.1 sprint_signature (Branche Actuelle) 🚧
 
-**Période :** 27-28 septembre 2025  
-**Durée d'exécution :** 2 jours  
-**Commits :** 5 commits majeurs  
+**Période :** 27-29 septembre 2025  
+**Durée d'exécution :** 3 jours  
+**Commits :** 10+ commits majeurs  
 
-#### Travail Réalisé (2 jours)
+#### Travail Réalisé (3 jours)
 
 - **Module de signature électronique complet** avec PDF.js et SignaturePad
 - **Sécurisation d'accès aux documents** avec système HMAC
@@ -40,21 +40,39 @@
 - **Interface de signature** : capture graphique haute fidélité
 - **Stockage temporaire sécurisé** avec variables d'environnement
 - **Architecture JavaScript optimisée** en 3 fichiers modulaires
+- **Gestion avancée des utilisateurs** avec soft-delete pour préserver l'intégrité des signatures
+- **Classe SignatureMaker dédiée** pour la création de documents à signer
+- **Documentation technique approfondie** du code et des processus
+- **Diagramme UML de base de données mis à jour** avec nouveau modèle SVG
+- **Système de dossiers temporaires** non montés pour la sécurité
 
 #### Évolutions Techniques
 
-- **Base de données** : 4 nouvelles tables (SignatureDocument, SignaturePoint, DocumentSignature, SignatureInvitation)
+- **Base de données** : 4 nouvelles tables finalisées (DocToSigne, Signatures, Points, Users améliorée)
 - **Frontend** : Integration PDF.js 3.11.174 + SignaturePad 4.1.7
 - **Backend** : Flask Blueprint avec classes SecureDocumentAccess et SignatureMaker
-- **Sécurité** : Cryptographie HMAC-SHA256 pour l'accès aux documents
+- **Sécurité** : Cryptographie HMAC-SHA256 + gestion d'identifiants utilisateur uniques
+- **Architecture** : Classes métier dédiées et séparation des responsabilités
+- **Documentation** : Modèle de données visuel en SVG et documentation technique
+
+#### Corrections et Améliorations (Jour 3)
+
+- **Gestion des fichiers** : Utilisation de `shutil.move` au lieu de `Path.rename` pour la robustesse
+- **Sécurité des mots de passe** : Correction des bugs de réinitialisation involontaire
+- **Modèles SQLAlchemy** : Finalisation des relations entre tables
+- **Interface utilisateur** : Corrections mineures dans les templates
+- **Types de données** : Harmonisation des types (integer pour priorités)
 
 #### Fichiers Modifiés/Créés
 
 ```txt
-+ app/bp_signature.py (350+ lignes)
-+ app/signatures.py (200+ lignes - modèles DB)
-+ app/templates/signatures/ (2 templates)
++ app/bp_signature.py (413 lignes - +127 lignes)
+~ app/models.py (632 lignes - +536 lignes nouvelles)
+- app/signatures.py (supprimé - 107 lignes obsolètes)
++ app/templates/signatures/ (2 templates améliorés)
 + app/static/js/signatures-*.js (3 fichiers, 950+ lignes total)
++ documentation/UML_BdD.svg (372 lignes - nouveau diagramme)
++ todo.md (liste des tests CI/CD à implémenter)
 ```
 
 ---
@@ -246,7 +264,7 @@
 ```txt
 Mars 2025    : ~2000 lignes (base)
 Juillet 2025 : ~4000 lignes (+sécurité, monitoring)
-Sept 2025    : ~8000 lignes (+factures, contacts, signatures)
+Sept 2025    : ~8500 lignes (+factures, contacts, signatures)
 ```
 
 ### 3.2 Complexité des Fonctionnalités
@@ -255,7 +273,7 @@ Sept 2025    : ~8000 lignes (+factures, contacts, signatures)
 |--------|------------|-------------|----------|
 | Bills | Élevée | 4 jours | ✅ 100% |
 | Code Cleaner | Moyenne | 4 jours | ✅ 100% |
-| Signature | Très Élevée | 2 jours | 🚧 60% |
+| Signature | Très Élevée | 3 jours | 🚧 85% |
 | Contacts | Faible | 1 jour | ✅ 100% |
 | Mails | Moyenne | 1 jour | ✅ 100% |
 | Workflows | Moyenne | 1 jour | ✅ 100% |
@@ -275,7 +293,7 @@ Sept 2025    : ~8000 lignes (+factures, contacts, signatures)
 ### 4.1 Vélocité par Sprint
 
 ```txt
-sprint_signature : 2 jours → Module complet (excellent)
+sprint_signature : 3 jours → Module complet en finalisation (excellent)
 sprint_contacts  : 1 jour → Fonctionnalité complète (excellent)  
 sprint_mails     : 1 jour → Amélioration majeure (excellent)
 sprint_bills     : 4 jours → Module complexe (bon)
@@ -319,14 +337,15 @@ sprint_workflows : 1 jour → CI/CD complet (excellent)
 
 ### 5.3 Roadmap
 
-1. **Finalisation signature électronique** (semaine 40)
-2. **Partage de documents sécurisé** (T4 2025)
-3. **Génération de documents sur modèles** (T4 2025)
-4. **Automatisation** des sauvegardes (T4 2025)
-5. **Module reporting avancé** (T4 2025)
-6. **Tests 2e2** à implémenter (T1 2026)
-7. **Déploiement monitoring** (T1 2026)
-8. **Création app mobile** (T2 2026)
+1. **Finalisation signature électronique** (semaine 40 - 85% terminé)
+2. **Tests CI/CD automatisés** (octobre 2025)
+3. **Partage de documents sécurisé** (T4 2025)
+4. **Génération de documents sur modèles** (T4 2025)
+5. **Automatisation** des sauvegardes (T4 2025)
+6. **Module reporting avancé** (T4 2025)
+7. **Tests 2e2** à implémenter (T1 2026)
+8. **Déploiement monitoring** (T1 2026)
+9. **Création app mobile** (T2 2026)
 
 ---
 
@@ -340,12 +359,12 @@ Le projet Intranet montre une **évolution exceptionnelle** sur les 6 derniers m
 - **Sécurité renforcée** à tous les niveaux
 - **Vélocité de développement élevée** et constante
 
-Le **sprint_signature actuel** représente le **point culminant technique** du projet avec une **complexité élevée maîtrisée** en seulement **2 jours de développement**.
+Le **sprint_signature actuel** représente le **point culminant technique** du projet avec une **complexité élevée maîtrisée** en **3 jours de développement intensif**. Les améliorations du 29 septembre incluent une **refactorisation majeure des modèles de données**, l'ajout de **classes métier dédiées**, et une **sécurisation renforcée** du système de signatures.
 
-La **qualité du code** et la **discipline de développement** montrent une **maturité technique excellente** pour un projet de cette envergure.
+La **qualité du code** et la **discipline de développement** montrent une **maturité technique excellente** pour un projet de cette envergure, avec une **documentation technique approfondie** et un **modèle de données visuellement représenté**.
 
 ---
 
-**Rapport généré le :** 28 septembre 2025  
-**Version :** 1.2
+**Rapport généré le :** 29 septembre 2025  
+**Version :** 1.3
 **Prochaine révision :** Fin octobre 2025
