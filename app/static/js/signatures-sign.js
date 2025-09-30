@@ -24,32 +24,32 @@ function initializeDocumentSigning() {
     const pdfContainer = document.getElementById('pdf-container');
     const pdfLoader = document.getElementById('pdf-loader');
     
-    if (!pdfContainer || !pdfLoader) {
-        console.log('[Signatures Sign] Éléments non trouvés - pas le bon template');
+    // Récupérer les données depuis la variable globale documentData (plus fiable que les attributs DOM)
+    if (typeof documentData === 'undefined') {
+        handleSignatureError(new Error('Données du document manquantes'), 'Initialisation signature');
         return;
     }
     
-    console.log('[Signatures Sign] Initialisation de la signature de document');
-    
-    // Récupérer les données depuis les attributs
-    const filename = pdfContainer.getAttribute('data-filename');
-    const pointsData = pdfContainer.getAttribute('data-points');
+    const filename = documentData.filename;
+    const signaturePoints = documentData.signaturePoints;
     
     if (!filename) {
         handleSignatureError(new Error('Nom de fichier manquant'), 'Initialisation signature');
         return;
     }
     
-    if (!pointsData) {
+    if (!signaturePoints) {
         handleSignatureError(new Error('Données de points manquantes'), 'Initialisation signature');
         return;
     }
     
+    // Vérifier que signaturePoints est un tableau
+    if (!Array.isArray(signaturePoints)) {
+        handleSignatureError(new Error('Les données de points ne sont pas un tableau valide'), 'Validation signature');
+        return;
+    }
+    
     try {
-        // Parser les points de signature
-        const signaturePoints = JSON.parse(pointsData);
-        console.log('[Signatures Sign] Points de signature chargés:', signaturePoints);
-        
         // Initialiser les event listeners
         initializeSigningEventListeners();
         
@@ -60,7 +60,7 @@ function initializeDocumentSigning() {
         initializePDFViewer(filename, pdfLoader, pdfContainer, function() {
             displaySignaturePoints(signaturePoints);
             checkDocumentReadStatus();
-        });
+        }, false);
         
     } catch (error) {
         handleSignatureError(error, 'Parser points signature');
@@ -238,11 +238,6 @@ function initializeSignaturePad() {
             minDistance: 0.01,
             throttle: 16,
             velocityFilterWeight: 0.7
-        });
-        
-        // Événement de début de signature
-        signaturePad.addEventListener('beginStroke', function() {
-            console.log('[Signatures Sign] Début de signature');
         });
         
         // Événement de fin de signature
@@ -514,5 +509,3 @@ style.textContent = `
     }
 `;
 document.head.appendChild(style);
-
-console.log('[Signatures Sign] Module chargé avec succès');

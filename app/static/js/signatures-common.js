@@ -18,11 +18,11 @@ let pdfScale = 1.5;
  * @param {HTMLElement} container - Conteneur PDF
  * @param {Function} onComplete - Callback à exécuter après chargement complet
  */
-function initializePDFViewer(filename, loader, container, onComplete = null) {
+function initializePDFViewer(filename, loader, container, onComplete = null, tempDir = false) {
     loader.style.display = "flex";
     container.style.display = "none";
 
-    const url = `/signature/download/${filename}?temp_dir=True`;
+    const url = `/signature/download/${filename}?temp_dir=${tempDir}`;
     
     const loadingTask = pdfjsLib.getDocument(url);
     loadingTask.promise.then(function(pdf) {

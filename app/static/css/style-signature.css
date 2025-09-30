@@ -95,3 +95,10 @@
 .pdf-page canvas {
     cursor: crosshair;
 }
+
+#signature-canvas {
+    border: 2px solid #dee2e6;
+    border-radius: 8px;
+    background: white;
+    touch-action: none;
+}

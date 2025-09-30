@@ -136,6 +136,10 @@ class UsersMethods:
             Valide l'authentification d'un utilisateur et initialise la session.
         generate_nb_false_pwd:
             Gère le compteur d'essais de mot de passe incorrects et verrouille l'utilisateur si nécessaire.
+        get_user_validation_message:
+            Retourne le message d'erreur approprié selon l'état de l'utilisateur.
+        handle_login_redirect:
+            Gère la redirection après une tentative de connexion.
     """
     
     @staticmethod
@@ -219,6 +223,39 @@ class UsersMethods:
             message = f'Erreur lors de la mise à jour du compteur d\'essais : {e}'
         return message
 
+    @staticmethod
+    def get_user_validation_message(user: User) -> str | None:
+        """
+        Retourne le message d'erreur approprié selon l'état de l'utilisateur.
+        Args:
+            user (User): L'utilisateur à valider.
+        Returns:
+            str | None: Le message d'erreur ou None si l'utilisateur est valide.
+        """
+        if user.locked:
+            return 'Votre compte est verrouillé, veuillez contacter votre administrateur.'
+        elif user.fin and user.fin <= datetime.now():
+            return 'Votre compte a expiré, veuillez contacter votre administrateur.'
+        return None
+
+    @staticmethod
+    def handle_login_redirect(redirect_url: str | None, success: bool = False, error_message: str | None = None) -> Response:
+        """
+        Gère la redirection après une tentative de connexion.
+        Args:
+            redirect_url (str | None): L'URL de redirection originale.
+            success (bool): True si la connexion a réussi.
+            error_message (str | None): Message d'erreur à afficher.
+        Returns:
+            Response: La redirection appropriée.
+        """
+        if success:
+            if redirect_url and redirect_url != '' and redirect_url != 'None':
+                return redirect(redirect_url)
+            return redirect(url_for('home', success_message='Connexion réussie'))
+        
+        return redirect(url_for('login', error_message=error_message, preview_request=redirect_url))
+
 @peraudiere.before_request
 def before_request() -> Any:
     """
@@ -247,7 +284,9 @@ def before_request() -> Any:
             if 'prenom' not in session or 'nom' not in session:
                 session.clear()
                 error_message = 'Merci de vous connecter pour accéder à cette ressource'
-                return redirect(url_for('login', error_message=error_message))
+                # Capturer l'URL complète pour la redirection après connexion (uniquement pour les requêtes GET)
+                preview_request = request.url if request.method == 'GET' else None
+                return redirect(url_for('login', error_message=error_message, preview_request=preview_request))
 
 @peraudiere.teardown_appcontext
 def teardown_request(exception: Optional[BaseException]) -> None:
@@ -314,38 +353,48 @@ def login() -> str | Response:
     message = request.args.get('message', None)
     success_message = request.args.get('success_message', None)
     error_message = request.args.get('error_message', None)
+    preview_request = request.args.get('preview_request', None)
 
     # === Gestion de la méthode POST (traitement du formulaire de connexion) ===
     if request.method == 'POST':
-        try:
-            # récupération du contenu du formulaire
-            user, _, password = UsersMethods.get_user_from_credentials(request)
-
-            # Vérifier si l'utilisateur existe et si le mot de passe est correct
-            if UsersMethods.valid_authentication(user, password):
-                return redirect(url_for('home', success_message='Connexion réussie'))
-            # Gestion des comptes vérouillés
-            elif user.fin:
-                if user.fin <= datetime.now():
-                    message = 'Votre compte a expiré, veuillez contacter votre administrateur.'
-            elif user.locked:
-                message = 'Votre compte est verrouillé, veuillez contacter votre administrateur.'
-            # Gestion des erreurs de mots de passe
-            else:
-                message = UsersMethods.generate_nb_false_pwd(user)
-
-            # Rediriger vers la page de connexion avec le message approprié
-            return redirect(url_for('login', error_message=message))
-
-        except Exception as e:
-            # En cas d'erreur, retour sur la page de connexion après rollback
-            message = f'Erreur lors de la connexion, veuillez réessayer : {e}'
-            return redirect(url_for('login', error_message=message))
+        return _handle_login_post()
 
     # === Gestion de la méthode GET (affichage de la page de connexion) ===
-    else:
-        return render_template('login.html', message=message, success_message=success_message,
-                               error_message=error_message)
+    return render_template('login.html', message=message, success_message=success_message,
+                           error_message=error_message, preview_request=preview_request)
+
+def _handle_login_post() -> Response:
+    """
+    Gère la logique POST de la route login.
+    Returns:
+        Response: La redirection appropriée selon le résultat de l'authentification.
+    """
+    try:
+        # Récupération de l'URL de redirection depuis le formulaire
+        redirect_url = request.form.get('preview_request', None)
+        
+        # récupération du contenu du formulaire
+        user, _, password = UsersMethods.get_user_from_credentials(request)
+
+        # Vérifier si l'utilisateur existe et si le mot de passe est correct
+        if UsersMethods.valid_authentication(user, password):
+            return UsersMethods.handle_login_redirect(redirect_url, success=True)
+        
+        # Vérifier les conditions de blocage de l'utilisateur
+        validation_message = UsersMethods.get_user_validation_message(user)
+        if validation_message:
+            return UsersMethods.handle_login_redirect(redirect_url, error_message=validation_message)
+        
+        # Gestion des erreurs de mots de passe
+        error_message = UsersMethods.generate_nb_false_pwd(user)
+        return UsersMethods.handle_login_redirect(redirect_url, error_message=error_message)
+
+    except Exception as e:
+        # Récupération de l'URL de redirection depuis le formulaire en cas d'erreur
+        redirect_url = request.form.get('preview_request', None)
+        # En cas d'erreur, retour sur la page de connexion après rollback
+        error_message = f'Erreur lors de la connexion, veuillez réessayer : {e}'
+        return UsersMethods.handle_login_redirect(redirect_url, error_message=error_message)
 
 @peraudiere.route('/logout', methods=['GET'])
 def logout() -> Response:

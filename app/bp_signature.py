@@ -11,21 +11,128 @@ Routes:
 
 Chaque route gère les méthodes GET et POST pour afficher les formulaires et traiter les soumissions.
 """
-from flask import Blueprint, render_template, request, Request, g, send_from_directory, session
+from flask import Blueprint, render_template, request, Request, g, send_from_directory, session, url_for, redirect
 from werkzeug.datastructures import FileStorage
-from models import User, DocToSigne, Signatures, Points
-from typing import Any, Dict
+from models import User, DocToSigne, Signatures, Points, Invitation
+from typing import Any, Dict, List
 from os import getenv
+from config import Config
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 import hashlib
 import hmac
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 import shutil
+import logging
 
 signatures_bp = Blueprint('signature', __name__, url_prefix='/signature')
 
 ADMINISTRATION = 'ea.html'
+
+class SignatureDoer:
+    def __init__(self, request: Request):
+        """
+        Initialise avec l'objet request Flask.
+        Attributes:
+            request (Request): L'objet request Flask.
+            signatory_id (int | None): L'ID de l'utilisateur signataire.
+            signatory_name (str | None): Le nom complet de l'utilisateur signataire.
+            document (DocToSigne | None): Le document à signer.
+            invitation (Invitation | None): L'invitation associée au document et à l'utilisateur.
+        Exemples:
+            ```python
+            doer = SignatureDoer(request)
+            ```
+        """
+        self.request = request
+
+    def get_request(self, *, id_document: int, hash_document: str) -> 'SignatureDoer':
+        """
+        Récupère les données de la requête.
+        Returns:
+            self: SignatureDoer
+        Raises:
+            ValueError: Si le document ou l'invitation n'est pas trouvé ou invalide
+        Exemples:
+            ```python
+            doer = SignatureDoer(request).get_request()
+            ```
+        """
+        # Récupération des paramètres de la requête
+        self.token = self.request.args.get('token', None)
+
+        # Récupération de l'utilisateur courant
+        self.signatory_id = int(session.get('id', None))
+        self.signatory_name = f"{session.get('prenom', '')} {session.get('nom', '')}".strip()
+
+        # Validation de l'invitation et du document :
+        # Le document doit exister et correspondre au hash fourni
+        document = g.db_session.query(DocToSigne).filter_by(id=id_document, hash_fichier=hash_document).first()
+        # L'invitation doit exister pour ce document et cet utilisateur, et le token doit correspondre
+        invitation = g.db_session.query(Invitation).filter_by(id_document=document.id, id_user=self.signatory_id).first()
+
+        # Si le document ou l'invitation n'est pas trouvé ou invalide, lever une erreur
+        if invitation and invitation.token == self.token and document:
+            self.invitation = invitation
+            self.document = document
+        else:
+            raise ValueError("Invitation invalide ou non trouvée.")
+        return self
+
+    def post_request(self) -> 'SignatureDoer':
+        """
+        Traite la soumission du formulaire de signature.
+        Returns:
+            self: SignatureDoer
+        Raises:
+            ValueError: Si le document ou l'invitation n'est pas trouvé ou invalide
+        Exemples:
+            ```python
+            doer = SignatureDoer(request).get_request().post_request()
+            ```
+        """
+        #TODO: Reprendre ce qui est fait par l'autocomplétion de l'IA
+        # Récupération des données du formulaire
+        signature_data = self.request.form.get('signature_data', None)
+        if not signature_data:
+            raise ValueError("Données de signature manquantes.")
+
+        # Création de la signature dans la base de données
+        signature = Signatures(
+            id_document=self.document.id,
+            id_user=self.signatory_id,
+            date_signature=datetime.now(),
+            signature_data=signature_data
+        )
+        g.db_session.add(signature)
+
+        # Mise à jour de l'invitation pour indiquer que le mail a été envoyé
+        self.invitation.mail_envoye = True
+        self.invitation.mail_compte += 1
+
+        # Commit des changements dans la base de données
+        g.db_session.commit()
+        return self
+
+    def get_signature_points(self) -> 'SignatureDoer':
+        """
+        Récupère les points de signature pour l'utilisateur courant et la signature demandée.
+        Returns:
+            self: SignatureDoer
+        Exemples:
+            ```python
+            doer = SignatureDoer(request).get_request().get_signature_points()
+            ```
+        """
+        points = g.db_session.query(Points) \
+                        .filter_by(id_document=self.document.id, id_user=self.signatory_id) \
+                        .all()
+        self.points: List[Dict[str, Any]] = [point.to_dict() for point in points]
+        
+        return self
 
 class SignatureMaker:
     """
@@ -155,6 +262,48 @@ class SignatureMaker:
             else:
                 raise FileNotFoundError("Le fichier source n'existe pas.")
         raise FileNotFoundError("Le fichier source n'existe pas ou les noms sont invalides.")
+    
+    def send_invitation(self) -> 'SignatureMaker':
+        """
+        Envoie une invitation aux utilisateurs pour signer le document.
+        Returns:
+            self: SignatureMaker
+        """
+        # Récupération de la liste des mails, noms et prénoms des utilisateurs
+        user_ids = {point['user_id'] for point in self.points}
+        users = g.db_session.query(User).filter(User.id.in_(user_ids)).all()
+        self.token = hmac.new(
+            getenv('SECRET_KEY', 'default-secret-key').encode(),
+            f"{self.doc_to_signe.id}-{self.doc_to_signe.hash_fichier}-{datetime.now().isoformat()}".encode(),
+            hashlib.sha256
+        ).hexdigest()
+        self.limite_signature = datetime.now() + timedelta(days=int(self.doc_to_signe.echeance) if self.doc_to_signe.echeance and str(self.doc_to_signe.echeance).isdigit() else 3)
+        for user in users:
+            # Création d'une invitation dans la table Invitation
+            invitation: Invitation = Invitation(
+                id_document=self.doc_to_signe.id,
+                id_user=user.id,
+                token=self.token,
+                expire_at=self.limite_signature,
+                mail_envoye=True,
+                mail_compte=1
+            )
+            g.db_session.add(invitation)
+            g.db_session.flush()
+            mail_template = render_template(
+                'signatures/signature_mail.html',
+                nom_expediteur=f'{session.get("prenom", "")} {session.get("nom", "")}'.strip(),
+                nom_signataire=f'{user.prenom} {user.nom}'.strip(),
+                doc_titre=self.doc_to_signe.doc_nom,
+                doc_type=self.doc_to_signe.doc_type,
+                date_limite=self.limite_signature.strftime('%d/%m/%Y %H:%M'),
+                lien_signature=f"{request.url_root.rstrip('/')}/signature/signer/{self.doc_to_signe.id}/{self.doc_to_signe.hash_fichier}?token={invitation.token}"
+            )
+            send_email_invitation(
+                to=user.mail,
+                template=mail_template
+            )
+        return self
 
 class SecureDocumentAccess:
     """
@@ -228,7 +377,9 @@ class SecureDocumentAccess:
             return False
         
         # Chercher tous les fichiers JSON dans temp/
-        for json_file in temp_dir.glob("*.json"):
+        json_files = list(temp_dir.glob("*.json"))
+        
+        for json_file in json_files:
             try:
                 with open(json_file, 'r', encoding='utf-8') as f:
                     access_data = json.load(f)
@@ -243,7 +394,8 @@ class SecureDocumentAccess:
                     
                 # Vérifier l'expiration
                 expires_at = access_data.get("expires_at", 0)
-                if datetime.now().timestamp() > expires_at:
+                current_time = datetime.now().timestamp()
+                if current_time > expires_at:
                     # Supprimer le fichier expiré
                     json_file.unlink(missing_ok=True)
                     continue
@@ -281,6 +433,27 @@ class SecureDocumentAccess:
                 # Fichier corrompu, on le supprime
                 json_file.unlink(missing_ok=True)
 
+def send_email_invitation(*, to: str, template: str) -> None:
+    # Configuration de l'e-mail
+    email_expediteur: str = Config.EMAIL_USER
+    mot_de_passe: str = Config.EMAIL_PASSWORD
+
+    msg = MIMEMultipart()
+    msg['From'] = email_expediteur
+    msg['To'] = to
+    msg['Subject'] = 'La Péraudière | Vous êtes invité à signer un document'
+
+    body = template
+    msg.attach(MIMEText(body, 'html'))
+    # Envoyer l'e-mail
+    try:
+        with smtplib.SMTP(Config.EMAIL_SMTP, Config.EMAIL_PORT) as server:
+            server.starttls()
+            server.login(email_expediteur, mot_de_passe)
+            server.send_message(msg)
+    except Exception as e:
+        logging.error(f"Erreur lors de l'envoi de l'e-mail d'invitation à {to}: {str(e)}")
+
 @signatures_bp.route('/deposer', methods=['GET', 'POST'])
 def signature_make() -> Any:
     """
@@ -294,17 +467,19 @@ def signature_make() -> Any:
         # Récupération du formulaire
         # Récupérer les points de signature
         try:
-            _ = SignatureMaker(request) \
+            document = SignatureMaker(request) \
                             .get_request() \
                             .get_signature_points() \
                             .create_document() \
                             .create_points() \
-                            .fix_documents()
+                            .fix_documents() \
+                            .send_invitation()
         except (IOError, FileNotFoundError) as e:
-            return render_template(ADMINISTRATION, error_message=str(e))
+            message = f"Erreur lors du traitement du document : {str(e)}"
+            return render_template(ADMINISTRATION, error_message=message)
         g.db_session.commit()
-        return render_template(ADMINISTRATION,
-                               success_message="Document à signer créé avec succès.")
+        message = f"Le document '{document.doc_to_signe.doc_nom}' a été créé et les invitations ont été envoyées."
+        return redirect(url_for('ea', success_message=message))
 
     # === Affichage du formulaire de dépôt de document ===
     elif request.method == 'GET':
@@ -324,10 +499,40 @@ def signature_do(doc_id: int, hash_document: str) -> Any:
     GET : Affiche le formulaire de signature.
     POST : Traite la signature du document.
     """
+    # === Gestion du formulaire de signature ===
     if request.method == 'POST':
         # Logique pour signer un document
-        pass
-    return render_template(ADMINISTRATION, context='signature_do', doc_id=doc_id, hash_document=hash_document)
+        # TODO: Implémenter la logique de signature
+        return render_template(ADMINISTRATION, context='signature_do', error_message="Fonctionnalité de signature en cours de développement")
+    
+    # === Affichage du formulaire de signature ===
+    try:
+        doer = SignatureDoer(request) \
+                    .get_request(id_document=doc_id, hash_document=hash_document) \
+                    .get_signature_points()
+        
+        # Sérialiser les points de signature en JSON pour éviter les erreurs de parsing JavaScript
+        import json
+        from datetime import datetime
+        
+        class CustomJSONEncoder(json.JSONEncoder):
+            def default(self, o: Any) -> Any:
+                if isinstance(o, datetime):
+                    return o.isoformat()
+                return super().default(o)
+        
+        try:
+            signature_points_json = json.dumps(doer.points, cls=CustomJSONEncoder)
+        except (TypeError, ValueError):
+            # En cas d'erreur de sérialisation, utiliser une liste vide
+            signature_points_json = "[]"
+        
+        return render_template(ADMINISTRATION, context='signature_do', document=doer.document,
+                               signature_points=doer.points, signature_points_json=signature_points_json,
+                               curent_user_id=doer.signatory_id,
+                               curent_user_name=doer.signatory_name, echeance=doer.invitation.expire_at)
+    except ValueError:
+        return render_template(ADMINISTRATION, error_message="Invitation invalide ou non trouvée.")
 
 @signatures_bp.route('/liste', methods=['GET'])
 def signature_do_list() -> Any:
@@ -400,13 +605,47 @@ def upload_document() -> Any:
 def download_pdf(filename: str):
     """
     Permet de télécharger un document PDF précédemment chargé.
-    Sécurisé par vérification d'accès via fichiers JSON temporaires.
+    Sécurisé par vérification d'accès via fichiers JSON temporaires ou points de signature.
     """
-    temp_dir: bool = bool(request.args.get('temp_dir', False)) or False
-    # Vérifier l'accès via les fichiers temporaires
-    if not SecureDocumentAccess.verify_temp_access(filename):
-        return "Accès non autorisé à ce document", 403
+    temp_dir_param = request.args.get('temp_dir', 'false').lower()
+    temp_dir: bool = temp_dir_param in ('true', '1', 'yes')
     
-    # Accès autorisé, servir le fichier
-    folder_path = SecureDocumentAccess.TEMP_DIR if temp_dir else getenv('SIGNATURE_DOCKER_PATH', '/tmp/')
-    return send_from_directory(folder_path, filename)
+    # Vérifier l'accès via les fichiers temporaires
+    if temp_dir:
+        if not SecureDocumentAccess.verify_temp_access(filename):
+            return "Accès non autorisé à ce document", 403
+        
+        folder_path = SecureDocumentAccess.TEMP_DIR
+        return send_from_directory(folder_path, filename)
+    
+    # Vérifier l'accès via les points de signature (documents définitifs)
+    else:
+        id_user = session.get('id', None)
+        if not id_user:
+            return "Session utilisateur non valide", 401
+        
+        # Rechercher les points de signature pour ce fichier et cet utilisateur
+        points = g.db_session.query(Points).join(DocToSigne, DocToSigne.id == Points.id_document) \
+                    .filter(Points.id_user == id_user) \
+                    .filter(
+                        (DocToSigne.doc_nom == filename) |
+                        (DocToSigne.chemin_fichier.like(f'%/{filename}')) |
+                        (DocToSigne.chemin_fichier.like(f'%\\{filename}')) |
+                        (DocToSigne.chemin_fichier.endswith(filename))
+                    ).all()
+        
+        if not points:
+            return "Accès non autorisé à ce document", 403
+        
+        # Récupérer le chemin réel du fichier depuis la base de données
+        document = points[0].document
+        real_file_path = Path(document.chemin_fichier)
+        
+        if not real_file_path.exists():
+            return "Fichier non trouvé", 404
+        
+        # Servir le fichier depuis son emplacement réel
+        folder_path = str(real_file_path.parent)
+        filename_real = real_file_path.name
+        
+        return send_from_directory(folder_path, filename_real)

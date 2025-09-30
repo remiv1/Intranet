@@ -1,0 +1,210 @@
+<!--
+=================================================================
+MODELE DE COURRIEL HTML POUR INVITATION À SIGNATURE ÉLECTRONIQUE
+=================================================================
+Ce modèle HTML est conçu pour être utilisé dans les courriels d'invitation
+à signer un document électroniquement sur l'Intranet.
+Il inclut des informations sur le document à signer et un lien sécurisé
+pour accéder à la plateforme de signature.
+    Eléments Jinja attendus :
+    - nom_expediteur : Nom de la personne qui envoie l'invitation
+    - nom_signataire : Nom de la personne invitée à signer
+    - doc_titre : Titre du document à signer
+    - doc_type : Type de document (contrat, avenant, etc.)
+    - date_limite : Date limite pour signer (optionnel)
+    - lien_signature : URL sécurisée pour accéder au document
+    - message_personnalise : Message optionnel de l'expéditeur
+-->
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Invitation à signature électronique</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background-color: #f8fafc;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            background: #fff;
+            max-width: 900px;
+            margin: 30px auto;
+            border-radius: 12px;
+            box-shadow: 0 2px 12px rgba(44, 62, 80, 0.08);
+            padding: 32px 24px 24px 24px;
+        }
+        .header {
+            background: #e9ecef;
+            border-radius: 8px 8px 0 0;
+            padding: 18px 0 10px 0;
+            text-align: center;
+            margin-bottom: 24px;
+        }
+        h1 {
+            color: #2e6c80;
+            font-family: 'Fenix', 'Segoe UI', Arial, sans-serif;
+            font-size: 2.1em;
+            margin: 0;
+            letter-spacing: 1px;
+        }
+        .signature-button-container {
+            text-align: center;
+            margin: 30px 0;
+        }
+        .signature-button {
+            display: inline-block;
+            padding: 15px 30px;
+            background: #27ae60;
+            color: #fff !important;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 1.1em;
+            transition: background 0.2s;
+            box-shadow: 0 2px 8px rgba(39, 174, 96, 0.3);
+        }
+        .signature-button:hover {
+            background: #229954;
+        }
+        .intranet-link-container {
+            text-align: center;
+            margin-top: 20px;
+        }
+        .intranet-link {
+            display: inline-block;
+            padding: 8px 18px;
+            background: #2e6c80;
+            color: #fff !important;
+            border-radius: 6px;
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 0.9em;
+            transition: background 0.2s;
+        }
+        .intranet-link:hover {
+            background: #17455c;
+        }
+        .document-info {
+            background: #f8f9fa;
+            border-left: 4px solid #2e6c80;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 0 8px 8px 0;
+        }
+        .document-info h3 {
+            color: #2e6c80;
+            margin: 0 0 15px 0;
+            font-size: 1.2em;
+        }
+        .document-info p {
+            margin: 8px 0;
+            color: #555;
+        }
+        .document-info strong {
+            color: #2e6c80;
+        }
+        .warning-box {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 6px;
+            padding: 15px;
+            margin: 20px 0;
+            color: #856404;
+        }
+        .warning-box .icon {
+            font-weight: bold;
+            margin-right: 8px;
+        }
+        .footer {
+            margin-top: 32px;
+            text-align: center;
+            font-size: 0.95em;
+            color: #888;
+        }
+        p {
+            line-height: 1.6;
+            color: #333;
+        }
+        @media (max-width: 700px) {
+            .container { 
+                padding: 15px; 
+                margin: 15px;
+            }
+            .signature-button {
+                padding: 12px 25px;
+                font-size: 1em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>{{ nom_expediteur }} vous invite à signer un document</h1>
+        </div>
+        
+        <main>
+            <p>Bonjour {% if nom_signataire %}{{ nom_signataire }}{% endif %},</p>
+            
+            <div class="document-info">
+                <h3>📄 Informations du document</h3>
+                <p><strong>Titre :</strong> {{ doc_titre }}</p>
+                <p><strong>Type :</strong> {{ doc_type }}</p>
+                <p><strong>Expiration de l'invitation :</strong> {{ date_limite }}</p>
+            </div>
+            
+            {% if message_personnalise %}
+            <p><em>{{ message_personnalise }}</em></p>
+            {% endif %}
+            
+            <div class="signature-button-container">
+                <a class="signature-button" href="{{ lien_signature }}" title="Signer le document">
+                    ✍️ Signer le document
+                </a>
+            </div>
+
+            <div class="warning-box">
+                <span class="icon">🔒</span>
+                <strong>Attention :</strong> Ce lien de signature est unique et personnel. Ne le partagez pas avec d'autres personnes.
+            </div>
+            
+            {% if date_limite %}
+            <div class="warning-box">
+                <span class="icon">⚠️</span>
+                <strong>Important :</strong> Ce document doit être signé avant le {{ date_limite }}.
+            </div>
+            {% endif %}
+            
+            <p>
+                <strong>Comment procéder :</strong><br>
+                1. Cliquez sur le bouton "Signer le document" ci-dessus<br>
+                2. Vous serez redirigé vers la page de connexion<br>
+                3. Une fois connecté, suivez les instructions pour apposer votre signature électronique<br>
+                4. Validez votre signature
+            </p>
+            
+            <p>
+                Si vous rencontrez des difficultés, n'hésitez pas à nous contacter ou à accéder directement à l'Intranet.
+            </p>
+            
+            <div class="intranet-link-container">
+                <a class="intranet-link" href="https://intraraudiere.data-fan.fr" title="Accès Intranet">
+                    Accéder à l'Intranet
+                </a>
+            </div>
+            
+            <p>
+                Cordialement,<br>
+                {% if nom_expediteur %}{{ nom_expediteur }}{% else %}L'équipe{% endif %}
+            </p>
+        </main>
+        
+        <div class="footer">
+            &copy; 2025 La Péraudière. Tous droits réservés.
+        </div>
+    </div>
+</body>
+</html>

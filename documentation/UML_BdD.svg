@@ -194,9 +194,10 @@
     <text font-size="12.8" style="fill: #404040;text-anchor:start;font-family:monospace;font-style:normal;font-weight:normal" x="-216" y="969.2">+id_signature: INTEGER</text>
     <line style="fill: none; fill-opacity:0; stroke-width: 1; stroke: #ff5500" x1="-216" y1="975.6" x2="-46.6" y2="975.6"/>
     <text font-size="12.8" style="fill: #404040;text-anchor:start;font-family:monospace;font-style:normal;font-weight:normal" x="-216" y="985.2">+signe_at: DATETIME</text>
-    <rect style="fill: #ffffff" x="-220" y="992" width="179.4" height="20"/>
-    <rect style="fill: none; fill-opacity:0; stroke-width: 4; stroke: #ff5500" x="-220" y="992" width="179.4" height="20"/>
+    <rect style="fill: #ffffff" x="-220" y="992" width="179.4" height="36"/>
+    <rect style="fill: none; fill-opacity:0; stroke-width: 4; stroke: #ff5500" x="-220" y="992" width="179.4" height="36"/>
     <text font-size="12.8" style="fill: #404040;text-anchor:start;font-family:monospace;font-style:normal;font-weight:normal" x="-216" y="1005.2">-__repr__()</text>
+    <text font-size="12.8" style="fill: #404040;text-anchor:start;font-family:monospace;font-style:normal;font-weight:normal" x="-216" y="1021.2">+to_dict()</text>
   </g>
   <g>
     <path style="fill: none; fill-opacity:0; stroke-width: 4; stroke: #ff5500" d="M -320,866 A 4,4 0 0 0 -316,870"/>

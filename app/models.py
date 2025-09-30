@@ -754,7 +754,6 @@ class Points(Base):
     page_num = mapped_column(Integer, nullable=False)           # numéro de page (1-indexed)
     
     # Signataire assigné
-    #TODO: prévoir un soft_delete des utilisateurs pour conservation pendant la durée de validité des documents
     id_user = mapped_column(Integer, ForeignKey(PK_USER), nullable=False)
     
     # Statut
@@ -781,6 +780,29 @@ class Points(Base):
         return (f"<Points(id={self.id}, id_document={self.id_document}, page_num={self.page_num}, "
             f"coordonnées=({self.x}, {self.y}), id_user={self.id_user}, status={self.status})>")
     
+    def to_dict(self) -> Dict[str, Any]:
+        """
+        Convertit l'objet Points en dictionnaire.
+        Utile pour la sérialisation JSON.
+        Returns:
+            dict: Dictionnaire représentant l'objet Points.
+        Exemple d'utilisation :
+            ```python
+            point_dict = point.to_dict()
+            ```
+        """
+        point: Dict[str, Any] = {
+            "id": self.id,
+            "id_document": self.id_document,
+            "x": float(self.x),
+            "y": float(self.y),
+            "page_num": self.page_num,
+            "id_user": self.id_user,
+            "status": self.status,
+            "signe_at": self.signe_at.isoformat() if self.signe_at else None
+        }
+        return point
+
 class Signatures(Base):
     """
     Représente une signature apposée sur un document.
