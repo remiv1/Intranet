@@ -1,6 +1,6 @@
 # Rapport d'Évolution des Branches - Projet Intranet
 
-**Date du rapport :** 29 septembre 2025  
+**Date du rapport :** 30 septembre 2025  
 **Projet :** Intranet - Système de gestion des contrats et signatures électroniques  
 **Auteur :** Rémi Verschuur  
 
@@ -11,7 +11,7 @@
 | Branche | Période | Durée | Commits | Fonctionnalités Principales | État |
 |---------|---------|-------|---------|------------------------------|------|
 | **main** | Mars 2025 - Sept 2025 | 6 mois | 100+ | Base de l'application, gestion contrats | ✅ Stable |
-| **sprint_signature** | 27-29 Sept 2025 | 3 jours | 10+ | Module signature électronique complet | 🚧 Actuel |
+| **sprint_signature** | 27-30 Sept 2025 | 4+ jours | 15+ | Module signature électronique complet | 🚧 En cours |
 | **sprint_contacts** | 27 Sept 2025 | 1 jour | 3 | Gestion des contacts contrats | ✅ Mergé |
 | **sprint_mails** | 19 Sept 2025 | 1 jour | 4 | Système d'envoi emails amélioré | ✅ Mergé |
 | **sprint_bills** | 15-19 Sept 2025 | 4 jours | 25+ | Gestion des factures | ✅ Mergé |
@@ -26,13 +26,13 @@
 
 ## 2. Analyse Détaillée par Branche
 
-### 2.1 sprint_signature (Branche Actuelle) 🚧
+### 2.1 sprint_signature (En cours) 🚧
 
-**Période :** 27-29 septembre 2025  
-**Durée d'exécution :** 3 jours  
-**Commits :** 10+ commits majeurs  
+**Période :** 27-30 septembre 2025 (en cours)  
+**Durée d'exécution :** 4+ jours  
+**Commits :** 15+ commits majeurs  
 
-#### Travail Réalisé (3 jours)
+#### Travail Réalisé (4 jours - en cours)
 
 - **Module de signature électronique complet** avec PDF.js et SignaturePad
 - **Sécurisation d'accès aux documents** avec système HMAC
@@ -46,6 +46,15 @@
 - **Diagramme UML de base de données mis à jour** avec nouveau modèle SVG
 - **Système de dossiers temporaires** non montés pour la sécurité
 
+#### Corrections Critiques (Jour 4 - 30 septembre 2025)
+
+- **Résolution erreur SQLAlchemy** : Correction du conflit `ip_adresse` vs `ip_addresse` dans les modèles
+- **Gestion cohérente des réponses** : API uniformisée retournant toujours du JSON pour les erreurs
+- **Correction timestamp MySQL** : Remplacement des timestamps Unix par des objets DateTime natifs
+- **Harmonisation des attributs** : `signe_at` au lieu de `signed_at` pour la cohérence du modèle
+- **Gestion des erreurs améliorée** : Try/catch avec rollback automatique en cas d'erreur
+- **Consolidation de la documentation** : Fusion des notes techniques dans le fichier todo.md central
+
 #### Évolutions Techniques
 
 - **Base de données** : 4 nouvelles tables finalisées (DocToSigne, Signatures, Points, Users améliorée)
@@ -55,24 +64,24 @@
 - **Architecture** : Classes métier dédiées et séparation des responsabilités
 - **Documentation** : Modèle de données visuel en SVG et documentation technique
 
-#### Corrections et Améliorations (Jour 3)
+#### Travail Restant (À finaliser)
 
-- **Gestion des fichiers** : Utilisation de `shutil.move` au lieu de `Path.rename` pour la robustesse
-- **Sécurité des mots de passe** : Correction des bugs de réinitialisation involontaire
-- **Modèles SQLAlchemy** : Finalisation des relations entre tables
-- **Interface utilisateur** : Corrections mineures dans les templates
-- **Types de données** : Harmonisation des types (integer pour priorités)
+- **Validation des statuts** : Vérification expiration et statut document lors des accès GET
+- **Automatisme d'expiration** : Système CRON pour passer les documents expirés en statut -1
+- **Génération PDF final** : Route pour créer le PDF avec signatures + certificat quand tous points signés
+- **Notifications automatiques** : Email avec PDF final en pièce jointe à tous les signataires
+- **Sécurité renforcée** : Rate limiting OTP, audit logs, validation intégrité signatures
+- **Tests unitaires** : Couverture complète du module signature
+- **Gestion des erreurs avancée** : Meilleure gestion des documents corrompus/supprimés
 
 #### Fichiers Modifiés/Créés
 
 ```txt
-+ app/bp_signature.py (413 lignes - +127 lignes)
-~ app/models.py (632 lignes - +536 lignes nouvelles)
-- app/signatures.py (supprimé - 107 lignes obsolètes)
-+ app/templates/signatures/ (2 templates améliorés)
-+ app/static/js/signatures-*.js (3 fichiers, 950+ lignes total)
-+ documentation/UML_BdD.svg (372 lignes - nouveau diagramme)
-+ todo.md (liste des tests CI/CD à implémenter)
+~ app/bp_signature.py (420 lignes - corrections erreurs critiques)
+~ app/models.py (correctifs attributs SQLAlchemy)
+~ app/static/js/signatures-sign.js (gestion réponses JSON)
+~ todo.md (consolidation notes techniques)
+~ documentation/rapport-evolution-branches.md (mise à jour 30/09)
 ```
 
 ---
@@ -271,9 +280,9 @@ Sept 2025    : ~8500 lignes (+factures, contacts, signatures)
 
 | Sprint | Complexité | Temps Moyen | Réussite |
 |--------|------------|-------------|----------|
+| Signature | Très Élevée | 4+ jours | 🚧 75% |
 | Bills | Élevée | 4 jours | ✅ 100% |
 | Code Cleaner | Moyenne | 4 jours | ✅ 100% |
-| Signature | Très Élevée | 3 jours | 🚧 85% |
 | Contacts | Faible | 1 jour | ✅ 100% |
 | Mails | Moyenne | 1 jour | ✅ 100% |
 | Workflows | Moyenne | 1 jour | ✅ 100% |
@@ -293,7 +302,7 @@ Sept 2025    : ~8500 lignes (+factures, contacts, signatures)
 ### 4.1 Vélocité par Sprint
 
 ```txt
-sprint_signature : 3 jours → Module complet en finalisation (excellent)
+sprint_signature : 4+ jours → Module complexe en cours (75% complet)
 sprint_contacts  : 1 jour → Fonctionnalité complète (excellent)  
 sprint_mails     : 1 jour → Amélioration majeure (excellent)
 sprint_bills     : 4 jours → Module complexe (bon)
@@ -337,13 +346,17 @@ sprint_workflows : 1 jour → CI/CD complet (excellent)
 
 ### 5.3 Roadmap
 
-1. **Finalisation signature électronique** (semaine 40 - 85% terminé)
+1. **Améliorations signature électronique** - Priorité immédiate
+   - Validation des statuts et expiration (octobre 2025)
+   - Automatisme d'expiration des documents (octobre 2025)
+   - Génération PDF final avec certificat (octobre 2025)
+   - Notifications automatiques par email (octobre 2025)
 2. **Tests CI/CD automatisés** (octobre 2025)
 3. **Partage de documents sécurisé** (T4 2025)
 4. **Génération de documents sur modèles** (T4 2025)
 5. **Automatisation** des sauvegardes (T4 2025)
 6. **Module reporting avancé** (T4 2025)
-7. **Tests 2e2** à implémenter (T1 2026)
+7. **Tests E2E** à implémenter (T1 2026)
 8. **Déploiement monitoring** (T1 2026)
 9. **Création app mobile** (T2 2026)
 
@@ -359,12 +372,12 @@ Le projet Intranet montre une **évolution exceptionnelle** sur les 6 derniers m
 - **Sécurité renforcée** à tous les niveaux
 - **Vélocité de développement élevée** et constante
 
-Le **sprint_signature actuel** représente le **point culminant technique** du projet avec une **complexité élevée maîtrisée** en **3 jours de développement intensif**. Les améliorations du 29 septembre incluent une **refactorisation majeure des modèles de données**, l'ajout de **classes métier dédiées**, et une **sécurisation renforcée** du système de signatures.
+Le **sprint_signature actuel** représente le **défi technique le plus complexe** du projet avec une **architecture avancée** développée sur **4+ jours**. Les corrections du 30 septembre ont résolu les **erreurs critiques SQLAlchemy** et **harmonisé l'API**, mais **plusieurs fonctionnalités importantes restent à implémenter** : validation des statuts, génération PDF final, notifications automatiques et sécurisations avancées.
 
 La **qualité du code** et la **discipline de développement** montrent une **maturité technique excellente** pour un projet de cette envergure, avec une **documentation technique approfondie** et un **modèle de données visuellement représenté**.
 
 ---
 
-**Rapport généré le :** 29 septembre 2025  
-**Version :** 1.3
+**Rapport généré le :** 30 septembre 2025  
+**Version :** 1.4 (sprint signature en cours)
 **Prochaine révision :** Fin octobre 2025
