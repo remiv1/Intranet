@@ -620,7 +620,7 @@ function validateSignatureWithOTP(otpCode) {
         signaturePadData: signaturePad.toData(), // Données SignaturePad pour compatibilité
         metadata: {
             browser: navigator.userAgent,
-            platform: navigator.platform,
+            platform: navigator.userAgentData?.platform || 'unknown',
             language: navigator.language,
             screen: {
                 width: screen.width,
