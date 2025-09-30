@@ -1,380 +1,163 @@
 /**
- * Signatures - Exécution et signature des documents
+ * Signatures - Signature graphique avec validation OTP
  * Utilisé par signature_do.html
  */
 
-// Variables globales pour la signature
-let currentSignaturePoint = null;
+// Variables globales
+let hasReadDocument = false;
 let signaturePad = null;
-let currentScrollPosition = 0;
-let acceptanceMandatory = true;
+let token = null;
+let hashDocument = null;
+let documentId = null;
+
+// Variables pour capture haute précision
+let customSignatureData = {
+    strokes: [],
+    currentStroke: null,
+    precision: 0.01 // Précision en pixels
+};
+
+// ===========================================
+// Listener sur le DOMContentLoaded
+// ===========================================
+
+document.addEventListener("DOMContentLoaded", function() {
+    initializeDocumentSigning();
+    token = document.getElementById('invit-token') ? document.getElementById('invit-token').value : null;
+    hashDocument = document.getElementById('hash-document') ? document.getElementById('hash-document').value : null;
+    documentId = document.getElementById('doc-id') ? document.getElementById('doc-id').value : null;
+});
 
 // ===========================================
 // INITIALISATION
 // ===========================================
 
-document.addEventListener("DOMContentLoaded", function() {
-    initializeDocumentSigning();
-});
-
-/**
- * Initialise le processus de signature de document
- */
 function initializeDocumentSigning() {
     const pdfContainer = document.getElementById('pdf-container');
     const pdfLoader = document.getElementById('pdf-loader');
-    
-    // Récupérer les données depuis la variable globale documentData (plus fiable que les attributs DOM)
-    if (typeof documentData === 'undefined') {
-        handleSignatureError(new Error('Données du document manquantes'), 'Initialisation signature');
-        return;
-    }
-    
     const filename = documentData.filename;
     const signaturePoints = documentData.signaturePoints;
     
-    if (!filename) {
-        handleSignatureError(new Error('Nom de fichier manquant'), 'Initialisation signature');
-        return;
-    }
+    console.log('Initialisation avec les points:', signaturePoints);
     
-    if (!signaturePoints) {
-        handleSignatureError(new Error('Données de points manquantes'), 'Initialisation signature');
-        return;
-    }
+    // Initialiser les event listeners
+    initializeEventListeners();
     
-    // Vérifier que signaturePoints est un tableau
-    if (!Array.isArray(signaturePoints)) {
-        handleSignatureError(new Error('Les données de points ne sont pas un tableau valide'), 'Validation signature');
-        return;
-    }
+    // Initialiser le suivi de scroll
+    initializeScrollTracking();
     
-    try {
-        // Initialiser les event listeners
-        initializeSigningEventListeners();
-        
-        // Initialiser le suivi de scroll
-        initializeScrollTracking();
-        
-        // Charger le PDF avec callback pour afficher les points
-        initializePDFViewer(filename, pdfLoader, pdfContainer, function() {
-            displaySignaturePoints(signaturePoints);
-            checkDocumentReadStatus();
-        }, false);
-        
-    } catch (error) {
-        handleSignatureError(error, 'Parser points signature');
-    }
+    // Charger le PDF avec callback pour afficher les points
+    initializePDFViewer(filename, pdfLoader, pdfContainer, function() {
+        console.log('PDF chargé, affichage des points');
+        displaySignaturePoints(signaturePoints);
+    }, false);
 }
 
 // ===========================================
 // EVENT LISTENERS
 // ===========================================
 
-/**
- * Initialise les event listeners pour la signature
- */
-function initializeSigningEventListeners() {
-    // Checkbox d'acceptation des conditions
-    const acceptConditions = document.getElementById('accept-conditions');
-    if (acceptConditions) {
-        acceptConditions.addEventListener('change', updateSignButtonState);
+function initializeEventListeners() {
+    // Cases à cocher d'acceptation
+    const acceptContent = document.getElementById('accept-content');
+    const acceptElectronic = document.getElementById('accept-electronic-signature');
+    const acceptLegal = document.getElementById('accept-legal-value');
+    
+    if (acceptContent) {
+        acceptContent.addEventListener('change', updateSignButtonState);
+    }
+    if (acceptElectronic) {
+        acceptElectronic.addEventListener('change', updateSignButtonState);
+    }
+    if (acceptLegal) {
+        acceptLegal.addEventListener('change', updateSignButtonState);
     }
     
-    // Checkbox de lecture complète
-    const fullRead = document.getElementById('full-read');
-    if (fullRead) {
-        fullRead.addEventListener('change', updateSignButtonState);
-    }
-    
-    // Boutons de signature dans la modale
-    const clearSignature = document.getElementById('clear-signature');
-    if (clearSignature) {
-        clearSignature.addEventListener('click', clearSignaturePad);
-    }
-    
-    const validateSignature = document.getElementById('validate-signature');
-    if (validateSignature) {
-        validateSignature.addEventListener('click', validateCurrentSignature);
-    }
-    
-    // Gérer la fermeture de la modale de signature
-    const signatureModal = document.getElementById('signatureModal');
-    if (signatureModal) {
-        signatureModal.addEventListener('hidden.bs.modal', function() {
-            if (signaturePad) {
-                signaturePad.clear();
-            }
-            currentSignaturePoint = null;
+    // Bouton "Procéder à la signature"
+    const signButton = document.getElementById('btn-sign');
+    if (signButton) {
+        signButton.addEventListener('click', function() {
+            console.log('Clic sur le bouton de signature, déclenchement OTP');
+            requestOTPCode();
         });
     }
+    
+    // Vérifier l'état initial du bouton
+    updateSignButtonState();
 }
 
 // ===========================================
 // AFFICHAGE DES POINTS DE SIGNATURE
 // ===========================================
 
-/**
- * Affiche les points de signature sur le PDF
- */
 function displaySignaturePoints(points) {
+    console.log('Affichage des points de signature:', points);
+    if (!points || !Array.isArray(points)) {
+        console.error('Points de signature invalides:', points);
+        return;
+    }
+    
     points.forEach(point => {
-        createSigningMarker(point);
+        console.log('Création du rectangle pour le point:', point);
+        createSignatureRectangle(point);
     });
 }
 
-/**
- * Crée un marqueur de signature cliquable
- */
-function createSigningMarker(point) {
-    // Trouver la page correspondante
-    const pageDiv = document.querySelector(`[data-page-number="${point.pageNum}"]`)?.parentElement;
+function createSignatureRectangle(point) {
+    // Trouver la page correspondante (essayer différentes propriétés)
+    let pageDiv = document.querySelector(`[data-page-number="${point.page_num}"]`)?.parentElement;
     if (!pageDiv) {
-        console.warn(`Page ${point.pageNum} non trouvée pour le point ${point.id}`);
+        pageDiv = document.querySelector(`[data-page-number="${point.pageNum}"]`)?.parentElement;
+    }
+    if (!pageDiv) {
+        pageDiv = document.querySelector(`[data-page-number="${point.page}"]`)?.parentElement;
+    }
+    
+    if (!pageDiv) {
+        console.warn(`Page non trouvée pour le point ${point.id}. Propriétés disponibles:`, Object.keys(point));
         return;
     }
     
-    const marker = document.createElement('div');
-    marker.className = 'signature-marker-signing';
-    marker.id = `signing-marker-${point.id}`;
-    marker.style.position = 'absolute';
-    marker.style.left = `${point.x - 15}px`;
-    marker.style.top = `${point.y - 15}px`;
-    marker.style.width = '30px';
-    marker.style.height = '30px';
-    marker.style.backgroundColor = point.signed ? '#198754' : '#0d6efd';
-    marker.style.border = '3px solid #fff';
-    marker.style.borderRadius = '50%';
-    marker.style.cursor = point.signed ? 'default' : 'pointer';
-    marker.style.zIndex = '1000';
-    marker.style.display = 'flex';
-    marker.style.alignItems = 'center';
-    marker.style.justifyContent = 'center';
-    marker.style.fontSize = '14px';
-    marker.style.fontWeight = 'bold';
-    marker.style.color = 'white';
-    marker.style.boxShadow = '0 3px 6px rgba(0,0,0,0.3)';
-    marker.style.transition = 'all 0.2s ease';
+    console.log('Page trouvée:', pageDiv, 'pour le point:', point);
     
-    // Icône selon l'état
-    if (point.signed) {
-        marker.innerHTML = '<i class="fas fa-check"></i>';
-        marker.title = `Signé par ${point.user_name}`;
-    } else {
-        marker.innerHTML = '<i class="fas fa-pen"></i>';
-        marker.title = `Cliquez pour signer (${point.user_name})`;
-        
-        // Ajouter l'event listener de clic
-        marker.addEventListener('click', function() {
-            openSignatureModal(point);
-        });
-        
-        // Effets hover
-        marker.addEventListener('mouseenter', function() {
-            this.style.transform = 'scale(1.1)';
-            this.style.backgroundColor = '#0b5ed7';
-        });
-        
-        marker.addEventListener('mouseleave', function() {
-            this.style.transform = 'scale(1)';
-            this.style.backgroundColor = '#0d6efd';
-        });
+    // S'assurer que la page a position: relative pour les enfants absolus
+    if (getComputedStyle(pageDiv).position === 'static') {
+        pageDiv.style.position = 'relative';
     }
     
-    pageDiv.appendChild(marker);
-}
-
-// ===========================================
-// GESTION DE LA MODALE DE SIGNATURE
-// ===========================================
-
-/**
- * Ouvre la modale de signature pour un point donné
- */
-function openSignatureModal(point) {
-    currentSignaturePoint = point;
+    const rectangle = document.createElement('div');
+    rectangle.className = 'signature-rectangle';
+    rectangle.id = `signature-rect-${point.id}`;
+    rectangle.style.position = 'absolute';
+    rectangle.style.left = `${point.x - 50}px`; // Centré sur le point
+    rectangle.style.top = `${point.y - 15}px`;  // Centré sur le point
+    rectangle.style.width = '100px';
+    rectangle.style.height = '30px';
+    rectangle.style.backgroundColor = 'rgba(25, 135, 84, 0.25)'; // Vert avec 75% de transparence
+    rectangle.style.border = '2px solid #198754';
+    rectangle.style.borderRadius = '4px';
+    rectangle.style.zIndex = '1000';
+    rectangle.style.display = 'flex';
+    rectangle.style.alignItems = 'center';
+    rectangle.style.justifyContent = 'center';
+    rectangle.style.fontSize = '12px';
+    rectangle.style.fontWeight = 'bold';
+    rectangle.style.color = '#198754';
+    rectangle.style.pointerEvents = 'none';
     
-    // Mettre à jour le titre et les informations
-    const modalTitle = document.getElementById('signatureModalLabel');
-    if (modalTitle) {
-        modalTitle.textContent = `Signature requise pour ${point.user_name}`;
-    }
+    // Texte dans le rectangle
+    rectangle.innerHTML = 'Signature';
+    rectangle.title = `Zone de signature pour ${point.user_name}`;
     
-    const pointInfo = document.getElementById('signature-point-info');
-    if (pointInfo) {
-        pointInfo.innerHTML = `
-            <div class="alert alert-info">
-                <strong>Point de signature ${point.id}</strong><br>
-                Page ${point.pageNum} - Position (${Math.round(point.x)}, ${Math.round(point.y)})<br>
-                Signataire: <strong>${point.user_name}</strong>
-            </div>
-        `;
-    }
-    
-    // Initialiser le SignaturePad si ce n'est pas déjà fait
-    initializeSignaturePad();
-    
-    // Afficher la modale
-    const modal = new bootstrap.Modal(document.getElementById('signatureModal'));
-    modal.show();
-}
-
-/**
- * Initialise le SignaturePad
- */
-function initializeSignaturePad() {
-    const canvas = document.getElementById('signature-canvas');
-    if (!canvas) {
-        console.error('[Signatures Sign] Canvas de signature non trouvé');
-        return;
-    }
-    
-    if (!signaturePad) {
-        signaturePad = new SignaturePad(canvas, {
-            backgroundColor: 'rgba(255, 255, 255, 0)',
-            penColor: 'rgb(0, 0, 0)',
-            minWidth: 0.5,
-            maxWidth: 2.5,
-            minDistance: 0.01,
-            throttle: 16,
-            velocityFilterWeight: 0.7
-        });
-        
-        // Événement de fin de signature
-        signaturePad.addEventListener('endStroke', function() {
-            updateValidateButtonState();
-        });
-    }
-    
-    // Effacer le pad
-    signaturePad.clear();
-    updateValidateButtonState();
-    
-    // Redimensionner le canvas
-    resizeSignatureCanvas();
-}
-
-/**
- * Redimensionne le canvas de signature
- */
-function resizeSignatureCanvas() {
-    const canvas = document.getElementById('signature-canvas');
-    if (!canvas || !signaturePad) return;
-    
-    const container = canvas.parentElement;
-    const containerWidth = container.clientWidth;
-    const containerHeight = Math.min(200, containerWidth * 0.4);
-    
-    // Sauvegarder les données si elles existent
-    const data = signaturePad.isEmpty() ? null : signaturePad.toData();
-    
-    // Redimensionner
-    canvas.width = containerWidth;
-    canvas.height = containerHeight;
-    canvas.style.width = `${containerWidth}px`;
-    canvas.style.height = `${containerHeight}px`;
-    
-    // Restaurer les données
-    if (data) {
-        signaturePad.fromData(data);
-    } else {
-        signaturePad.clear();
-    }
-}
-
-/**
- * Efface le pad de signature
- */
-function clearSignaturePad() {
-    if (signaturePad) {
-        signaturePad.clear();
-        updateValidateButtonState();
-    }
-}
-
-/**
- * Met à jour l'état du bouton de validation
- */
-function updateValidateButtonState() {
-    const validateBtn = document.getElementById('validate-signature');
-    if (validateBtn && signaturePad) {
-        validateBtn.disabled = signaturePad.isEmpty();
-    }
-}
-
-/**
- * Valide la signature actuelle
- */
-function validateCurrentSignature() {
-    if (!signaturePad || !currentSignaturePoint) {
-        handleSignatureError(new Error('Pad de signature ou point non initialisé'), 'Validation signature');
-        return;
-    }
-    
-    if (signaturePad.isEmpty()) {
-        showNotification('Veuillez tracer votre signature avant de valider.', 'warning');
-        return;
-    }
-    
-    try {
-        // Générer les données de signature
-        const signatureData = {
-            pointId: currentSignaturePoint.id,
-            svgData: signaturePad.toSVG(),
-            jsonData: JSON.stringify(signaturePad.toData()),
-            timestamp: new Date().toISOString()
-        };
-        
-        // Envoyer la signature au serveur
-        submitSignature(signatureData);
-        
-    } catch (error) {
-        handleSignatureError(error, 'Génération données signature');
-    }
-}
-
-/**
- * Soumet la signature au serveur
- */
-function submitSignature(signatureData) {
-    const form = document.createElement('form');
-    form.method = 'POST';
-    form.action = window.location.href; // Même URL que la page actuelle
-    form.style.display = 'none';
-    
-    // Ajouter les données de signature
-    Object.keys(signatureData).forEach(key => {
-        const input = document.createElement('input');
-        input.type = 'hidden';
-        input.name = key;
-        input.value = signatureData[key];
-        form.appendChild(input);
-    });
-    
-    // Ajouter le token CSRF si présent
-    const csrfToken = document.querySelector('meta[name="csrf-token"]');
-    if (csrfToken) {
-        const input = document.createElement('input');
-        input.type = 'hidden';
-        input.name = 'csrf_token';
-        input.value = csrfToken.getAttribute('content');
-        form.appendChild(input);
-    }
-    
-    document.body.appendChild(form);
-    form.submit();
+    pageDiv.appendChild(rectangle);
+    console.log('Rectangle de signature créé et ajouté à la page:', rectangle);
 }
 
 // ===========================================
 // SUIVI DE LECTURE DU DOCUMENT
 // ===========================================
 
-/**
- * Initialise le suivi de scroll pour la lecture complète
- */
 function initializeScrollTracking() {
-    if (!acceptanceMandatory) return;
-    
     const pdfContainer = document.getElementById('pdf-container');
     if (!pdfContainer) return;
     
@@ -382,22 +165,16 @@ function initializeScrollTracking() {
     pdfContainer.addEventListener('scroll', function() {
         clearTimeout(scrollTimeout);
         scrollTimeout = setTimeout(function() {
-            currentScrollPosition = pdfContainer.scrollTop;
             checkDocumentReadStatus();
         }, 100);
     });
 }
 
-/**
- * Vérifie si le document a été lu complètement
- */
 function checkDocumentReadStatus() {
-    if (!acceptanceMandatory) return;
-    
     const pdfContainer = document.getElementById('pdf-container');
-    const fullReadCheckbox = document.getElementById('full-read');
+    const acceptanceSection = document.getElementById('acceptance-section');
     
-    if (!pdfContainer || !fullReadCheckbox) return;
+    if (!pdfContainer || !acceptanceSection || hasReadDocument) return;
     
     const scrollTop = pdfContainer.scrollTop;
     const scrollHeight = pdfContainer.scrollHeight;
@@ -407,105 +184,563 @@ function checkDocumentReadStatus() {
     const readPercentage = (scrollTop + clientHeight) / scrollHeight;
     const isFullyRead = readPercentage >= 0.9;
     
-    if (isFullyRead && !fullReadCheckbox.checked) {
-        fullReadCheckbox.checked = true;
-        fullReadCheckbox.disabled = false;
+    if (isFullyRead) {
+        hasReadDocument = true;
+        
+        // Afficher la section d'acceptation
+        acceptanceSection.classList.remove('d-none');
         
         // Animation pour attirer l'attention
-        const checkboxContainer = fullReadCheckbox.closest('.form-check');
-        if (checkboxContainer) {
-            checkboxContainer.style.animation = 'pulse-green 1.5s ease-in-out';
-            setTimeout(() => {
-                checkboxContainer.style.animation = '';
-            }, 1500);
-        }
+        acceptanceSection.style.animation = 'fadeIn 0.5s ease-in-out';
         
-        showNotification('✓ Document lu complètement', 'success');
-        updateSignButtonState();
+        console.log('Document lu complètement, affichage des cases de validation');
     }
 }
 
-/**
- * Met à jour l'état du bouton de signature principal
- */
 function updateSignButtonState() {
-    const acceptConditions = document.getElementById('accept-conditions');
-    const fullRead = document.getElementById('full-read');
-    const signButtons = document.querySelectorAll('.btn-sign');
+    console.log('Vérification de l\'état des cases à cocher...');
     
-    let canSign = true;
+    const acceptContent = document.getElementById('accept-content');
+    const acceptElectronic = document.getElementById('accept-electronic-signature');
+    const acceptLegal = document.getElementById('accept-legal-value');
+    const signButton = document.getElementById('btn-sign');
     
-    if (acceptanceMandatory) {
-        if (acceptConditions && !acceptConditions.checked) {
-            canSign = false;
-        }
-        if (fullRead && !fullRead.checked) {
-            canSign = false;
-        }
+    if (!acceptContent || !acceptElectronic || !acceptLegal || !signButton) {
+        console.log('Éléments non trouvés');
+        return;
     }
     
-    signButtons.forEach(btn => {
-        btn.disabled = !canSign;
-        
-        if (canSign) {
-            btn.classList.remove('btn-secondary');
-            btn.classList.add('btn-primary');
-            btn.innerHTML = '<i class="fas fa-pen"></i> Prêt à signer';
+    console.log('État des cases:', {
+        acceptContent: acceptContent.checked,
+        acceptElectronic: acceptElectronic.checked,
+        acceptLegal: acceptLegal.checked
+    });
+    
+    // Vérifier si toutes les cases sont cochées
+    const allChecked = acceptContent.checked && acceptElectronic.checked && acceptLegal.checked;
+    
+    // Activer/désactiver le bouton selon l'état des cases
+    signButton.disabled = !allChecked;
+    
+    if (allChecked) {
+        signButton.classList.remove('btn-secondary');
+        signButton.classList.add('btn-primary');
+        signButton.innerHTML = '<i class="fas fa-pen"></i> Procéder à la signature';
+        console.log('Bouton de signature activé');
+    } else {
+        signButton.classList.remove('btn-primary');
+        signButton.classList.add('btn-secondary');
+        signButton.innerHTML = '<i class="fas fa-lock"></i> Complétez les étapes requises';
+        console.log('Bouton de signature désactivé');
+    }
+}
+
+// ===========================================
+// GESTION OTP ET SIGNATURE
+// ===========================================
+
+function requestOTPCode() {
+    console.log('Demande de code OTP...');
+    
+    // Désactiver le bouton pendant la requête
+    const signButton = document.getElementById('btn-sign');
+    if (signButton) {
+        signButton.disabled = true;
+        signButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Envoi du code...';
+    }
+    
+    // Envoyer une requête pour créer la signature et envoyer l'OTP
+    fetch(`/signature/${documentId}/otp/${hashDocument}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-Invit-Token': token,
+        },
+        body: JSON.stringify({
+            document_id: documentId,
+            user_id: documentData.currentUser.id
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            console.log('Code OTP envoyé, affichage de la modale');
+            showOTPModal();
         } else {
-            btn.classList.remove('btn-primary');
-            btn.classList.add('btn-secondary');
-            btn.innerHTML = '<i class="fas fa-lock"></i> Complétez les étapes requises';
+            console.error('Erreur lors de la demande OTP:', data.error);
+            alert('Erreur lors de la demande de code OTP: ' + data.error);
+            // Réactiver le bouton en cas d'erreur
+            const signButton = document.getElementById('btn-sign');
+            if (signButton) {
+                signButton.disabled = false;
+                signButton.innerHTML = '<i class="fas fa-pen"></i> Procéder à la signature';
+            }
+        }
+    })
+    .catch(error => {
+        console.error('Erreur réseau:', error);
+        alert('Erreur de connexion lors de la demande de code OTP');
+        // Réactiver le bouton en cas d'erreur
+        const signButton = document.getElementById('btn-sign');
+        if (signButton) {
+            signButton.disabled = false;
+            signButton.innerHTML = '<i class="fas fa-pen"></i> Procéder à la signature';
         }
     });
 }
 
-// ===========================================
-// GESTION DES REDIMENSIONNEMENTS
-// ===========================================
+function showOTPModal() {
+    // Utiliser la modale existante
+    const modal = document.getElementById('signatureModal');
+    const modalTitle = document.getElementById('signatureModalLabel');
+    const modalBody = modal.querySelector('.modal-body');
+    const modalFooter = modal.querySelector('.modal-footer');
+    
+    modalTitle.innerHTML = '<i class="fas fa-pen-fancy"></i> Signature électronique avec validation';
+    
+    modalBody.innerHTML = `
+        <div class="alert alert-info">
+            <i class="fas fa-envelope"></i>
+            Un code de validation a été envoyé à votre adresse e-mail.
+            Tracez votre signature ci-dessous ET saisissez le code reçu.
+        </div>
+        
+        <!-- Canvas de signature -->
+        <div class="mb-4">
+            <label class="form-label">Tracez votre signature :</label>
+            <div class="signature-canvas-container text-center">
+                <canvas id="signature-canvas" width="600" height="200"></canvas>
+            </div>
+            <div class="text-center mt-2">
+                <button type="button" id="clear-signature" class="btn btn-outline-secondary btn-sm me-2">
+                    <i class="fas fa-eraser"></i> Effacer
+                </button>
+                <button type="button" id="undo-signature" class="btn btn-outline-warning btn-sm">
+                    <i class="fas fa-undo"></i> Annuler
+                </button>
+            </div>
+        </div>
+        
+        <!-- Code OTP -->
+        <div class="mb-3">
+            <label for="otp-code" class="form-label">Code de validation :</label>
+            <input type="text" id="otp-code" class="form-control text-center" 
+                   placeholder="______" maxlength="6" 
+                   style="font-size: 1.2em; letter-spacing: 0.4em;">
+        </div>
+    `;
+    
+    modalFooter.innerHTML = `
+        <button type="button" id="btn-validate-signature" class="btn btn-success btn-lg" disabled>
+            <i class="fas fa-check"></i> Valider la signature
+        </button>
+    `;
+    
+    // Afficher la modale
+    const bsModal = new bootstrap.Modal(modal);
+    bsModal.show();
+    
+    // Initialiser le SignaturePad après affichage de la modale
+    setTimeout(() => {
+        initializeSignaturePad();
+        setupModalEventListeners();
+    }, 300);
+}
 
-// Redimensionner le canvas lors du redimensionnement de la fenêtre
-window.addEventListener('resize', function() {
+function initializeSignaturePad() {
+    const canvas = document.getElementById('signature-canvas');
+    if (!canvas) return;
+    
+    signaturePad = new SignaturePad(canvas, {
+        backgroundColor: 'rgba(255, 255, 255, 1)',
+        penColor: 'rgb(0, 0, 0)',
+        minWidth: 1,
+        maxWidth: 3,
+        throttle: 0, // Pas de throttle pour capturer tous les points
+        minDistance: 0 // Pas de distance minimale pour précision maximale
+    });
+    
+    // Ajouter la capture haute précision
+    setupHighPrecisionCapture(canvas);
+    
+    // Redimensionner le canvas
+    resizeSignatureCanvas();
+}
+
+function setupHighPrecisionCapture(canvas) {
+    let isDrawing = false;
+    
+    // Fonctions utilitaires
+    function getCoordinates(event) {
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+        
+        let clientX, clientY;
+        if (event.touches && event.touches.length > 0) {
+            clientX = event.touches[0].clientX;
+            clientY = event.touches[0].clientY;
+        } else {
+            clientX = event.clientX;
+            clientY = event.clientY;
+        }
+        
+        return {
+            x: Math.round((clientX - rect.left) * scaleX * 100) / 100, // Précision 0.01
+            y: Math.round((clientY - rect.top) * scaleY * 100) / 100,  // Précision 0.01
+            timestamp: performance.now(),
+            pressure: event.pressure || 0.5
+        };
+    }
+    
+    function startStroke(event) {
+        event.preventDefault();
+        isDrawing = true;
+        
+        const coords = getCoordinates(event);
+        customSignatureData.currentStroke = {
+            id: Date.now() + Math.random(),
+            startTime: coords.timestamp,
+            points: [coords]
+        };
+    }
+    
+    function addPoint(event) {
+        if (!isDrawing || !customSignatureData.currentStroke) return;
+        
+        event.preventDefault();
+        const coords = getCoordinates(event);
+        
+        // Ajouter le point à la précision 0.01
+        customSignatureData.currentStroke.points.push(coords);
+    }
+    
+    function endStroke(event) {
+        if (!isDrawing || !customSignatureData.currentStroke) return;
+        
+        event.preventDefault();
+        isDrawing = false;
+        
+        const coords = getCoordinates(event);
+        customSignatureData.currentStroke.points.push(coords);
+        customSignatureData.currentStroke.endTime = coords.timestamp;
+        
+        // Ajouter le trait complet aux données
+        customSignatureData.strokes.push(customSignatureData.currentStroke);
+        customSignatureData.currentStroke = null;
+        
+        console.log('Fin de tracé. Total des traits:', customSignatureData.strokes.length);
+        
+        // Déclencher la validation
+        setTimeout(checkValidation, 10);
+    }
+    
+    // Event listeners souris
+    canvas.addEventListener('mousedown', startStroke);
+    canvas.addEventListener('mousemove', addPoint);
+    canvas.addEventListener('mouseup', endStroke);
+    canvas.addEventListener('mouseleave', endStroke);
+    
+    // Event listeners tactiles
+    canvas.addEventListener('touchstart', startStroke);
+    canvas.addEventListener('touchmove', addPoint);
+    canvas.addEventListener('touchend', endStroke);
+    canvas.addEventListener('touchcancel', endStroke);
+}
+
+function generateSVGFromStrokes(strokes) {
+    if (!strokes || strokes.length === 0) return '';
+    
+    const canvas = document.getElementById('signature-canvas');
+    const width = canvas.width;
+    const height = canvas.height;
+    
+    let svgPaths = '';
+    
+    strokes.forEach(stroke => {
+        if (stroke.points.length < 2) return;
+        
+        let pathData = `M ${stroke.points[0].x} ${stroke.points[0].y}`;
+        
+        for (let i = 1; i < stroke.points.length; i++) {
+            pathData += ` L ${stroke.points[i].x} ${stroke.points[i].y}`;
+        }
+        
+        svgPaths += `<path d="${pathData}" stroke="black" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`;
+    });
+    
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
+        ${svgPaths}
+    </svg>`;
+    
+    return svg;
+}
+
+function clearCustomSignature() {
+    customSignatureData = {
+        strokes: [],
+        currentStroke: null,
+        precision: 0.01
+    };
+    console.log('Signature effacée');
+}
+
+function undoLastStroke() {
+    if (customSignatureData.strokes.length > 0) {
+        customSignatureData.strokes.pop();
+        console.log('Dernier trait annulé. Traits restants:', customSignatureData.strokes.length);
+        // Redessiner le SignaturePad
+        redrawSignaturePad();
+    }
+}
+
+function redrawSignaturePad() {
+    if (!signaturePad) return;
+    
+    signaturePad.clear();
+    
+    // Redessiner à partir des données customSignatureData
+    customSignatureData.strokes.forEach(stroke => {
+        if (stroke.points.length > 0) {
+            const ctx = signaturePad._ctx;
+            ctx.beginPath();
+            ctx.moveTo(stroke.points[0].x, stroke.points[0].y);
+            
+            for (let i = 1; i < stroke.points.length; i++) {
+                ctx.lineTo(stroke.points[i].x, stroke.points[i].y);
+            }
+            
+            ctx.strokeStyle = 'rgb(0, 0, 0)';
+            ctx.lineWidth = 2;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            ctx.stroke();
+        }
+    });
+}
+
+function resizeSignatureCanvas() {
+    const canvas = document.getElementById('signature-canvas');
+    if (!canvas || !signaturePad) return;
+    
+    const ratio = Math.max(window.devicePixelRatio || 1, 1);
+    const rect = canvas.getBoundingClientRect();
+    
+    canvas.width = rect.width * ratio;
+    canvas.height = rect.height * ratio;
+    canvas.getContext('2d').scale(ratio, ratio);
+    
+    signaturePad.clear();
+}
+
+function setupModalEventListeners() {
+    // Event listeners pour la modale
+    const otpField = document.getElementById('otp-code');
+    const validateBtn = document.getElementById('btn-validate-signature');
+    const clearBtn = document.getElementById('clear-signature');
+    const undoBtn = document.getElementById('undo-signature');
+    
+    // Validation en temps réel
+    function checkValidation() {
+        const hasSignature = signaturePad && !signaturePad.isEmpty();
+        const hasHighPrecisionData = customSignatureData && customSignatureData.strokes.length > 0;
+        const hasValidOTP = otpField.value.length === 6 && /^\d{6}$/.test(otpField.value);
+        
+        // La signature est valide si on a soit les données SignaturePad soit les données haute précision
+        const signatureValid = hasSignature || hasHighPrecisionData;
+        
+        validateBtn.disabled = !(signatureValid && hasValidOTP);
+        
+        console.log('Validation état:', {
+            hasSignature: hasSignature,
+            hasHighPrecisionData: hasHighPrecisionData,
+            hasValidOTP: hasValidOTP,
+            buttonDisabled: validateBtn.disabled
+        });
+    }
+    
+    // Event listeners
+    otpField.addEventListener('input', checkValidation);
+    
+    if (clearBtn) {
+        clearBtn.addEventListener('click', function() {
+            signaturePad.clear();
+            clearCustomSignature();
+            checkValidation();
+        });
+    }
+    
+    if (undoBtn) {
+        undoBtn.addEventListener('click', function() {
+            undoLastStroke();
+            checkValidation();
+        });
+    }
+    
     if (signaturePad) {
-        resizeSignatureCanvas();
+        signaturePad.addEventListener('endStroke', checkValidation);
     }
-});
+    
+    validateBtn.addEventListener('click', function() {
+        validateSignatureWithOTP(otpField.value);
+    });
+    
+    // Focus sur le champ OTP
+    setTimeout(() => otpField.focus(), 100);
+}
 
-// Observer les changements de taille de la modale
-const resizeObserver = new ResizeObserver(function(entries) {
-    if (signaturePad) {
-        resizeSignatureCanvas();
+function validateSignatureWithOTP(otpCode) {
+    console.log('Validation de la signature avec le code OTP:', otpCode);
+    
+    if (!signaturePad || signaturePad.isEmpty()) {
+        alert('Veuillez tracer votre signature avant de valider');
+        return;
     }
-});
-
-// Observer la modale de signature
-document.addEventListener('DOMContentLoaded', function() {
-    const signatureModal = document.getElementById('signatureModal');
-    if (signatureModal) {
-        resizeObserver.observe(signatureModal);
-    }
-});
+    
+    const validateBtn = document.getElementById('btn-validate-signature');
+    validateBtn.disabled = true;
+    validateBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Validation...';
+    
+    // Générer le hash de la signature
+    const signatureDataURL = signaturePad.toDataURL();
+    const signature_hash = CryptoJS.SHA256(signatureDataURL).toString();
+    
+    // Obtenir les informations du navigateur
+    const user_agent = navigator.userAgent;
+    
+    // Générer le SVG à partir des données haute précision
+    const svg_graph = generateSVGFromStrokes(customSignatureData.strokes);
+    
+    // Préparer les données JSON avec toutes les informations
+    const data_graph = JSON.stringify({
+        strokes: customSignatureData.strokes,
+        precision: customSignatureData.precision,
+        captureMethod: 'high-precision',
+        timestamp: new Date().toISOString(),
+        signaturePadData: signaturePad.toData(), // Données SignaturePad pour compatibilité
+        metadata: {
+            browser: navigator.userAgent,
+            platform: navigator.platform,
+            language: navigator.language,
+            screen: {
+                width: screen.width,
+                height: screen.height,
+                pixelRatio: window.devicePixelRatio
+            },
+            canvas: {
+                actualWidth: document.getElementById('signature-canvas').width,
+                actualHeight: document.getElementById('signature-canvas').height,
+                displayWidth: document.getElementById('signature-canvas').offsetWidth,
+                displayHeight: document.getElementById('signature-canvas').offsetHeight
+            }
+        }
+    });
+    
+    // Obtenir les dimensions du canvas
+    const canvas = document.getElementById('signature-canvas');
+    const largeur_graph = canvas.width;
+    const hauteur_graph = canvas.height;
+    
+    console.log('Données de signature à envoyer:', {
+        signature_hash: signature_hash,
+        user_agent: user_agent.substring(0, 50) + '...',
+        svg_graph: svg_graph.substring(0, 100) + '...',
+        data_graph_size: data_graph.length + ' caractères',
+        largeur_graph: largeur_graph,
+        hauteur_graph: hauteur_graph,
+        totalStrokes: customSignatureData.strokes.length,
+        totalPoints: customSignatureData.strokes.reduce((acc, stroke) => acc + stroke.points.length, 0)
+    });
+    
+    fetch(`/signature/signer/${documentId}/${hashDocument}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-Invit-Token': token,
+        },
+        body: JSON.stringify({
+            document_id: documentData.id,
+            user_id: documentData.currentUser.id,
+            otp_code: otpCode,
+            signature_hash: signature_hash,
+            user_agent: user_agent,
+            svg_graph: svg_graph,
+            data_graph: data_graph,
+            largeur_graph: largeur_graph,
+            hauteur_graph: hauteur_graph,
+            // Données de compatibilité
+            signature_data: {
+                dataURL: signatureDataURL,
+                svg: signaturePad.toSVG(),
+                points: signaturePad.toData()
+            }
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            console.log('Signature validée avec succès');
+            alert('Signature validée avec succès !');
+            // Si redirect est true, rediriger vers la page principale
+            if (data.redirect) {
+                window.location.href = '/ea?success_message=' + encodeURIComponent(data.message);
+            } else {
+                location.reload();
+            }
+        } else {
+            console.error('Erreur lors de la validation:', data.message);
+            alert('Code de validation incorrect: ' + data.message);
+            // Réactiver le bouton
+            validateBtn.disabled = false;
+            validateBtn.innerHTML = '<i class="fas fa-check"></i> Valider la signature';
+        }
+    })
+    .catch(error => {
+        console.error('Erreur réseau:', error);
+        alert('Erreur de connexion lors de la validation');
+        // Réactiver le bouton
+        validateBtn.disabled = false;
+        validateBtn.innerHTML = '<i class="fas fa-check"></i> Valider la signature';
+    });
+}
 
 // ===========================================
 // STYLES CSS DYNAMIQUES
 // ===========================================
 
-// Ajouter les styles pour l'animation pulse-green
 const style = document.createElement('style');
 style.textContent = `
-    @keyframes pulse-green {
-        0% { box-shadow: 0 0 0 0 rgba(25, 135, 84, 0.7); }
-        70% { box-shadow: 0 0 0 10px rgba(25, 135, 84, 0); }
-        100% { box-shadow: 0 0 0 0 rgba(25, 135, 84, 0); }
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
     }
     
-    .signature-marker-signing:hover {
-        transform: scale(1.1) !important;
+    .signature-rectangle {
+        transition: all 0.2s ease;
+    }
+    
+    .signature-rectangle:hover {
+        background-color: rgba(25, 135, 84, 0.4) !important;
+        transform: scale(1.05);
     }
     
     #signature-canvas {
         border: 2px solid #dee2e6;
         border-radius: 0.375rem;
         cursor: crosshair;
+        background-color: #fff;
+    }
+    
+    .signature-canvas-container {
+        border: 1px solid #ced4da;
+        border-radius: 0.375rem;
+        padding: 10px;
+        background-color: #f8f9fa;
+    }
+    
+    #otp-code {
+        text-transform: uppercase;
+        font-family: 'Courier New', monospace;
     }
 `;
 document.head.appendChild(style);

@@ -43,7 +43,7 @@ function initializeDocumentCreation() {
     initializePDFViewer(filename, pdfLoader, pdfContainer, function() {
         addClickListenerToPDF();
         updateConfigureButton();
-    });
+    }, true);
 }
 
 // ===========================================

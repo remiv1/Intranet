@@ -11,26 +11,26 @@ Routes:
 
 Chaque route gère les méthodes GET et POST pour afficher les formulaires et traiter les soumissions.
 """
-from flask import Blueprint, render_template, request, Request, g, send_from_directory, session, url_for, redirect
+from flask import (
+    Blueprint, render_template, request, Request, g, send_from_directory,
+    session, url_for, redirect, jsonify
+)
 from werkzeug.datastructures import FileStorage
 from models import User, DocToSigne, Signatures, Points, Invitation
 from typing import Any, Dict, List
 from os import getenv
 from config import Config
-import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-import hashlib
-import hmac
-import json
 from datetime import datetime, timedelta
 from pathlib import Path
-import shutil
-import logging
+import shutil, logging, random, json, hmac, hashlib, smtplib
+
 
 signatures_bp = Blueprint('signature', __name__, url_prefix='/signature')
 
 ADMINISTRATION = 'ea.html'
+BAD_INVITATION = 'Invitation invalide ou non trouvée.'
 
 class SignatureDoer:
     def __init__(self, request: Request):
@@ -79,10 +79,10 @@ class SignatureDoer:
             self.invitation = invitation
             self.document = document
         else:
-            raise ValueError("Invitation invalide ou non trouvée.")
+            raise ValueError(BAD_INVITATION)
         return self
 
-    def post_request(self) -> 'SignatureDoer':
+    def post_request(self, *, id_document: int, hash_document: str) -> 'SignatureDoer':
         """
         Traite la soumission du formulaire de signature.
         Returns:
@@ -94,27 +94,29 @@ class SignatureDoer:
             doer = SignatureDoer(request).get_request().post_request()
             ```
         """
-        #TODO: Reprendre ce qui est fait par l'autocomplétion de l'IA
-        # Récupération des données du formulaire
-        signature_data = self.request.form.get('signature_data', None)
-        if not signature_data:
-            raise ValueError("Données de signature manquantes.")
-
-        # Création de la signature dans la base de données
-        signature = Signatures(
-            id_document=self.document.id,
-            id_user=self.signatory_id,
-            date_signature=datetime.now(),
-            signature_data=signature_data
-        )
-        g.db_session.add(signature)
-
-        # Mise à jour de l'invitation pour indiquer que le mail a été envoyé
-        self.invitation.mail_envoye = True
-        self.invitation.mail_compte += 1
-
-        # Commit des changements dans la base de données
-        g.db_session.commit()
+        self.token = self.request.headers.get('X-Invit-Token', None)
+        self.ip_addresse = self.request.environ.get('REMOTE_ADDR') or self.request.remote_addr
+        data = self.request.get_json()
+        if not data:
+            raise ValueError("Données de signatures invalides ou manquantes.")        
+        self.otp = data.get('otp_code', None)
+        
+        # Nouvelles données haute précision
+        self.signature_hash = data.get('signature_hash', None)
+        self.user_agent = data.get('user_agent', None)
+        self.svg_graph = data.get('svg_graph', None)
+        self.data_graph = data.get('data_graph', None)
+        self.largeur_graph = data.get('largeur_graph', 0)
+        self.hauteur_graph = data.get('hauteur_graph', 0)
+        
+        self.datetime_submission = datetime.now()
+        self.signatory_id = session.get('id', None)
+        self.document = g.db_session.query(DocToSigne) \
+            .filter_by(id=id_document, hash_fichier=hash_document) \
+            .first()
+        self.invitation = g.db_session.query(Invitation) \
+            .filter_by(id_document=self.document.id, id_user=self.signatory_id) \
+            .first()
         return self
 
     def get_signature_points(self) -> 'SignatureDoer':
@@ -127,11 +129,49 @@ class SignatureDoer:
             doer = SignatureDoer(request).get_request().get_signature_points()
             ```
         """
-        points = g.db_session.query(Points) \
+        self.object_points = g.db_session.query(Points) \
                         .filter_by(id_document=self.document.id, id_user=self.signatory_id) \
                         .all()
-        self.points: List[Dict[str, Any]] = [point.to_dict() for point in points]
+        self.points: List[Dict[str, Any]] = [point.to_dict() for point in self.object_points]
         
+        return self
+    
+    def handle_signature_submission(self) -> 'SignatureDoer':
+        """
+        Gère la soumission de la signature.
+        Returns:
+            self: SignatureDoer
+        """
+        otp_valid = (self.otp == self.invitation.code_otp)  # Remplacer par la validation réelle de l'OTP si nécessaire
+        if not self.document or not self.invitation or not self.points or not otp_valid:
+            raise ValueError(BAD_INVITATION)
+        
+        # Mise à jour du document
+        self.document.status = 1  # Statut signé
+        self.document.complete_at = self.datetime_submission
+
+        # Création de l'entrée dans la table Signatures
+        signature: Signatures = Signatures(
+            signe_at=self.datetime_submission,
+            signature_hash=self.signature_hash or 'unknown',
+            ip_addresse=self.ip_addresse,
+            user_agent=self.user_agent or self.request.headers.get('User-Agent', 'unknown'),
+            statut=1,  # Statut signé
+            svg_graph=self.svg_graph,
+            data_graph=self.data_graph,
+            largeur_graph=self.largeur_graph,
+            hauteur_graph=self.hauteur_graph,
+            timestamp_graph=self.datetime_submission,
+        )
+        g.db_session.add(signature)
+        g.db_session.flush()
+
+        # Mise à jour des points de signature
+        for point in self.object_points:
+            point.status = 1  # Statut signé
+            point.signe_at = self.datetime_submission
+            point.id_signature = signature.id
+
         return self
 
 class SignatureMaker:
@@ -454,6 +494,27 @@ def send_email_invitation(*, to: str, template: str) -> None:
     except Exception as e:
         logging.error(f"Erreur lors de l'envoi de l'e-mail d'invitation à {to}: {str(e)}")
 
+def send_otp_email(*, to: str, template: str) -> None:
+    # Configuration de l'e-mail
+    email_expediteur: str = Config.EMAIL_USER
+    mot_de_passe: str = Config.EMAIL_PASSWORD
+
+    msg = MIMEMultipart()
+    msg['From'] = email_expediteur
+    msg['To'] = to
+    msg['Subject'] = 'La Péraudière | Votre code OTP pour signer un document'
+
+    body = template
+    msg.attach(MIMEText(body, 'html'))
+    # Envoyer l'e-mail
+    try:
+        with smtplib.SMTP(Config.EMAIL_SMTP, Config.EMAIL_PORT) as server:
+            server.starttls()
+            server.login(email_expediteur, mot_de_passe)
+            server.send_message(msg)
+    except Exception as e:
+        logging.error(f"Erreur lors de l'envoi de l'e-mail OTP à {to}: {str(e)}")
+
 @signatures_bp.route('/deposer', methods=['GET', 'POST'])
 def signature_make() -> Any:
     """
@@ -501,9 +562,23 @@ def signature_do(doc_id: int, hash_document: str) -> Any:
     """
     # === Gestion du formulaire de signature ===
     if request.method == 'POST':
-        # Logique pour signer un document
-        # TODO: Implémenter la logique de signature
-        return render_template(ADMINISTRATION, context='signature_do', error_message="Fonctionnalité de signature en cours de développement")
+        try:
+            doer = SignatureDoer(request) \
+                        .post_request(id_document=doc_id, hash_document=hash_document) \
+                        .get_signature_points() \
+                        .handle_signature_submission()
+            
+            g.db_session.commit()
+
+            message = f"Le document '{doer.document.doc_nom}' a été signé avec succès."
+            return jsonify(success=True, message=message, redirect=True)
+        except ValueError as e:
+            # En cas d'erreur (OTP erroné, etc.), retourner du JSON
+            return jsonify(success=False, message=str(e)), 400
+        except Exception as e:
+            # En cas d'erreur système, retourner du JSON
+            g.db_session.rollback()
+            return jsonify(success=False, message="Erreur interne du serveur."), 500
     
     # === Affichage du formulaire de signature ===
     try:
@@ -529,10 +604,44 @@ def signature_do(doc_id: int, hash_document: str) -> Any:
         
         return render_template(ADMINISTRATION, context='signature_do', document=doer.document,
                                signature_points=doer.points, signature_points_json=signature_points_json,
-                               curent_user_id=doer.signatory_id,
-                               curent_user_name=doer.signatory_name, echeance=doer.invitation.expire_at)
+                               curent_user_id=doer.signatory_id, hash_document=hash_document,
+                               token=doer.token, curent_user_name=doer.signatory_name,
+                               echeance=doer.invitation.expire_at)
     except ValueError:
-        return render_template(ADMINISTRATION, error_message="Invitation invalide ou non trouvée.")
+        return render_template(ADMINISTRATION, error_message=BAD_INVITATION)
+
+@signatures_bp.route('/<int:id_document>/otp/<hash_document>', methods=['POST'])
+def signature_request_otp(id_document: int, hash_document: str) -> Any:
+    """
+    Permet de demander un code OTP pour signer un document.
+    Méthodes supportées : POST.
+    POST : Traite la demande de code OTP.
+    """
+    # Récupération de X-Invit-Token dans le header
+    token = request.headers.get('X-Invit-Token', None)
+    id_user = session.get('id', None)
+    user = g.db_session.query(User).filter_by(id=id_user).first()
+    invitation = g.db_session.query(Invitation) \
+                        .filter_by(id_document=id_document, id_user=id_user, token=token) \
+                        .first()
+    document = g.db_session.query(DocToSigne) \
+                        .filter_by(id=id_document, hash_fichier=hash_document) \
+                        .first()
+    if not invitation or not document:
+        return jsonify(success=False, message=BAD_INVITATION), 400
+    invitation.code_otp = str(random.randint(10000, 999999)).zfill(6)
+    body_mail = render_template(
+        'signatures/signature_otp_mail.html',
+        nom_signataire=f'{user.prenom} {user.nom}'.strip(),
+        otp_code=invitation.code_otp
+    )
+    try:
+        send_otp_email(to=user.mail, template=body_mail)
+        g.db_session.commit()
+    except Exception as e:
+        logging.error(f"Erreur lors de la création du code OTP : {e}")
+        return jsonify(success=False, message="Erreur interne du serveur."), 500
+    return jsonify(success=True)
 
 @signatures_bp.route('/liste', methods=['GET'])
 def signature_do_list() -> Any:

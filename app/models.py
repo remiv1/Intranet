@@ -897,9 +897,10 @@ class Invitation(Base):
     accede_at = mapped_column(DateTime, nullable=True)          # première consultation
     signe_at = mapped_column(DateTime, nullable=True)
     
-    # Méta-données
+    # Méta-données et OTP de validation
     mail_envoye = mapped_column(Boolean, default=False)
     mail_compte = mapped_column(Integer, default=0)
+    code_otp = mapped_column(String(6), nullable=True)        # OTP pour validation finale
     
     # Relations
     document = relationship("DocToSigne")

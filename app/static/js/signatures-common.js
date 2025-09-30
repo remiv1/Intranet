@@ -230,31 +230,6 @@ function showNotification(message, type = 'info') {
 }
 
 // ===========================================
-// GESTION D'ERREURS COMMUNES
-// ===========================================
-
-/**
- * Gestionnaire d'erreur global pour les signatures
- * @param {Error} error - Erreur capturée
- * @param {string} context - Contexte de l'erreur
- */
-function handleSignatureError(error, context = 'Erreur inconnue') {
-    console.error(`[Signatures] ${context}:`, error);
-    
-    let userMessage = 'Une erreur est survenue. Veuillez réessayer.';
-    
-    if (error.message.includes('PDF')) {
-        userMessage = 'Erreur lors du chargement du document PDF.';
-    } else if (error.message.includes('signature')) {
-        userMessage = 'Erreur lors du traitement de la signature.';
-    } else if (error.message.includes('network') || error.message.includes('fetch')) {
-        userMessage = 'Erreur de connexion. Vérifiez votre connexion internet.';
-    }
-    
-    showNotification(userMessage, 'error');
-}
-
-// ===========================================
 // VALIDATION COMMUNES
 // ===========================================
 
@@ -313,19 +288,3 @@ function validateSignatureData(signatureData) {
         errors: errors
     };
 }
-
-// ===========================================
-// INITIALISATION COMMUNE
-// ===========================================
-
-// Gestion globale des erreurs JavaScript
-window.addEventListener('error', function(event) {
-    handleSignatureError(event.error, 'Erreur JavaScript globale');
-});
-
-// Gestion des erreurs de promesses non capturées
-window.addEventListener('unhandledrejection', function(event) {
-    handleSignatureError(new Error(event.reason), 'Promesse rejetée');
-});
-
-console.log('[Signatures Common] Module chargé avec succès');

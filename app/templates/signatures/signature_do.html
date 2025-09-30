@@ -2,7 +2,8 @@
 <div class="container-fluid">
     <div class="row">
         <div class="col-12">
-            <div class="card">
+        <!-- Scripts Signatures -->
+<script src="{{ url_for('static', filename='js/signatures-sign.js') }}?v=8"></script>  <div class="card">
                 <div class="card-header bg-primary text-white">
                     <h5 class="mb-0">
                         <i class="fas fa-pen-fancy"></i> 
@@ -15,12 +16,20 @@
                         <div class="row">
                             <div class="col-md-6">
                                 <strong>Type :</strong> {{ document.doc_type }}<br>
-                                {% if document.doc_suous_type %}
+                                {% if document.doc_sous_type %}
                                 <strong>Sous-type :</strong> {{ document.doc_sous_type }}<br>
                                 {% endif %}
                                 <strong>Priorité :</strong> 
                                 <span class="badge badge-{% if document.priority == 2 %}danger{% elif document.priority == 1 %}warning{% else %}success{% endif %}">
-                                    {{ document.priorite }}
+                                    {% if document.priorite == -1 %}
+                                    Basse
+                                    {% elif document.priorite == 0 %}
+                                    Normale
+                                    {% elif document.priorite == 1 %}
+                                    Élevée
+                                    {% elif document.priorite == 2 %}
+                                    Urgente
+                                    {% endif %}
                                 </span>
                             </div>
                             <div class="col-md-6">
@@ -28,6 +37,11 @@
                                 {% if document.description %}
                                 <strong>Description :</strong> {{ document.description }}
                                 {% endif %}
+                            </div>
+                            <div class="d-none">
+                                <input type="hidden" id="invit-token" value="{{ token }}">
+                                <input type="hidden" id="hash-document" value="{{ hash_document }}">
+                                <input type="hidden" id="doc-id" value="{{ document.id }}">
                             </div>
                         </div>
                     </div>
@@ -151,13 +165,12 @@
         }
     };
 </script>
-
 <!-- Scripts PDF.js et SignaturePad -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script>
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 </script>
 <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
-
+<script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
 <!-- Scripts Signatures -->
 <script src="{{ url_for('static', filename='js/signatures-sign.js') }}"></script>
