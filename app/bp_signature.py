@@ -11,7 +11,16 @@ Routes:
 
 Chaque route gère les méthodes GET et POST pour afficher les formulaires et traiter les soumissions.
 """
+from borb.pdf.visitor.pdf import PDF
+from borb.pdf.page import Page
+from borb.pdf.document import Document as BorbDocument
 from borb.pdf.layout_element.image.image import Image
+from borb.pdf.layout_element.text.paragraph import Paragraph
+from borb.pdf.page_layout.page_layout import PageLayout
+from borb.pdf.page_layout.single_column_layout import SingleColumnLayout
+from borb.pdf.color.hex_color import HexColor
+
+
 from flask import (
     Blueprint, render_template, request, g, send_from_directory,
     session, url_for, redirect, jsonify
@@ -33,7 +42,6 @@ from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.primitives.serialization import Encoding
 import secrets
 from typing import Optional
-from decimal import Decimal
 
 signatures_bp = Blueprint('signature', __name__, url_prefix='/signature')
 
@@ -256,17 +264,21 @@ class SignedDocumentCreator:
             if self.pdf_document is None:
                 raise ValueError("Impossible de lire le document PDF")
             
-            # Grouper les données de signature par page
-            data_by_page: Dict[int, List[Dict[str, Any]]] = {}
-            for data in self.view_points:
-                page_num = data['point'].page_num
-                if page_num not in data_by_page:
-                    data_by_page[page_num] = []
-                data_by_page[page_num].append(data)
+            # Découpage du document en pages
+            self.pages_dict: Dict[int, Page] = {
+                i + 1: self.pdf_document.get_page(i)
+                for i in range(self.pdf_document.get_number_of_pages())
+            }
             
-            # Appliquer les signatures sur chaque page
-            for page_num, page_data in data_by_page.items():
-                self._apply_signatures_to_page(page_num=page_num, page_data=page_data)
+            # Grouper les données de signature par page
+            self.data_by_page: Dict[int, List[Dict[str, Any]]] = {
+                # i est le numéro de la page
+                # Double boucle pour filtrer les données par page et créer la liste de chaque page
+                # et y associer les données nécessaires
+                i: [data for data in self.view_points if data['point'].page_num == i]
+                for i in range(1, self.pdf_document.get_number_of_pages() + 1)
+            }
+            self._apply_signatures_to_page()
             
             # Sauvegarder le PDF modifié
             PDF.write(self.pdf_document, self.signed_document_path)
@@ -282,7 +294,7 @@ class SignedDocumentCreator:
                 shutil.copy2(self.document_path, self.signed_document_path)
             return self
     
-    def _apply_signatures_to_page(self, *, page_num: int, page_data: List[Dict[str, Any]]) -> None:
+    def _apply_signatures_to_page(self) -> None:
         """
         Applique les signatures sur une page spécifique du PDF.
         
@@ -295,81 +307,61 @@ class SignedDocumentCreator:
         Raises:
             ValueError: Si une erreur survient lors de l'application des signatures.
         """
-        try:
-            # Obtenir la page
-            if not self.pdf_document:
-                raise ValueError("Document PDF non chargé")
-            page = self.pdf_document.get_page(page_num - 1)  # Les pages sont 0-indexées
-
-            # Appliquer chaque signature sur la page
-            for data in page_data:
-                point = data['point']
-                signature = data['signature']
-                nom_complet = data['user_complete_name']
-                x_coord = float(point.x)
-                y_coord = float(point.y)
+        for page_num, page_data in self.data_by_page.items():
+            try:
+                page = self.pages_dict.get(page_num)
+                if not page:
+                    raise ValueError(f"Page {page_num} non trouvée dans le document.")
                 
-                if signature and signature.svg_graph:
-                    # Appliquer la signature SVG à cette position
-                    self._add_svg_signature_to_page(page, signature, point, nom_complet, x_coord, y_coord)
-                        
-        except Exception as e:
-            logging.error(f"Erreur lors de l'application des signatures sur la page {page_num} : {e}")
+                for data in page_data:
+                    self._add_svg_signature_to_page(data=data)
+
+            except Exception as e:
+                logging.error(f"Erreur lors de l'application des signatures sur la page {page_num} : {e}")
     
-    def _add_svg_signature_to_page(self, page: Any, signature: Signatures, point: Points, nom_complet: str, x: float, y: float) -> None:
+    def _add_svg_signature_to_page(self, *, data: Dict[str, Any]) -> None:
         """
         Ajoute une signature SVG directement dans le PDF à la position spécifiée.
         
         Args:
-            page: La page PDF borb
-            signature (Signatures): L'objet signature contenant le SVG
-            point (Points): Le point de signature
-            nom_complet (str): Nom complet du signataire
-            x (float): Position X
-            y (float): Position Y
+            data (Dict[str, Any]): Dictionnaire contenant :
+                user (User): L'utilisateur signataire
+                user_mail (str): Email de l'utilisateur
+                user_complete_name (str): Nom complet de l'utilisateur
+                point (Points): Le point de signature
+                signature (Signatures): L'objet signature contenant le SVG
         """
+        signature = data['signature']
+        point = data['point']
+        nom_complet = data['user_complete_name']
         try:
-            
             # Convertir le SVG en image pour l'intégrer dans le PDF
-            if signature.svg_graph:
-                svg_image = self._convert_svg_to_image(signature.svg_graph, signature.largeur_graph, signature.hauteur_graph)
-                
-                if svg_image:
-                    # Calculer les dimensions réelles pour le PDF
-                    width = float(signature.largeur_graph) if signature.largeur_graph > 0 else 100
-                    height = float(signature.hauteur_graph) if signature.hauteur_graph > 0 else 50
-                    
-                    # Ajuster les coordonnées pour le système de coordonnées PDF (origine en bas à gauche)
-                    # Conversion approximative - à ajuster selon vos besoins
-                    pdf_x = x
-                    pdf_y = y
-                    
-                    # Note: Dans une implémentation complète, nous utiliserions les classes borb
-                    # pour ajouter l'image SVG. Pour l'instant, nous loggons l'action.
-                    logging.info(f"Ajout image SVG à la position ({pdf_x}, {pdf_y}) - taille: {width}x{height}")
-                    signature_image = Image(bytes_path_pil_image_or_url=svg_image, size=(int(Decimal(width)), int(Decimal(height))))
-                    page.add_annotation(signature_image)
-                    
-                    # Ajouter les métadonnées de signature
-                    self._add_signature_metadata_to_page(page, signature, nom_complet, pdf_x, pdf_y - 25)
-                    
-                    logging.info(f"Signature SVG ajoutée pour {nom_complet} à la position ({pdf_x}, {pdf_y})")
-                else:
-                    # Fallback : ajouter un texte si la conversion SVG échoue
-                    self._add_text_signature_fallback(page, nom_complet, signature, x, y)
+            svg_image = self._convert_svg_to_image(svg_content=signature.svg_graph,
+                                                    width=signature.largeur_graph,
+                                                    height=signature.hauteur_graph)
+            page = self.pages_dict[point.page_num]
+            if signature.svg_graph and svg_image:
+                # Ajout de l'image dans le PDF
+                signature_image = Image(bytes_path_pil_image_or_url=svg_image,
+                                        size=svg_image.size,
+                                        horizontal_alignment=point.x,
+                                        vertical_alignment=point.y)
+                SingleColumnLayout(page).append_layout_element(signature_image)
+                # Ajouter les métadonnées de signature
+                self._add_signature_metadata_to_page(page=page,
+                                                      signature=signature,
+                                                      nom_complet=nom_complet,
+                                                      point=point)
             else:
                 # Pas de SVG disponible, ajouter un texte
-                self._add_text_signature_fallback(page, nom_complet, signature, x, y)
-                
-        except Exception as e:
-            logging.error(f"Erreur lors de l'ajout de la signature SVG : {e}")
-            # En cas d'erreur, essayer d'ajouter au moins un texte
-            try:
-                self._add_text_signature_fallback(page, nom_complet, signature, x, y)
-            except Exception as fallback_error:
-                logging.error(f"Erreur lors de l'ajout de signature fallback : {fallback_error}")
+                self._add_text_signature_fallback(page=page,
+                                                  nom_complet=nom_complet,
+                                                  signature=signature,
+                                                  point=point)
+        except Exception as fallback_error:
+            raise ValueError(f"Erreur lors de l'ajout du texte de fallback : {fallback_error}")
     
-    def _convert_svg_to_image(self, svg_content: str, width: int, height: int):
+    def _convert_svg_to_image(self, *, svg_content: str, width: int, height: int):
         """
         Convertit un contenu SVG en image utilisable par borb.
         
@@ -384,7 +376,7 @@ class SignedDocumentCreator:
         try:
             from PIL import Image as PILImage
             from io import BytesIO
-            import cairosvg  # type: ignore[import-untyped]
+            import cairosvg
             
             # Convertir SVG en PNG avec cairosvg
             png_data = cairosvg.svg2png(
@@ -399,16 +391,14 @@ class SignedDocumentCreator:
                 image = PILImage.open(BytesIO(png_data))
                 return image
             else:
-                return None
+                raise ValueError("Conversion SVG en PNG a échoué, données invalides.")
             
         except ImportError:
-            logging.warning("cairosvg ou PIL non disponible pour la conversion SVG")
-            return None
+            raise ImportError("cairosvg ou PIL non disponible pour la conversion SVG")
         except Exception as e:
-            logging.error(f"Erreur lors de la conversion SVG : {e}")
-            return None
+            raise ValueError(f"Erreur lors de la conversion SVG : {e}")
     
-    def _add_text_signature_fallback(self, page: Any, nom_complet: str, signature: Signatures, x: float, y: float) -> None:
+    def _add_text_signature_fallback(self, *, page: Page, nom_complet: str, signature: Signatures, point: Points) -> None:
         """
         Ajoute une signature textuelle en fallback.
         
@@ -423,18 +413,17 @@ class SignedDocumentCreator:
             date_signature = signature.signe_at.strftime("%d/%m/%Y %H:%M") if signature.signe_at else "Date inconnue"
             signature_text = f"Signé électroniquement par: {nom_complet}\nLe {date_signature}"
             
-            # Note: Dans une implémentation complète, nous utiliserions les classes borb
-            # pour ajouter le texte. Pour l'instant, nous loggons l'action.
-            logging.info(f"Ajout signature texte: {signature_text} à la position ({x}, {y})")
+            # Ajouter le texte dans le PDF
             
-            # TODO: Implémenter l'ajout réel du texte avec borb quand les imports seront disponibles
-            # paragraph = Paragraph(text=signature_text, font_size=Decimal(10))
-            # page.add_annotation(paragraph)
+            paragraph = Paragraph(text=signature_text, border_color=HexColor('100068'),
+                                  font_size=10, font_color=HexColor("e0e0e0"),
+                                  horizontal_alignment=point.x, vertical_alignment=point.y)
+            SingleColumnLayout(page).append_layout_element(paragraph)
             
         except Exception as e:
-            logging.error(f"Erreur lors de l'ajout du texte de signature : {e}")
+            raise ValueError(f"Erreur lors de l'ajout du texte de fallback : {e}")
     
-    def _add_signature_metadata_to_page(self, page: Any, signature: Signatures, nom_complet: str, x: float, y: float) -> None:
+    def _add_signature_metadata_to_page(self, *, page: Any, nom_complet: str, signature: Signatures, point: Points) -> None:
         """
         Ajoute des métadonnées de signature sous la signature principale.
         
@@ -442,23 +431,23 @@ class SignedDocumentCreator:
             page: La page PDF borb
             signature (Signatures): L'objet signature
             nom_complet (str): Nom complet du signataire
-            x (float): Position X
-            y (float): Position Y
+            point (Points): Le point de signature
+        Returns:
+            None
+        Raises:
+            ValueError: Si la date de signature est invalide
         """
         try:
             date_signature = signature.signe_at.strftime("%d/%m/%Y %H:%M") if signature.signe_at else "Date inconnue"
-            metadata_text = f"Hash: {signature.signature_hash[:8]}... | IP: {signature.ip_addresse} | {date_signature}"
+            metadata_text = f"Hash: {signature.signature_hash[:8]}... | IP: {signature.ip_addresse} | {date_signature} | {nom_complet}"
             
-            # Note: Dans une implémentation complète, nous utiliserions les classes borb
-            # pour ajouter les métadonnées. Pour l'instant, nous loggons l'action.
-            logging.info(f"Ajout métadonnées: {metadata_text} à la position ({x}, {y})")
-            
-            # TODO: Implémenter l'ajout réel des métadonnées avec borb quand les imports seront disponibles
-            # metadata_paragraph = Paragraph(text=metadata_text, font_size=Decimal(7))
-            # page.add_annotation(metadata_paragraph)
+            paragraph = Paragraph(text=metadata_text, border_color=HexColor('100068'),
+                                  font_size=10, font_color=HexColor("e0e0e0"),
+                                  horizontal_alignment=point.x, vertical_alignment=point.y - 25)
+            SingleColumnLayout(page).append_layout_element(paragraph)
             
         except Exception as e:
-            logging.error(f"Erreur lors de l'ajout des métadonnées : {e}")
+            raise ValueError(f"Erreur lors de l'ajout des métadonnées : {e}")
 
     def add_signature_certificates(self) -> 'SignedDocumentCreator':
         """
