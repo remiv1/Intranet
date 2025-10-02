@@ -2,9 +2,10 @@ from sqlalchemy import Integer, String, Date, Boolean, ForeignKey, Numeric, Date
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import mapped_column, relationship
 from sqlalchemy.sql import func
+from flask import g
 from werkzeug.datastructures import FileStorage
 from werkzeug.utils import secure_filename
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 from datetime import datetime
 from os.path import splitext
 
@@ -861,6 +862,32 @@ class Signatures(Base):
         return (f"<Signatures(id={self.id}, id_user={self.id_user}, signe_at={self.signe_at}, "
             f"statut={self.statut})>")
     
+    def to_dict(self) -> Dict[str, Any]:
+        """
+        Convertit l'objet Signatures en dictionnaire.
+        Utile pour la sérialisation JSON.
+        Returns:
+            dict: Dictionnaire représentant l'objet Signatures.
+        Exemple d'utilisation :
+            ```python
+            signature_dict = signature.to_dict()
+            ```
+        """
+        signature: Dict[str, Any] = {
+            "id": self.id,
+            "signe_at": self.signe_at.isoformat() if self.signe_at else None,
+            "signature_hash": self.signature_hash,
+            "ip_addresse": self.ip_addresse,
+            "user_agent": self.user_agent,
+            "statut": self.statut,
+            "svg_graph": self.svg_graph,
+            "data_graph": self.data_graph,
+            "largeur_graph": self.largeur_graph,
+            "hauteur_graph": self.hauteur_graph,
+            "timestamp_graph": self.timestamp_graph.isoformat() if self.timestamp_graph else None
+        }
+        return signature
+    
 class Invitation(Base):
     """
     Représente une invitation à signer un document.
@@ -977,3 +1004,70 @@ class AuditLog(Base):
              3: "expédition"
         }.get(self.action, "inconnu")
         return f"<AuditLog(id={self.id}, {action} le {self.timestamp})>"
+
+class ViewPoints:
+    """
+    Classe de vue 
+    Attributs :
+        point: Points: Instance du point de signature.
+        user: User: Instance de l'utilisateur signataire.
+        signature: Signatures: Instance de la signature apposée (si signée).
+        user_mail: str: Adresse e-mail de l'utilisateur (pour affichage).
+        user_complete_name: str: Nom complet de l'utilisateur (pour affichage).
+    Méthodes :
+        __init__(self, points: List[Points]) -> None:
+            Initialise les attributs de la classe.
+    """
+
+    def __init__(self, points: List[Points]) -> None:
+        """
+        Récupère les informations liées aux points de signature et les utilisateurs et signatures associées.
+        Arguments :
+            points (List[Points]): Liste des points de signature.
+        Exemple d'utilisation :
+            ```python
+            view_points = ViewPoints(points)
+            ```
+        """
+        self.points: List[Any] = []
+        for p in points:
+            user = g.db_session.query(User).filter(User.id == p.id_user).first()
+            signature = g.db_session.query(Signatures).filter(Signatures.id == p.id_signature).first()
+            point_list: List[Any] = [p, user, signature]
+            self.points.append(point_list)
+
+    def __repr__(self) -> str:
+        """
+        Représentation textuelle de l'objet ViewPoints.
+        Exemple :
+            ```python
+            print(view_points)
+            ```
+            ```console
+            <ViewPoints(nombre de points=3)>
+            ```
+        """
+        return f"<ViewPoints(nombre de points={len(self.points)})>"
+    
+    def to_dict(self) -> List[Dict[str, Any]]:
+        """
+        Convertit la liste des points en une liste de dictionnaires.
+        Utile pour la sérialisation JSON.
+        Returns:
+            list: Liste de dictionnaires représentant les points.
+        Exemple d'utilisation :
+            ```python
+            points_dict = view_points.to_dict()
+            ```
+        """
+        points_list: List[Dict[str, Any]] = []
+        for p, u, s in self.points:
+            point: Dict[str, Any] = {
+                "user": u.to_dict() if u else None,
+                "user_mail": u.email if u else None,
+                "user_complete_name": u.get_full_name() if u else None,
+                "point": p.to_dict(),
+                "signature": s.to_dict() if s else None
+            }
+            points_list.append(point)
+        return points_list

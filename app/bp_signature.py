@@ -17,7 +17,7 @@ from flask import (
     session, url_for, redirect, jsonify
 )
 from werkzeug.datastructures import FileStorage
-from models import User, DocToSigne, Signatures, Points, Invitation
+from models import User, DocToSigne, Signatures, Points, Invitation, ViewPoints
 from signatures import SignatureDoer, SignatureMaker, SecureDocumentAccess
 from typing import Any, Dict, List
 from config import Config
@@ -85,7 +85,7 @@ class SignedDocumentCreator:
             Envoie le document signé par email à tous les participants.
     """
     
-    def __init__(self, *, id_document: int):
+    def __init__(self, *, id_document: int) -> None:
         """
         Initialise le créateur de document signé.
         
@@ -98,7 +98,6 @@ class SignedDocumentCreator:
         self.current_user_id = session.get('id', 0)
         
         # Attributs qui seront initialisés par les méthodes
-        self.hash_document = None
         self.document: DocToSigne | None = None
         self.document_path: Path | None = None
         self.points: List[Points] = []
@@ -106,8 +105,8 @@ class SignedDocumentCreator:
         self.signatories: List[User] = []
         self.creator: User | None = None
         self.signed_document_path: Path | None = None
-    
-    def load_document(self) -> 'SignedDocumentCreator':
+
+    def load_document(self, *, hash_document: str) -> 'SignedDocumentCreator':
         """
         Récupère le document en base et vérifie les droits d'accès.
         Crée .creator (User) si l'accès est autorisé.
@@ -121,7 +120,7 @@ class SignedDocumentCreator:
         # Récupérer le document en base
         self.document = g.db_session.query(DocToSigne).filter_by(
             id=self.id_document, 
-            hash_fichier=self.hash_document
+            hash_fichier=hash_document
         ).first()
         
         if not self.document:
@@ -140,7 +139,16 @@ class SignedDocumentCreator:
         
         # Récupérer le créateur du document et le hash du document
         self.creator = g.db_session.query(User).filter_by(id=self.document.id_user).first()
-        self.hash_document = self.document.hash_fichier
+        self.expeditor_user = g.db_session.query(User).filter_by(
+            id=self.current_user_id
+        ).first()
+
+        self.document_data: Dict[str, Any] = {
+            'document': self.document,
+            'expeditor': self.expeditor_user,
+            'expeditor_mail': self.expeditor_user.mail if self.expeditor_user else None
+        }
+
         
         return self
     
@@ -176,63 +184,26 @@ class SignedDocumentCreator:
     
     def load_signatures_and_points(self) -> 'SignedDocumentCreator':
         """
-        Récupère les points et signatures associées au document et crée une structure consolidée.
-        
-        Cette méthode crée un dictionnaire self.signature_data qui contient toutes les informations
-        nécessaires pour chaque point de signature :
-        - point: objet Points
-        - signature: objet Signatures
-        - user: objet User (signataire)
-        - nom_complet: nom complet formaté du signataire
+        Récupère les points et signatures associées au document et les utilisateurs associés
+        et crée une structure consolidée.
         
         Returns:
             self: SignedDocumentCreator
         Raises:
-            ValueError: Si le document n'est pas chargé ou si toutes les signatures ne sont pas complétées.
+            ValueError: si aucun point n'est trouvé
         """
         if not self.document:
             raise ValueError("Document non chargé. Appelez load_document() d'abord.")
         
-        # Récupérer tous les points de signature pour ce document
-        self.points = g.db_session.query(Points).filter_by(
+        # Récupérer tous les points de signature des utilisateurs et leurs signatures
+        points = g.db_session.query(Points).filter_by(
             id_document=self.id_document
         ).all()
+        self.view_points: List[Dict[str, Any]] = ViewPoints(points).to_dict()
 
-        # Récupérer toutes les signatures associées aux points
-        signature_ids = [point.id_signature for point in self.points if point.id_signature]
-        signatures_dict = {}
-        if signature_ids:
-            self.signatures = g.db_session.query(Signatures).filter(
-                Signatures.id.in_(signature_ids)
-            ).all()
-            signatures_dict = {sig.id: sig for sig in self.signatures}
-        
-        # Récupérer tous les signataires
-        user_ids = {point.id_user for point in self.points}
-        users_dict = {}
-        if user_ids:
-            self.signatories = g.db_session.query(User).filter(
-                User.id.in_(user_ids)
-            ).all()
-            users_dict = {user.id: user for user in self.signatories}
-        
-        # Créer la structure consolidée : un dictionnaire par point de signature
-        # Clé = id du point, Valeur = dictionnaire avec toutes les infos nécessaires
-        self.signature_data: Dict[int, Dict[str, Any]] = {}
-        
-        for point in self.points:
-            signature = signatures_dict.get(point.id_signature)
-            user = users_dict.get(point.id_user)
-            
-            self.signature_data[point.id] = {
-                'point': point,
-                'signature': signature,
-                'user': user,
-                'nom_complet': f"{user.prenom} {user.nom}" if user else "Signataire inconnu",
-                'page_num': point.page_num,
-                'x': point.x,
-                'y': point.y
-            }
+        # Levée d'erreur en cas de manque de données et de correspondance
+        if not (self.view_points):
+            raise ValueError("Aucun point de signature ou utilisateur trouvé pour ce document.")
         
         return self
     
@@ -246,19 +217,19 @@ class SignedDocumentCreator:
         Raises:
             ValueError: Si toutes les signatures ne sont pas complétées.
         """
-        if not self.signature_data:
+        if not self.view_points:
             raise ValueError("Aucun point de signature trouvé pour ce document.")
         
         # Vérifier que tous les points ont été signés (status = 1)
-        unsigned_users: List[str] = []
-        
-        for _, data in self.signature_data.items():
+        unsigned_users: bool = False
+
+        for data in self.view_points:
             point = data['point']
             if point.status != 1:
-                unsigned_users.append(data['nom_complet'])
-        
+                unsigned_users = True
+
         if unsigned_users:
-            raise ValueError(f"Signatures manquantes pour : {', '.join(unsigned_users)}")
+            raise ValueError("Signatures manquantes sur le document.")
         
         return self
     
@@ -272,7 +243,7 @@ class SignedDocumentCreator:
         Raises:
             Exception: Si une erreur survient lors de l'application des signatures.
         """
-        if not self.document_path or not self.signature_data:
+        if not self.document_path or not self.view_points:
             raise ValueError("Document ou données de signature manquants.")
         
         try:
@@ -281,26 +252,25 @@ class SignedDocumentCreator:
             self.signed_document_path = self.document_path.parent / signed_filename
             
             # Lire le PDF original
-            pdf_document = PDF.read(self.document_path)
-            if pdf_document is None:
+            self.pdf_document = PDF.read(self.document_path)
+            if self.pdf_document is None:
                 raise ValueError("Impossible de lire le document PDF")
             
             # Grouper les données de signature par page
             data_by_page: Dict[int, List[Dict[str, Any]]] = {}
-            for _, data in self.signature_data.items():
-                page_num = data['page_num']
+            for data in self.view_points:
+                page_num = data['point'].page_num
                 if page_num not in data_by_page:
                     data_by_page[page_num] = []
                 data_by_page[page_num].append(data)
             
             # Appliquer les signatures sur chaque page
             for page_num, page_data in data_by_page.items():
-                self._apply_signatures_to_page(pdf_document=pdf_document, page_num=page_num,
-                                               page_data=page_data)
+                self._apply_signatures_to_page(page_num=page_num, page_data=page_data)
             
             # Sauvegarder le PDF modifié
-            PDF.write(pdf_document, self.signed_document_path)
-            
+            PDF.write(self.pdf_document, self.signed_document_path)
+
             return self
             
         except Exception as e:
@@ -312,15 +282,14 @@ class SignedDocumentCreator:
                 shutil.copy2(self.document_path, self.signed_document_path)
             return self
     
-    def _apply_signatures_to_page(self, *, pdf_document: Any, page_num: int, page_data: List[Dict[str, Any]]) -> None:
+    def _apply_signatures_to_page(self, *, page_num: int, page_data: List[Dict[str, Any]]) -> None:
         """
         Applique les signatures sur une page spécifique du PDF.
         
         Args:
-            pdf_document: Le document PDF borb
             page_num (int): Le numéro de la page
             page_data (List[Dict[str, Any]]): Liste des données de signature pour cette page
-                Chaque élément contient : point, signature, user, nom_complet, x, y
+                Chaque élément contient : point, signature, user, user_mail, user_complete_name
         Returns:
             None
         Raises:
@@ -328,15 +297,17 @@ class SignedDocumentCreator:
         """
         try:
             # Obtenir la page
-            page = pdf_document.get_page(page_num - 1)  # borb utilise un index 0-based
-            
+            if not self.pdf_document:
+                raise ValueError("Document PDF non chargé")
+            page = self.pdf_document.get_page(page_num - 1)  # Les pages sont 0-indexées
+
             # Appliquer chaque signature sur la page
             for data in page_data:
                 point = data['point']
                 signature = data['signature']
-                nom_complet = data['nom_complet']
-                x_coord = float(data['x'])
-                y_coord = float(data['y'])
+                nom_complet = data['user_complete_name']
+                x_coord = float(point.x)
+                y_coord = float(point.y)
                 
                 if signature and signature.svg_graph:
                     # Appliquer la signature SVG à cette position
