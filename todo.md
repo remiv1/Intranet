@@ -19,36 +19,6 @@
 
 ## Système de signature - Issues identifiées et à corriger
 
-### 1. Validation des statuts lors des demandes de signature (GET)
-
-**Problème** : Actuellement, la route GET `/signature/signer/<doc_id>/<hash>` ne vérifie pas :
-
-- Si le document est déjà signé (statut != 0)
-- Si le document est périmé (expire_at < maintenant)
-
-**Solution à implémenter** :
-
-```python
-# Dans la route GET de signature_do()
-if doer.document.status != 0:
-    return render_template(ADMINISTRATION, error_message="Ce document a déjà été traité.")
-
-if doer.invitation.expire_at < datetime.now():
-    return render_template(ADMINISTRATION, error_message="Cette invitation a expiré.")
-```
-
-### 2. Automatisme base de données pour expiration
-
-**Problème** : Pas d'automatisme pour passer les documents expirés en statut -1
-
-**Solutions possibles** :
-
-1. **Trigger MySQL** : Automatisme au niveau base de données
-2. **Tâche CRON** : Script Python exécuté périodiquement
-3. **Middleware Flask** : Vérification à chaque requête (moins performant)
-
-**Recommandation** : Tâche CRON quotidienne + vérification temps réel dans les routes
-
 ### 3. Génération PDF final avec signatures + certificat
 
 **Fonctionnalité manquante** : Route pour générer le PDF final quand tous les points sont signés
