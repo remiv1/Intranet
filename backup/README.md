@@ -21,6 +21,7 @@ Ce répertoire contient les scripts pour sauvegarder et restaurer la base de don
 ```
 
 **Caractéristiques :**
+
 - Utilise `mysqldump` pour une sauvegarde complète
 - Compression automatique en `.gz`
 - Sauvegarde des routines, triggers et événements
@@ -55,7 +56,7 @@ Ce répertoire contient les scripts pour sauvegarder et restaurer la base de don
 
 ## 📁 Structure des fichiers
 
-```
+```txt
 backup/
 ├── simple-backup.sh    # Script de sauvegarde manuelle
 ├── simple-restore.sh   # Script de restauration
