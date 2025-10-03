@@ -6,26 +6,41 @@ Fonctions:
 - Stockage temporaire des documents avant signature.
 - Enregistrement des ashages des documents signés pour vérification ultérieure.
 """
-import hashlib, hmac, json, logging, secrets, shutil, smtplib, traceback, cairosvg
+# Imports standards
+import hashlib, hmac, json, logging, secrets, shutil, smtplib, cairosvg
 from datetime import datetime, timedelta
+from io import BytesIO
+from os import getenv
+from pathlib import Path
+
+# Imports liés aus emails
 from email.mime.base import MIMEBase
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email import encoders
-from io import BytesIO
-from os import getenv
-from pathlib import Path
+
+# Imports de typages
 from typing import Any, Dict, List
+
+# Imports liés aux cryptages et écritures PDF
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import rsa, padding
 from cryptography.hazmat.primitives.serialization import Encoding
-from flask import render_template, request, Request, g, session
 from PIL import Image as PILImage
 from reportlab.lib.utils import ImageReader
 from reportlab.pdfgen.canvas import Canvas
+from reportlab.pdfgen import canvas
+from pypdf import PdfReader, PdfWriter
+
+
+# Imports Flask
+from flask import render_template, request, Request, g, session
+
+# Imports liés à l'application (modèles, config)
 from config import Config
 from models import DocToSigne, Invitation, Points, Signatures, User, ViewPoints
 
+# Constantes
 BAD_INVITATION = 'Invitation invalide ou non trouvée.'
 
 class SignatureDoer:
@@ -35,19 +50,19 @@ class SignatureDoer:
         request (Request): L'objet request Flask.
         signatory_id (int | None): L'ID de l'utilisateur signataire.
         document (DocToSigne | None): Le document à signer.
-        invitation (Invitation | None): L'invitation associée au document et à l'utilisateur
+        invitation (Invitation | None): L'invitation associée au document et à l'utilisateur.
         token (str | None): Le token d'invitation.
-        otp (str | None): Le code OTP soumis par l'utilisateur.
         ip_addresse (str | None): L'adresse IP de l'utilisateur.
+        otp (str | None): Le code OTP soumis par l'utilisateur.
+        signature_hash (str | None): Le hash de la signature soumise.
         user_agent (str | None): Le User-Agent de l'utilisateur.
-        signature_hash (str | None): Le hash de la signature.
-        svg_graph (str | None): Le graphique SVG de la signature.
-        data_graph (str | None): Les données de la signature.
-        largeur_graph (int): La largeur du graphique de la signature.
-        hauteur_graph (int): La hauteur du graphique de la signature.
+        svg_graph (str | None): Le SVG de la signature graphique.
+        data_graph (str | None): Les données brutes de la signature graphique.
+        largeur_graph (int): La largeur du graphique de signature.
+        hauteur_graph (int): La hauteur du graphique de signature.
         datetime_submission (datetime | None): La date et l'heure de la soumission de la signature.
-        object_points (List[Points] | None): Liste des objets Points associés à la signature.
-        points (List[Dict[str, Any]] | None): Liste des points de signature sérialisés.
+        object_points (List[Points]): Liste des objets Points récupérés depuis la base.
+        points (List[Dict[str, Any]]): Liste des points de signature sous forme de dictionnaires.
     Methods:
         get_request(id_document: int, hash_document: str):
             Récupère les données de la requête.
@@ -61,11 +76,14 @@ class SignatureDoer:
     def __init__(self, request: Request):
         """
         Initialise avec l'objet request Flask.
+        Args:
+            request (Request): L'objet request Flask.
         Attributes:
             request (Request): L'objet request Flask.
             signatory_id (int | None): L'ID de l'utilisateur signataire.
             document (DocToSigne | None): Le document à signer.
             invitation (Invitation | None): L'invitation associée au document et à l'utilisateur.
+            token (str | None): Le token d'invitation.
         Exemples:
             ```python
             doer = SignatureDoer(request)
@@ -75,7 +93,10 @@ class SignatureDoer:
 
     def get_request(self, *, id_document: int, hash_document: str) -> 'SignatureDoer':
         """
-        Récupère les données de la requête.
+        Récupère les données de la requête de type GET.
+        Args:
+            id_document (int): L'ID du document à signer.
+            hash_document (str): Le hash du document à signer.
         Returns:
             self: SignatureDoer
         Raises:
@@ -108,24 +129,30 @@ class SignatureDoer:
 
     def post_request(self, *, id_document: int, hash_document: str) -> 'SignatureDoer':
         """
-        Traite la soumission du formulaire de signature.
+        Traite la soumission du formulaire de signature de type POST.
+        Args:
+            id_document (int): L'ID du document à signer.
+            hash_document (str): Le hash du document à signer.
         Returns:
             self: SignatureDoer
         Raises:
             ValueError: Si le document ou l'invitation n'est pas trouvé ou invalide
         Exemples:
             ```python
-            doer = SignatureDoer(request).get_request().post_request()
+            doer = SignatureDoer(request).post_request(id_document=1, hash_document='abc123')
             ```
         """
+        # Récupération des données de la requête
         self.token = self.request.headers.get('X-Invit-Token', None)
         self.ip_addresse = self.request.environ.get('REMOTE_ADDR') or self.request.remote_addr
         data = self.request.get_json()
+        
+        # Validation des données reçues
         if not data:
             raise ValueError("Données de signatures invalides ou manquantes.")        
         self.otp = data.get('otp_code', None)
         
-        # Nouvelles données haute précision
+        # Données de signature haute précision
         self.signature_hash = data.get('signature_hash', None)
         self.user_agent = data.get('user_agent', None)
         self.svg_graph = data.get('svg_graph', None)
@@ -133,26 +160,40 @@ class SignatureDoer:
         self.largeur_graph = data.get('largeur_graph', 0)
         self.hauteur_graph = data.get('hauteur_graph', 0)
         
+        # Données temporelles et d'identité
         self.datetime_submission = datetime.now()
         self.signatory_id = session.get('id', None)
+
+        # Récupération des documents et invitations correspondants
         self.document = g.db_session.query(DocToSigne) \
             .filter_by(id=id_document, hash_fichier=hash_document) \
             .first()
         self.invitation = g.db_session.query(Invitation) \
             .filter_by(id_document=self.document.id, id_user=self.signatory_id) \
             .first()
+        
         return self
 
     def get_signature_points(self) -> 'SignatureDoer':
         """
         Récupère les points de signature pour l'utilisateur courant et la signature demandée.
+        Args:
+            self: SignatureDoer
         Returns:
             self: SignatureDoer
         Exemples:
             ```python
-            doer = SignatureDoer(request).get_request().get_signature_points()
+            doer = SignatureDoer(request) \
+                        .get_request(id_document=1, hash_document='abc123') \
+                        .get_signature_points()
+
+            # Situation POST
+            doer = SignatureDoer(request) \
+                        .post_request(id_document=1, hash_document='abc123') \
+                        .get_signature_points()
             ```
         """
+        # Récupération des points de signature pour l'utilisateur courant
         self.object_points = g.db_session.query(Points) \
                         .filter_by(id_document=self.document.id, id_user=self.signatory_id) \
                         .all()
@@ -163,12 +204,24 @@ class SignatureDoer:
     def handle_signature_submission(self) -> 'SignatureDoer':
         """
         Gère la soumission de la signature.
+        Args:
+            self: SignatureDoer
         Returns:
             self: SignatureDoer
+        Raises:
+            ValueError: Si la signature est invalide ou si l'utilisateur a déjà signé.
+        Exemples:
+            ```python
+            doer = SignatureDoer(request) \
+                        .post_request(id_document=1, hash_document='abc123') \
+                        .get_signature_points() \
+                        .handle_signature_submission()
+            ```
         """
-        otp_valid = (self.otp == self.invitation.code_otp)  # Remplacer par la validation réelle de l'OTP si nécessaire
+        # Validation de l'invitation, du document et du code OTP
+        otp_valid = (self.otp == self.invitation.code_otp)
         
-        # Vérifier si l'utilisateur a déjà signé ses points
+        # Validation des conditions de signature
         already_signed = all(point.status == 1 for point in self.object_points)
         if already_signed:
             raise ValueError("Vous avez déjà signé ce document.")
@@ -207,12 +260,10 @@ class SignatureDoer:
             # Tous les signataires ont signé, marquer le document comme complètement signé
             self.document.status = 1  # Statut signé
             self.document.complete_at = self.datetime_submission
-            logging.info(f"Document {self.document.id} complètement signé par tous les signataires")
         else:
             # Il reste des signatures en attente
             if self.document.status != 0:
                 self.document.status = 0  # Statut en attente
-            logging.info(f"Document {self.document.id} partiellement signé, {sum(1 for p in all_points if p.status == 1)}/{len(all_points)} points signés")
 
         return self
 
@@ -230,17 +281,27 @@ class SignatureMaker:
         validity (str | None): La durée de validité du document.
         description (str | None): La description du document.
         points (list[Dict[str, Any]]): Liste des points de signature.
+        doc_to_signe (DocToSigne | None): Le document à signer créé.
+        limite_signature (datetime | None): La date limite pour la signature.
     Methods:
-        get_request():
+        get_request(request: Request):
             Récupère les données du formulaire de la requête.
         get_signature_points():
             Récupère les points de signature du formulaire de la requête.
+        create_document():
+            Crée un document à signer.
+        create_points():
+            Crée les points de signature dans la base de données.
         fix_documents():
             Renomme le document dans le dossier temporaire vers le dossier final.
+        send_invitation():
+            Envoie une invitation aux utilisateurs pour signer le document.
     """
     def __init__(self, request: Request):
         """
         Initialise avec l'objet request Flask.
+        Args:
+            request (Request): L'objet request Flask.
         Attributes:
             request (Request): L'objet request Flask.
             old_name (str | None): Le nom original du document.
@@ -252,6 +313,8 @@ class SignatureMaker:
             validity (str | None): La durée de validité du document.
             description (str | None): La description du document.
             points (list[Dict[str, Any]]): Liste des points de signature.
+            doc_to_signe (DocToSigne | None): Le document à signer créé.
+            limite_signature (datetime | None): La date limite pour la signature.
         Exemples:
             ```python
             maker = SignatureMaker(request)
@@ -259,12 +322,19 @@ class SignatureMaker:
         """
         self.request = request
 
-    def get_request(self) -> 'SignatureMaker':
+    def post_request(self) -> 'SignatureMaker':
         """
-        Récupère les données du formulaire de la requête.
+        Récupère les données du formulaire de la requête POST.
+        Args:
+            self: SignatureMaker
         Returns:
             self: SignatureMaker
+        Exemples:
+            ```python
+            maker = SignatureMaker(request).post_request()
+            ```
         """
+        # Récupération des données du formulaire
         self.old_name = self.request.form.get('doc_id', None)
         self.new_name = self.request.form.get('document_name', None) or self.old_name
         self.type = self.request.form.get('document_type', None)
@@ -273,33 +343,61 @@ class SignatureMaker:
         self.signing_deadline = self.request.form.get('signing_deadline', None)
         self.validity = self.request.form.get('document_validity', None)
         self.description = self.request.form.get('document_description', None)
+
         return self
     
     def get_signature_points(self) -> 'SignatureMaker':
         """
         Récupère les points de signature du formulaire de la requête.
+        Args:
+            self: SignatureMaker
         Returns:
             self: SignatureMaker
+        Exemples:
+            ```python
+            maker = SignatureMaker(request) \
+                            .post_request() \
+                            .get_signature_points()
+            ```
         """
+        # Création de la liste des points de signature
         self.points: list[Dict[str, Any]] = []
         i = 0
+
+        # Boucle pour récupérer les points de signature
         while f'signature_points[{i}][x]' in self.request.form:
+            # Création du dictionnaire pour chaque point
             point: Dict[str, float | int] = {
                 'x': float(self.request.form.get(f'signature_points[{i}][x]', 0)),
                 'y': float(self.request.form.get(f'signature_points[{i}][y]', 0)),
                 'page_num': int(self.request.form.get(f'signature_points[{i}][pageNum]', 1)),
                 'user_id': int(self.request.form.get(f'signature_points[{i}][user_id]', 1)),
             }
+
+            # Ajout du point à la liste
             self.points.append(point)
+
+            # Incrémentation de l'index
             i += 1
+
         return self
     
     def create_document(self) -> 'SignatureMaker':
         """
         Crée un document à signer.
+        Args:
+            self: SignatureMaker
         Returns:
             self: SignatureMaker
+        Exemples:
+            ```python
+            maker = SignatureMaker(request) \
+                            .post_request() \
+                            .get_signature_points() \
+                            .create_document()
+            ```
         """
+        # Création du document à signer dans la base de données par l'ORM
         self.doc_to_signe: DocToSigne = DocToSigne(
             doc_nom=self.new_name,
             doc_type=self.type,
@@ -312,16 +410,30 @@ class SignatureMaker:
             hash_fichier='temp',    # Sera mis à jour après le renommage
             id_user=session.get('id', 0),
         )
+
+        # Ajout du document à la session et flush pour obtenir l'ID
         g.db_session.add(self.doc_to_signe)
         g.db_session.flush()
+
         return self
     
     def create_points(self) -> 'SignatureMaker':
         """
         Crée les points de signature dans la base de données.
+        Args:
+            self: SignatureMaker
         Returns:
             self: SignatureMaker
+        Exemples:
+            ```python
+            maker = SignatureMaker(request) \
+                            .post_request() \
+                            .get_signature_points() \
+                            .create_document() \
+                            .create_points()
+            ```
         """
+        # Création des points de signature dans la base de données par l'ORM par boucle
         for point in self.points:
             signature_point: Points = Points(
                 id_document=self.doc_to_signe.id,
@@ -330,49 +442,90 @@ class SignatureMaker:
                 x=point['x'],
                 y=point['y']
             )
+
+            # Ajout du point à la session
             g.db_session.add(signature_point)
+        
         return self
     
     def fix_documents(self) -> 'SignatureMaker':
         """
         Renomme le document dans le dossier temporaire vers le dossier final.
+        Args:
+            self: SignatureMaker
         Returns:
             self: SignatureMaker
         Raises:
             FileNotFoundError: Si le fichier source n'existe pas.
             IOError: Si une erreur survient lors du renommage du fichier.
+        Exemples:
+            ```python
+            maker = SignatureMaker(request) \
+                            .post_request() \
+                            .get_signature_points() \
+                            .create_document() \
+                            .create_points() \
+                            .fix_documents()
+            ```
         """
+        # Renommage du fichier dans le dossier temporaire vers le dossier final
         if self.old_name and self.new_name:
+            # Définition des chemins
             temp_dir = SecureDocumentAccess.TEMP_DIR
             final_dir = getenv('SIGNATURE_DOCKER_PATH', '/tmp/')
             Path(final_dir).mkdir(parents=True, exist_ok=True)
             old_path = Path(temp_dir) / self.old_name
             new_path = Path(final_dir) / self.new_name
+
+            # Vérification de l'existence du fichier source
             if old_path.exists():
                 try:
+                    # Déplacement du fichier vers le nouveau chemin
                     file_path = shutil.move(str(old_path), str(new_path))
+
+                    # Calcul du hash SHA-256 du fichier déplacé
                     with open(new_path, "rb") as f:
                         file_hash = hashlib.sha256(f.read()).hexdigest()
                         self.doc_to_signe.chemin_fichier = file_path
                         self.doc_to_signe.hash_fichier = file_hash
+                    
                     return self
+                
+                # Gestion des erreurs lors du renommage
                 except Exception:
                     raise IOError("Erreur lors du renommage du fichier.")
+            
+            # Gestion des exceptions liées à l'absence du fichier source
             else:
                 raise FileNotFoundError("Le fichier source n'existe pas.")
+        
+        # Gestion des exceptions liées à l'absence de noms valides
         raise FileNotFoundError("Le fichier source n'existe pas ou les noms sont invalides.")
     
     def send_invitation(self) -> 'SignatureMaker':
         """
         Envoie une invitation aux utilisateurs pour signer le document.
+        Args:
+            self: SignatureMaker
         Returns:
             self: SignatureMaker
+        Exemples:
+            ```python
+            maker = SignatureMaker(request) \
+                            .post_request() \
+                            .get_signature_points() \
+                            .create_document() \
+                            .create_points() \
+                            .fix_documents() \
+                            .send_invitation()
+            ```
         """
         # Récupération de la liste des mails, noms et prénoms des utilisateurs
         user_ids = {point['user_id'] for point in self.points}
         users = g.db_session.query(User).filter(User.id.in_(user_ids)).all()
         self.limite_signature = datetime.now() + timedelta(days=int(self.doc_to_signe.echeance) if self.doc_to_signe.echeance and str(self.doc_to_signe.echeance).isdigit() else 3)
         
+        # Envoi des invitations par email
         for user in users:
             # Vérifier si une invitation existe déjà pour ce document et cet utilisateur
             existing_invitation = g.db_session.query(Invitation).filter_by(
@@ -380,13 +533,13 @@ class SignatureMaker:
                 id_user=user.id
             ).first()
             
+            # Si une invitation existe, la mettre à jour, sinon en créer une nouvelle
             if existing_invitation:
                 # Mettre à jour l'invitation existante
                 invitation = existing_invitation
                 invitation.expire_at = self.limite_signature
                 invitation.mail_envoye = True
                 invitation.mail_compte += 1
-                logging.info(f"Invitation existante mise à jour pour l'utilisateur {user.id} sur le document {self.doc_to_signe.id}")
             else:
                 # Générer un token unique pour chaque utilisateur
                 user_token = hmac.new(
@@ -421,6 +574,7 @@ class SignatureMaker:
                 to=user.mail,
                 template=mail_template
             )
+        
         return self
 
 class SecureDocumentAccess:
@@ -429,7 +583,7 @@ class SecureDocumentAccess:
     Attributes:
         TEMP_DIR (str): Le chemin du dossier temporaire pour les fichiers d'accès.
     Methods:
-        get_user_identifier() -> str:
+        get_user_identifier():
             Génère un identifiant unique pour l'utilisateur basé sur session, IP et User-Agent.
         generate_document_hash(filename: str, user_identifier: str | None = None) -> str:
             Génère un hash sécurisé pour le document avec HMAC.
@@ -440,18 +594,30 @@ class SecureDocumentAccess:
         cleanup_expired_temp_files() -> None:
             Nettoie les fichiers temporaires expirés.
     """
-    TEMP_DIR = getenv('TEMP_DOCKER_PATH', '/tmp') + '/signature'  # Constante pour le dossier temporaire
+    # Constante pour le dossier temporaire
+    TEMP_DIR = getenv('TEMP_DOCKER_PATH', '/tmp') + '/signature'
     
     @staticmethod
     def get_user_identifier() -> str:
         """
         Génère un identifiant unique pour l'utilisateur basé sur session, IP et User-Agent.
+        Args:
+            None
+        Returns:
+            str: L'identifiant unique de l'utilisateur.
+        Exemples:
+            ```python
+            user_id = SecureDocumentAccess.get_user_identifier()
+            ```
         """
+        # Récupération des informations utilisateur dans la session et la requête
         user_id: str = session.get('identifiant', 'anonymous')
         ip_address: str = request.remote_addr or 'unknown'
         user_agent: str = request.headers.get('User-Agent', 'unknown')[:50]
+        
         # Utiliser MD5 pour raccourcir le User-Agent
         ua_hash = hashlib.md5(user_agent.encode()).hexdigest()[:8]
+
         return f"{user_id}-{ip_address}-{ua_hash}"
     
     @staticmethod
@@ -463,13 +629,18 @@ class SecureDocumentAccess:
             user_identifier (str | None): L'identifiant unique de l'utilisateur. Si None, il sera généré.
         Returns:
             str: Le hash sécurisé du document.
+        Exemples:
+            ```python
+            doc_hash = SecureDocumentAccess.generate_document_hash('document.pdf')
+            ```
         """
+        # Génération de l'identifiant utilisateur si non fourni
         if not user_identifier:
             user_identifier = SecureDocumentAccess.get_user_identifier()
         
+        # Génération du hash HMAC avec SHA-256
         secret_key = getenv('SECRET_KEY', 'default-secret-key')
         timestamp = datetime.now().isoformat()[:19]  # YYYY-MM-DDTHH:MM:SS
-        
         message = f"{filename}-{user_identifier}-{timestamp}"
         document_hash = hmac.new(
             secret_key.encode(), 
@@ -488,10 +659,16 @@ class SecureDocumentAccess:
             document_hash (str): Le hash sécurisé du document.
         Returns:
             None
+        Exemples:
+            ```python
+            SecureDocumentAccess.create_temp_access_file('document.pdf', 'abc123hash')
+            ```
         """
+        # Création du dossier temporaire s'il n'existe pas
         temp_dir = Path(SecureDocumentAccess.TEMP_DIR)
         temp_dir.mkdir(exist_ok=True)
         
+        # Données à stocker dans le fichier JSON
         access_data: Dict[str, Any] = {
             "filename": filename,
             "hash": document_hash,
@@ -503,8 +680,11 @@ class SecureDocumentAccess:
         # Nom du fichier JSON basé sur le hash
         json_file = temp_dir / f"{document_hash}.json"
         
+        # Écriture des données dans le fichier JSON
         with open(json_file, 'w', encoding='utf-8') as f:
             json.dump(access_data, f, indent=2)
+
+        return None
     
     @staticmethod
     def verify_temp_access(filename: str) -> bool:
@@ -514,16 +694,23 @@ class SecureDocumentAccess:
             filename (str): Le nom du fichier à vérifier.
         Returns:
             bool: True si l'accès est valide, False sinon.
+        Exemples:
+            ```python
+            is_valid = SecureDocumentAccess.verify_temp_access('document.pdf')
+            ```
         """
+        # Génération de l'identifiant utilisateur si non fourni
         user_identifier = SecureDocumentAccess.get_user_identifier()
         temp_dir = Path(SecureDocumentAccess.TEMP_DIR)
         
+        # Vérifier si le dossier temporaire existe
         if not temp_dir.exists():
             return False
         
         # Chercher tous les fichiers JSON dans temp/
         json_files = list(temp_dir.glob("*.json"))
         
+        # Vérifier chaque fichier JSON existant dans temp/
         for json_file in json_files:
             try:
                 with open(json_file, 'r', encoding='utf-8') as f:
@@ -558,13 +745,24 @@ class SecureDocumentAccess:
     def cleanup_expired_temp_files() -> None:
         """
         Nettoie les fichiers temporaires expirés.
+        Args:
+            None
+        Returns:
+            None
+        Exemples:
+            ```python
+            SecureDocumentAccess.cleanup_expired_temp_files()
+            ```
         """
+        # Récupération du dossier temporaire
         temp_dir = Path(SecureDocumentAccess.TEMP_DIR)
         if not temp_dir.exists():
             return
-            
+        
+        # Récupération de l'heure actuelle
         current_time = datetime.now().timestamp()
         
+        # Parcours de tous les fichiers JSON dans temp/
         for json_file in temp_dir.glob("*.json"):
             try:
                 with open(json_file, 'r', encoding='utf-8') as f:
@@ -583,39 +781,64 @@ class SignedDocumentCreator:
     Classe pour gérer la création du document PDF final signé.
     
     Cette classe s'occupe de :
-    - Récupérer le document et vérifier les droits d'accès
-    - Vérifier l'intégrité du document avec le hash
-    - Récupérer les points de signature et les signatures associées
-    - Appliquer les signatures SVG sur le document PDF
-    - Incorporer les certificats de signature
-    - Envoyer le document final par email
-    - Sauvegarder le document signé en remplacement de l'original
-    
+    - Charger le document à signer et vérifier les droits d'accès.
+    - Vérifier l'intégrité du document via son hash.
+    - Récupérer les points et signatures associées au document.
+    - Vérifier si toutes les signatures requises ont été effectuées.
+    - Appliquer les signatures SVG sur le document PDF.
+    - Incorporer les certificats de signature dans le PDF.
+    - Sauvegarder le document signé final.
+    - Envoyer le document signé par email à tous les participants.
+
     Attributes:
         id_document (int): L'ID du document à traiter.
-        hash_document (str): Le hash du document pour vérification d'intégrité.
         current_user_id (int): L'ID de l'utilisateur qui demande la création.
-        document (DocToSigne | None): Le document à signer récupéré de la base.
-        document_path (Path | None): Le chemin vers le fichier PDF.
-        points (List[Points]): Liste des points de signature.
-        signatures (List[Signatures]): Liste des signatures appliquées.
+        document (DocToSigne | None): Le document à signer.
+        document_path (Path | None): Le chemin vers le fichier PDF du document.
+        points (List[Points]): Liste des points de signature associés au document.
+        signatures (List[Signatures]): Liste des signatures associées au document.
         signatories (List[User]): Liste des utilisateurs signataires.
         creator (User | None): L'utilisateur créateur du document.
-        signed_document_path (Path | None): Le chemin vers le document signé final.
+        signed_document_path (Path | None): Le chemin vers le fichier PDF signé final.
     
     Methods:
-        load_document() -> 'SignedDocumentCreator':
-            Récupère le document en base et vérifie les droits d'accès.
-        verify_document_integrity() -> 'SignedDocumentCreator':
-            Vérifie l'intégrité du document avec le hash.
+        load_and_verify_document(hash_document: str) -> 'SignedDocumentCreator':
+            Charge le document, vérifie les droits d'accès ET l'intégrité du fichier via son hash.
         load_signatures_and_points() -> 'SignedDocumentCreator':
             Récupère les points et signatures associées au document.
         verify_all_signatures_completed() -> 'SignedDocumentCreator':
-            Vérifie que toutes les signatures requises ont été effectuées.
+            Vérifie si toutes les signatures requises ont été effectuées.
         apply_signatures_to_pdf() -> 'SignedDocumentCreator':
             Applique les signatures SVG sur le document PDF.
+        _prepare_signed_document() -> None:
+            Prépare le document signé en incorporant les certificats.
+        _process_all_pages() -> None:
+            Traite toutes les pages du document pour y ajouter les signatures.
+        _write_signed_pdf() -> None:
+            Écrit le document PDF signé dans le fichier de sortie.
+        _create_fallback_copy() -> None:
+            Crée une copie de secours du document signé.
+        _update_document_hash() -> None:
+            Met à jour le hash du document signé dans la base de données.
+        _create_signature_overlay(page: Any, signatures_data: List[Dict[str, Any]], page_num: int) -> bytes | None:
+            Crée une superposition PDF avec les signatures pour une page donnée.
+        _add_single_signature_to_canvas(can: Canvas, data: Dict[str, Any], page_width: float, page_height: float) -> bool:
+            Ajoute une seule signature SVG au canevas PDF.
+        _process_signature_image(svg_graph: str, largeur: int, hauteur: int) -> PILImage.Image | None:
+            Traite l'image SVG de la signature et la convertit en image PIL.
+        _calculate_signature_position(self, point: Dict[str, Any], svg_image: PILImage.Image, 
+                                     page_width: float, page_height: float) -> tuple[float, float]:
+            Calcule la position de la signature sur la page.
+        _draw_signature_on_canvas(self, can: Canvas, svg_image: PILImage.Image, 
+                                     x_pos: float, y_pos: float, point: Dict[str, Any]) -> None:
+            Dessine la signature sur le canevas PDF.
+        _add_signature_metadata_text(self, can: Canvas, nom_complet: str, signature: Dict[str, Any],
+                                     x_pos: float, y_pos: float, img_w: int, img_h: int, page_width: float) -> None:
+            Ajoute les métadonnées de la signature au canevas PDF.
+        _convert_svg_to_image(self, *, svg_content: str, width: int, height: int): -> PILImage.Image | None:
+            Convertit le contenu SVG en une image PIL.
         add_signature_certificates() -> 'SignedDocumentCreator':
-            Incorpore les certificats de signature dans le PDF.
+            Ajoute les certificats de signature dans le PDF.
         save_final_document() -> 'SignedDocumentCreator':
             Sauvegarde le document signé final.
         send_signed_document_by_email() -> 'SignedDocumentCreator':
@@ -643,16 +866,23 @@ class SignedDocumentCreator:
         self.creator: User | None = None
         self.signed_document_path: Path | None = None
 
-    def load_document(self, *, hash_document: str) -> 'SignedDocumentCreator':
+    def load_and_verify_document(self, *, hash_document: str) -> 'SignedDocumentCreator':
         """
-        Récupère le document en base et vérifie les droits d'accès.
-        Crée .creator (User) si l'accès est autorisé.
+        Récupère le document en base, vérifie les droits d'accès et l'intégrité du fichier.
+        
+        Cette méthode combine la récupération du document, la vérification des permissions
+        et la validation de l'intégrité du fichier via son hash SHA-256.
+
+        Args:
+            hash_document (str): Le hash du document pour vérification.
 
         Returns:
-            self: SignedDocumentCreator
+            self: SignedDocumentCreator avec document et document_path initialisés.
             
         Raises:
-            ValueError: Si le document n'existe pas ou si l'utilisateur n'a pas les droits.
+            ValueError: Si le document n'existe pas, hash invalide, accès non autorisé,
+                       ou si le fichier a été modifié.
+            FileNotFoundError: Si le fichier PDF n'est pas trouvé sur le disque.
         """
         # Récupérer le document en base
         self.document = g.db_session.query(DocToSigne).filter_by(
@@ -660,6 +890,7 @@ class SignedDocumentCreator:
             hash_fichier=hash_document
         ).first()
         
+        # Vérifier que le document avec ce hash existe et lève une erreur si non
         if not self.document:
             raise ValueError("Document non trouvé ou hash invalide.")
         
@@ -671,41 +902,27 @@ class SignedDocumentCreator:
             id_user=self.current_user_id
         ).first() is not None
         
+        # Si ça n'est pas le cas, lever une erreur d'accès non autorisé
         if not (is_creator or has_invitation):
             raise ValueError("Accès non autorisé à ce document.")
         
-        # Récupérer le créateur du document et le hash du document
+        # Récupérer le créateur du document et l'utilisateur expéditeur
         self.creator = g.db_session.query(User).filter_by(id=self.document.id_user).first()
         self.expeditor_user = g.db_session.query(User).filter_by(
             id=self.current_user_id
         ).first()
 
+        # Préparer les données du document pour les logs et emails
         self.document_data: Dict[str, Any] = {
             'document': self.document,
             'expeditor': self.expeditor_user,
             'expeditor_mail': self.expeditor_user.mail if self.expeditor_user else None
         }
-
         
-        return self
-    
-    def verify_document_integrity(self) -> 'SignedDocumentCreator':
-        """
-        Vérifie l'intégrité du document avec le hash.
-        
-        Returns:
-            self: SignedDocumentCreator
-            
-        Raises:
-            ValueError: Si le fichier n'existe pas ou si le hash ne correspond pas.
-            FileNotFoundError: Si le fichier PDF n'est pas trouvé.
-        """
-        if not self.document:
-            raise ValueError("Document non chargé. Appelez load_document() d'abord.")
-        
-        # Construire le chemin vers le fichier
+        # Vérifier l'existence du fichier PDF sur le disque
         self.document_path = Path(self.document.chemin_fichier)
         
+        # Lever une erreur si le fichier n'existe pas
         if not self.document_path.exists():
             raise FileNotFoundError(f"Fichier PDF non trouvé : {self.document_path}")
         
@@ -714,6 +931,7 @@ class SignedDocumentCreator:
             file_content = f.read()
             calculated_hash = hashlib.sha256(file_content).hexdigest()
         
+        # Lève une erreur si le hash ne correspond pas
         if calculated_hash != self.document.hash_fichier:
             raise ValueError("Le fichier a été modifié depuis sa création (hash invalide).")
         
@@ -723,14 +941,15 @@ class SignedDocumentCreator:
         """
         Récupère les points et signatures associées au document et les utilisateurs associés
         et crée une structure consolidée.
-        
+        Args:
+            self: SignedDocumentCreator
         Returns:
             self: SignedDocumentCreator
         Raises:
             ValueError: si aucun point n'est trouvé
         """
         if not self.document:
-            raise ValueError("Document non chargé. Appelez load_document() d'abord.")
+            raise ValueError("Document non chargé. Appelez load_and_verify_document() d'abord.")
         
         # Récupérer tous les points de signature des utilisateurs et leurs signatures
         points = g.db_session.query(Points).filter_by(
@@ -769,25 +988,27 @@ class SignedDocumentCreator:
     def verify_all_signatures_completed(self) -> 'SignedDocumentCreator':
         """
         Vérifie que toutes les signatures requises ont été effectuées.
-        
+        Args:
+            self: SignedDocumentCreator
         Returns:
             self: SignedDocumentCreator
-            
         Raises:
             ValueError: Si toutes les signatures ne sont pas complétées.
         """
+        # Vérifier que des points de signature existent
         if not self.view_points:
             raise ValueError("Aucun point de signature trouvé pour ce document.")
         
         # Vérifier que tous les points ont été signés (status = 1)
         unsigned_users: bool = False
-
         for data in self.view_points:
             point = data['point']
             # point est un dictionnaire, accéder avec ['status']
             if point['status'] != 1:
                 unsigned_users = True
-
+                break
+        
+        # Si des utilisateurs n'ont pas signé, lever une erreur
         if unsigned_users:
             raise ValueError("Signatures manquantes sur le document.")
         
@@ -796,34 +1017,34 @@ class SignedDocumentCreator:
     def apply_signatures_to_pdf(self) -> 'SignedDocumentCreator':
         """
         Applique les signatures SVG sur le document PDF en utilisant pypdf.
-        
+        Args:
+            self: SignedDocumentCreator
         Returns:
             self: SignedDocumentCreator
-            
         Raises:
             Exception: Si une erreur survient lors de l'application des signatures.
         """
+        # Vérifier que le document et les points de signature sont chargés
         if not self.document_path or not self.view_points:
             raise ValueError("Document ou données de signature manquants.")
         
+        # Appliquer les signatures sur le PDF : préparation, traitement des pages, écriture
         try:
             self._prepare_signed_document()
             self._process_all_pages()
             self._write_signed_pdf()
-            return self
-            
-        except Exception as e:
-            logging.error(f"Erreur lors de l'application des signatures : {e}")
-            logging.error(traceback.format_exc())
-            self._create_fallback_copy()
-            return self
-        finally:
             self._update_document_hash()
+
+            return self
+        
+        # En cas d'erreur, créer une copie simple du fichier
+        except Exception as e:
+            self._create_fallback_copy()
+            raise ValueError(f"Erreur lors de l'application des signatures : {e}")
     
     def _prepare_signed_document(self) -> None:
         """Prépare le document signé : chemin, lecteur et regroupement des signatures."""
-        from pypdf import PdfReader, PdfWriter
-        
+        # Vérifier que le chemin du document est défini
         if not self.document_path:
             raise ValueError("Chemin du document manquant")
         
@@ -835,8 +1056,6 @@ class SignedDocumentCreator:
         self.reader = PdfReader(str(self.document_path))
         self.writer = PdfWriter()
         
-        logging.info(f"PDF original lu : {len(self.reader.pages)} pages")
-        
         # Grouper les données de signature par page
         self.data_by_page: Dict[int, List[Dict[str, Any]]] = {}
         for data in self.view_points:
@@ -847,9 +1066,7 @@ class SignedDocumentCreator:
     
     def _process_all_pages(self) -> None:
         """Traite toutes les pages du PDF en ajoutant les signatures."""
-        from pypdf import PdfReader
-        from io import BytesIO
-        
+        # Parcourir chaque page du PDF
         for page_num in range(1, len(self.reader.pages) + 1):
             page = self.reader.pages[page_num - 1]
             
@@ -857,41 +1074,34 @@ class SignedDocumentCreator:
             if page_num in self.data_by_page:
                 overlay_pdf = self._create_signature_overlay(
                     page=page,
-                    signatures_data=self.data_by_page[page_num],
-                    page_num=page_num
+                    signatures_data=self.data_by_page[page_num]
                 )
                 
+                # Ajouter l'overlay à la page si créé
                 if overlay_pdf:
                     overlay_reader = PdfReader(BytesIO(overlay_pdf))
                     page.merge_page(overlay_reader.pages[0])
-                    logging.info(f"Signatures ajoutées sur la page {page_num}")
             
             self.writer.add_page(page)
     
     def _write_signed_pdf(self) -> None:
         """Écrit le PDF signé sur le disque et vérifie son intégrité."""
+        # Vérifier que le chemin du document signé est défini
         if not self.signed_document_path:
             raise ValueError("Chemin du document signé manquant")
         
-        logging.info(f"Écriture du PDF signé vers : {self.signed_document_path}")
-        
+        # Écrire le PDF signé dans le fichier de sortie
         with open(self.signed_document_path, 'wb') as output_file:
             self.writer.write(output_file)
         
-        logging.info("PDF écrit avec succès")
-        
         # Vérifier que le fichier a bien été créé et n'est pas vide
-        if not self.signed_document_path.exists():
-            raise ValueError(f"Le fichier signé n'a pas été créé : {self.signed_document_path}")
-        
         file_size = self.signed_document_path.stat().st_size
-        if file_size == 0:
-            raise ValueError("Le fichier signé est vide (0 bytes)")
-        
-        logging.info(f"PDF signé créé avec succès : {self.signed_document_path} ({file_size} bytes)")
+        if not self.signed_document_path.exists() or file_size == 0:
+            raise ValueError(f"Le fichier signé n'a pas été créé : {self.signed_document_path}")
     
     def _create_fallback_copy(self) -> None:
         """Crée une copie simple du fichier en cas d'erreur."""
+        # Si présence du document original, faire une copie simple
         if self.document_path:
             signed_filename = f"signed_{self.document_path.name}"
             self.signed_document_path = self.document_path.parent / signed_filename
@@ -899,15 +1109,17 @@ class SignedDocumentCreator:
     
     def _update_document_hash(self) -> None:
         """Met à jour le hash du document signé."""
+        # Si absence du document sur le disque ou objet document, lever une erreur
         if not self.signed_document_path or not self.document:
             raise ValueError("Chemin du document signé ou objet document manquant")
         
+        # Calculer le hash SHA-256 du fichier signé et mettre à jour en base
         with open(self.signed_document_path, "rb") as f:
             file_content = f.read()
             new_hash = hashlib.sha256(file_content).hexdigest()
         self.document.hash_signed_file = new_hash
     
-    def _create_signature_overlay(self, page: Any, signatures_data: List[Dict[str, Any]], page_num: int) -> bytes | None:
+    def _create_signature_overlay(self, page: Any, signatures_data: List[Dict[str, Any]]) -> bytes | None:
         """
         Crée un overlay PDF avec les signatures pour une page donnée.
         
@@ -919,44 +1131,34 @@ class SignedDocumentCreator:
         Returns:
             bytes: Le PDF overlay en bytes, ou None si aucune signature
         """
-        from reportlab.pdfgen import canvas
-        
         try:
             # Récupérer les dimensions de la page
             page_box = page.mediabox
             page_width = float(page_box.width)
             page_height = float(page_box.height)
             
-            logging.info(f"Création overlay pour page {page_num}, dimensions: {page_width}x{page_height}")
-            
             # Créer un buffer pour le PDF overlay
             packet = BytesIO()
             can: Canvas = canvas.Canvas(packet, pagesize=(page_width, page_height))
-            
             signatures_added = 0
             
             # Ajouter chaque signature sur l'overlay
-            logging.info(f"Traitement de {len(signatures_data)} signature(s) pour la page {page_num}")
-            
             for data in signatures_data:
                 if self._add_single_signature_to_canvas(can, data, page_width, page_height):
                     signatures_added += 1
             
             # Finaliser le canvas seulement si des signatures ont été ajoutées
             if signatures_added == 0:
-                logging.warning(f"Aucune signature ajoutée sur la page {page_num}")
-                return None
+                raise ValueError("Aucune signature valide à ajouter sur cette page.")
             
+            # Finaliser le PDF overlay
             can.save()
             packet.seek(0)
             
-            logging.info(f"{signatures_added} signature(s) ajoutée(s) dans l'overlay de la page {page_num}")
             return packet.getvalue()
             
         except Exception as e:
-            logging.error(f"Erreur lors de la création de l'overlay: {e}")
-            logging.error(traceback.format_exc())
-            return None
+            raise ValueError(f"Impossible de créer l'overlay de signature: {e}")
     
     def _add_single_signature_to_canvas(self, can: Canvas, data: Dict[str, Any], page_width: float, page_height: float) -> bool:
         """
@@ -971,6 +1173,7 @@ class SignedDocumentCreator:
         Returns:
             bool: True si la signature a été ajoutée avec succès
         """
+        # Extraire les données nécessaires
         signature = data['signature']
         point = data['point']
         nom_complet = data['user_complete_name']
@@ -978,8 +1181,7 @@ class SignedDocumentCreator:
         # Vérifier si on a un SVG valide
         svg_graph = signature.get('svg_graph')
         if not svg_graph or len(str(svg_graph).strip()) == 0:
-            logging.warning(f"Pas de SVG valide pour le point {point.get('id')}")
-            return False
+            raise ValueError(f"Pas de SVG valide pour le point {point.get('id')}")
         
         # Traiter l'image de signature
         largeur = signature.get('largeur_graph', 600)
@@ -987,8 +1189,7 @@ class SignedDocumentCreator:
         svg_image = self._process_signature_image(svg_graph, largeur, hauteur)
         
         if not svg_image:
-            logging.warning(f"Impossible de convertir le SVG en image pour le point {point.get('id')}")
-            return False
+            raise ValueError(f"Impossible de convertir le SVG en image pour le point {point.get('id')}")
         
         # Calculer la position de la signature
         x_pos, y_pos = self._calculate_signature_position(
@@ -996,7 +1197,7 @@ class SignedDocumentCreator:
         )
         
         # Dessiner la signature sur le canvas
-        self._draw_signature_on_canvas(can, svg_image, x_pos, y_pos, point)
+        self._draw_signature_on_canvas(can, svg_image, x_pos, y_pos)
         
         # Ajouter les métadonnées textuelles
         self._add_signature_metadata_text(
@@ -1025,12 +1226,13 @@ class SignedDocumentCreator:
             height=hauteur
         )
         
+        # Si échec de la conversion, retourner None
         if not svg_image:
             return None
         
         # Réduire la taille à 33% (un tiers de la taille originale)
         img_width, img_height = svg_image.size
-        reduction_factor = 1.0 / 3.0
+        reduction_factor = 1/3
         
         new_width = int(img_width * reduction_factor)
         new_height = int(img_height * reduction_factor)
@@ -1040,20 +1242,20 @@ class SignedDocumentCreator:
         # Redimensionner encore si trop grande
         max_width = 450
         max_height = 150
-        
         final_width, final_height = svg_image.size
         scale_ratio = 1.0
         
+        # Vérifier si on dépasse les dimensions max de la page
         if final_width > max_width:
             scale_ratio = max_width / final_width
         if final_height * scale_ratio > max_height:
             scale_ratio = max_height / final_height
         
+        # Gestion du redimensionnement si nécessaire
         if scale_ratio < 1.0:
             final_width = int(final_width * scale_ratio)
             final_height = int(final_height * scale_ratio)
             svg_image = svg_image.resize((final_width, final_height), PILImage.Resampling.LANCZOS)
-            logging.info(f"Image redimensionnée encore à ({final_width}x{final_height})")
         
         return svg_image
     
@@ -1071,6 +1273,7 @@ class SignedDocumentCreator:
         Returns:
             tuple: (x_pos, y_pos) position finale sur la page
         """
+        # Récupérer les coordonnées du point en pixels
         point_x_pixels = float(point.get('x', 100))
         point_y_pixels = float(point.get('y', 100))
         
@@ -1079,21 +1282,16 @@ class SignedDocumentCreator:
         point_x = point_x_pixels / PDF_SCALE
         point_y = point_y_pixels / PDF_SCALE
         
-        logging.info(f"🔄 Conversion pixels→PDF: ({point_x_pixels:.2f}, {point_y_pixels:.2f}) → ({point_x:.2f}, {point_y:.2f})")
-        
         # Calculer la position pour centrer l'image sur le point
         img_w = svg_image.width
         img_h = svg_image.height
         
         # VALIDATION DES COORDONNÉES
         if point_y > page_height:
-            logging.warning(f"⚠️ Point Y ({point_y:.2f}) hors de la page (hauteur: {page_height})")
-            logging.warning("   Recalage automatique du point vers le centre de la page")
             point_x = page_width / 2
             point_y = page_height / 2
         
         if point_x > page_width:
-            logging.warning(f"⚠️ Point X ({point_x:.2f}) hors de la page (largeur: {page_width})")
             point_x = page_width / 2
         
         # S'assurer que la signature ne déborde pas de la page
@@ -1110,13 +1308,10 @@ class SignedDocumentCreator:
         if y_pos + img_h > page_height:
             y_pos = page_height - img_h - 10
         
-        logging.info(f"Page: {page_width}x{page_height}, Point: ({point_x}, {point_y}), Image: {img_w}x{img_h}")
-        logging.info(f"Position calculée: ({x_pos}, {y_pos})")
-        
         return x_pos, y_pos
     
     def _draw_signature_on_canvas(self, can: Canvas, svg_image: PILImage.Image, 
-                                  x_pos: float, y_pos: float, point: Dict[str, Any]) -> None:
+                                  x_pos: float, y_pos: float) -> None:
         """
         Dessine l'image de signature sur le canvas.
         
@@ -1127,14 +1322,11 @@ class SignedDocumentCreator:
             y_pos: Position Y sur la page
             point: Le point de signature (pour logging)
         """
+        # Convertir l'image PIL en ImageReader pour reportlab
         img_reader: ImageReader = ImageReader(svg_image)
         can.drawImage(img_reader, x_pos, y_pos,  # type: ignore[call-arg]
                     width=svg_image.width, height=svg_image.height,
                     mask='auto', preserveAspectRatio=True)
-        
-        point_x = float(point.get('x', 100)) / 1.5  # PDF_SCALE
-        point_y = float(point.get('y', 100)) / 1.5
-        logging.info(f"✓ Signature centrée sur point ({point_x}, {point_y}), taille {svg_image.width}x{svg_image.height}")
     
     def _add_signature_metadata_text(self, can: Canvas, nom_complet: str, signature: Dict[str, Any],
                                      x_pos: float, y_pos: float, img_w: int, img_h: int,
@@ -1172,7 +1364,6 @@ class SignedDocumentCreator:
             # Placer au-dessus de la signature
             text_y_line1 = y_pos + img_h + 12
             text_y_line2 = text_y_line1 + 10
-            logging.info(f"⚠️ Métadonnées repositionnées au-dessus (y={text_y_line2:.2f} < {MIN_MARGIN})")
         
         # Centrer horizontalement les textes
         text_x1 = x_pos + (img_w - text_width1) / 2
@@ -1192,8 +1383,6 @@ class SignedDocumentCreator:
         can.drawString(text_x1, text_y_line1, text_line1)
         can.drawString(text_x2, text_y_line2, text_line2)
         
-        logging.info(f"📝 Métadonnées: ligne1=({text_x1:.2f}, {text_y_line1:.2f}), ligne2=({text_x2:.2f}, {text_y_line2:.2f})")
-        
     def _convert_svg_to_image(self, *, svg_content: str, width: int, height: int):
         """
         Convertit un contenu SVG en image utilisable par borb.
@@ -1208,20 +1397,12 @@ class SignedDocumentCreator:
         """
         try:
             # Valider le contenu SVG
-            if not svg_content:
-                logging.warning(f"Contenu SVG invalide : {type(svg_content)}")
-                return None
-            
-            if len(svg_content.strip()) == 0:
-                logging.warning("Contenu SVG vide")
-                return None
+            if not svg_content or len(svg_content.strip()) == 0:
+                raise ValueError("Contenu SVG manquant")
             
             # Vérifier que le contenu ressemble à du SVG
             if '<svg' not in svg_content.lower():
-                logging.warning(f"Le contenu ne semble pas être du SVG : {svg_content[:100]}")
-                return None
-            
-            logging.info(f"Conversion SVG de {len(svg_content)} caractères, dimensions: {width}x{height}")
+                raise ValueError("Le contenu fourni n'est pas un SVG valide")
             
             # Convertir SVG en PNG avec cairosvg
             png_data = cairosvg.svg2png(
@@ -1234,7 +1415,6 @@ class SignedDocumentCreator:
             if png_data is not None and isinstance(png_data, bytes):
                 # Créer une image PIL depuis les données PNG
                 image = PILImage.open(BytesIO(png_data))
-                logging.info(f"Image créée avec succès : {image.size}")
                 return image
             else:
                 raise ValueError("Conversion SVG en PNG a échoué, données invalides.")
@@ -1311,25 +1491,15 @@ class SignedDocumentCreator:
             raise ValueError("Document signé non généré.")
         
         # Vérifier que le fichier signé existe et n'est pas vide
-        if not self.signed_document_path.exists():
-            raise ValueError(f"Le fichier signé n'existe pas : {self.signed_document_path}")
-        
         file_size = self.signed_document_path.stat().st_size
-        if file_size == 0:
-            raise ValueError("Le fichier signé est vide, impossible de remplacer l'original")
+        if not self.signed_document_path.exists() or file_size == 0:
+            raise ValueError(f"Le fichier signé n'existe pas ou est vide : {self.signed_document_path}")
         
-        logging.info(f"Sauvegarde du document final : {self.signed_document_path} ({file_size} bytes)")
-        
-        # Sauvegarder l'original avec un suffixe _original
+        # Sauvegarder l'original avec un suffixe _original et déplacer le document signé à la place de l'original
         original_backup = self.document_path.parent / f"original_{self.document_path.name}"
-        if self.document_path.exists():
-            shutil.move(self.document_path, original_backup)
-            logging.info(f"Original sauvegardé : {original_backup}")
-        
-        # Déplacer le document signé à la place de l'original
+        if self.document_path.exists(): shutil.move(self.document_path, original_backup)
         shutil.move(self.signed_document_path, self.document_path)
-        logging.info(f"Document signé déplacé vers : {self.document_path}")
-        
+
         # Mettre à jour le document en base (marquer comme finalisé)
         if self.document:
             self.document.status = 1
@@ -1387,7 +1557,6 @@ class SignedDocumentCreator:
                     template=email_template,
                     attachments=[str(self.document_path)]
                 )
-            logging.info(f"Document signé envoyé par email à {len(recipients)} destinataires.")
         except Exception as e:
             logging.error(f"Erreur lors de l'envoi du document signé par email : {e}")
             # Ne pas lever d'exception pour ne pas bloquer le processus
@@ -1416,7 +1585,7 @@ class SecureCertificateManager:
         )
     
     @staticmethod
-    def _add_sygnatories_info(signatories: List[User], signatures: List[Signatures], cert_data: Dict[str, Any], sig_to_user: Dict[int, User]) -> Dict[str, Any]:
+    def _add_signatories_info(signatories: List[User], signatures: List[Signatures], cert_data: Dict[str, Any], sig_to_user: Dict[int, User]) -> Dict[str, Any]:
         """
         Ajoute les informations des signataires au certificat.
         
@@ -1521,8 +1690,11 @@ class SecureCertificateManager:
                 }
             }
             
-            cert_data = SecureCertificateManager._add_sygnatories_info(signatories, signatures, cert_data, sig_to_user)
-            cert_data = SecureCertificateManager._add_signatures_details(signatories, signatures, cert_data, sig_to_user)
+            # Ajouter les informations des signataires et les détails des signatures
+            cert_data = SecureCertificateManager._add_signatories_info(signatories, signatures,
+                                                                       cert_data, sig_to_user)
+            cert_data = SecureCertificateManager._add_signatures_details(signatories, signatures,
+                                                                         cert_data, sig_to_user)
             
             # Créer la signature cryptographique du certificat
             cert_json = json.dumps(cert_data, sort_keys=True, separators=(',', ':'))
@@ -1605,28 +1777,35 @@ class SecureCertificateManager:
                     hashes.SHA256()
                 )
             else:
-                logging.error("Type de clé publique non supporté pour la vérification")
-                return False
+                raise ValueError("La clé publique n'est pas une clé RSA valide.")
             
             return True
             
         except Exception as e:
-            logging.error(f"Erreur lors de la vérification du certificat : {e}")
-            return False
+            raise ValueError(f"Échec de la vérification du certificat : {e}")
 
 def send_email_signed_files(*, to: str, template: str, attachments: List[str]) -> None:
+    """
+    Envoie un e-mail avec des fichiers signés en pièce jointe.
+
+    Args:
+        to (str): Adresse e-mail du destinataire.
+        template (str): Contenu HTML de l'e-mail.
+        attachments (List[str]): Liste des chemins de fichiers à attacher.
+    """
     # Configuration de l'e-mail
     email_expediteur: str = Config.EMAIL_USER
     mot_de_passe: str = Config.EMAIL_PASSWORD
 
+    # Construire le message
     msg = MIMEMultipart()
     msg['From'] = email_expediteur
     msg['To'] = to
     msg['Subject'] = 'La Péraudière | Documents signés'
-
     body = template
     msg.attach(MIMEText(body, 'html'))
 
+    # Ajouter toutes les pièces jointes
     for file_path in attachments:
         try:
             with open(file_path, 'rb') as f:
@@ -1636,9 +1815,8 @@ def send_email_signed_files(*, to: str, template: str, attachments: List[str]) -
                 part.add_header('Content-Disposition', 'attachment', filename=Path(file_path).name)
                 msg.attach(part)
         except Exception as e:
-            logging.error(f"Erreur lors de la lecture du fichier {file_path} pour l'attachement: {str(e)}")
+            logging.error(f"Erreur lors de la lecture de la pièce jointe {file_path}: {str(e)}")
             continue
-
     # Envoyer l'e-mail
     try:
         with smtplib.SMTP(Config.EMAIL_SMTP, Config.EMAIL_PORT) as server:
@@ -1648,19 +1826,26 @@ def send_email_signed_files(*, to: str, template: str, attachments: List[str]) -
     except Exception as e:
         logging.error(f"Erreur lors de l'envoi de l'e-mail avec pièces jointes à {to}: {str(e)}")
 
-
 def send_email_invitation(*, to: str, template: str) -> None:
+    """
+    Envoie un e-mail d'invitation à signer un document.
+
+    Args:
+        to (str): Adresse e-mail du destinataire.
+        template (str): Contenu HTML de l'e-mail.
+    """
     # Configuration de l'e-mail
     email_expediteur: str = Config.EMAIL_USER
     mot_de_passe: str = Config.EMAIL_PASSWORD
 
+    # Construire le message
     msg = MIMEMultipart()
     msg['From'] = email_expediteur
     msg['To'] = to
     msg['Subject'] = 'La Péraudière | Vous êtes invité à signer un document'
-
     body = template
     msg.attach(MIMEText(body, 'html'))
+
     # Envoyer l'e-mail
     try:
         with smtplib.SMTP(Config.EMAIL_SMTP, Config.EMAIL_PORT) as server:
@@ -1671,17 +1856,25 @@ def send_email_invitation(*, to: str, template: str) -> None:
         logging.error(f"Erreur lors de l'envoi de l'e-mail d'invitation à {to}: {str(e)}")
 
 def send_otp_email(*, to: str, template: str) -> None:
+    """
+    Envoie un e-mail contenant un code OTP pour la signature.
+
+    Args:
+        to (str): Adresse e-mail du destinataire.
+        template (str): Contenu HTML de l'e-mail.
+    """
     # Configuration de l'e-mail
     email_expediteur: str = Config.EMAIL_USER
     mot_de_passe: str = Config.EMAIL_PASSWORD
 
+    # Construire le message
     msg = MIMEMultipart()
     msg['From'] = email_expediteur
     msg['To'] = to
     msg['Subject'] = 'La Péraudière | Votre code OTP pour signer un document'
-
     body = template
     msg.attach(MIMEText(body, 'html'))
+    
     # Envoyer l'e-mail
     try:
         with smtplib.SMTP(Config.EMAIL_SMTP, Config.EMAIL_PORT) as server:

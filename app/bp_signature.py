@@ -45,7 +45,7 @@ def signature_make() -> Any:
         # Récupérer les points de signature
         try:
             document = SignatureMaker(request) \
-                            .get_request() \
+                            .post_request() \
                             .get_signature_points() \
                             .create_document() \
                             .create_points() \
@@ -203,8 +203,7 @@ def create_final_signed_document(id_document: int, hash_document: str) -> Any:
         )
         
         # Exécuter toutes les étapes du processus
-        creator.load_document(hash_document=hash_document) \
-               .verify_document_integrity() \
+        creator.load_and_verify_document(hash_document=hash_document) \
                .load_signatures_and_points() \
                .verify_all_signatures_completed() \
                .apply_signatures_to_pdf() \

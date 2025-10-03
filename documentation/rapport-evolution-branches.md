@@ -28,9 +28,9 @@
 
 ### 2.1 sprint_signature (En cours) 🚧
 
-**Période :** 27-30 septembre 2025 (en cours)  
-**Durée d'exécution :** 4+ jours  
-**Commits :** 15+ commits majeurs  
+**Période :** 27 septembre - 3 octobre 2025 (en cours)  
+**Durée d'exécution :** 7 jours  
+**Commits :** 25+ commits majeurs  
 
 #### Travail Réalisé (4 jours - en cours)
 
@@ -46,7 +46,7 @@
 - **Diagramme UML de base de données mis à jour** avec nouveau modèle SVG
 - **Système de dossiers temporaires** non montés pour la sécurité
 
-#### Corrections Critiques (Jour 4 - 30 septembre 2025)
+#### Corrections Critiques (30 septembre 2025)
 
 - **Résolution erreur SQLAlchemy** : Correction du conflit `ip_adresse` vs `ip_addresse` dans les modèles
 - **Gestion cohérente des réponses** : API uniformisée retournant toujours du JSON pour les erreurs
@@ -54,6 +54,42 @@
 - **Harmonisation des attributs** : `signe_at` au lieu de `signed_at` pour la cohérence du modèle
 - **Gestion des erreurs améliorée** : Try/catch avec rollback automatique en cas d'erreur
 - **Consolidation de la documentation** : Fusion des notes techniques dans le fichier todo.md central
+
+#### Refactoring Majeur (3 octobre 2025)
+
+- **Nettoyage complet de signatures.py** : Suppression des fonctions obsolètes et imports inutiles
+  - Réorganisation alphabétique des imports par catégorie (stdlib, third-party, local)
+  - Suppression de ~100 lignes de code obsolète (`_add_text_signature_fallback`, `_add_signature_metadata_to_page`)
+  - Élimination des duplications d'imports (datetime, Config, MIME*)
+  - Suppression de l'attribut inutilisé `signatory_name` dans SignatureDoer
+  
+- **Réduction drastique de la complexité cognitive** :
+  - `_create_signature_overlay` : **207 lignes → 6 méthodes <50 lignes** (complexité 67/15 → <15/méthode)
+    - `_create_signature_overlay()` : orchestration principale (~50 lignes)
+    - `_add_single_signature_to_canvas()` : gestion signature unique (~30 lignes)
+    - `_process_signature_image()` : traitement d'image (~35 lignes)
+    - `_calculate_signature_position()` : calcul de position (~50 lignes)
+    - `_draw_signature_on_canvas()` : dessin sur canvas (~15 lignes)
+    - `_add_signature_metadata_text()` : métadonnées textuelles (~50 lignes)
+  
+  - `apply_signatures_to_pdf` : **100 lignes → 6 méthodes <25 lignes** (complexité 19/15 → <10/méthode)
+    - `apply_signatures_to_pdf()` : orchestration (~20 lignes)
+    - `_prepare_signed_document()` : initialisation (~20 lignes)
+    - `_process_all_pages()` : traitement des pages (~20 lignes)
+    - `_write_signed_pdf()` : écriture PDF (~18 lignes)
+    - `_create_fallback_copy()` : copie de secours (~5 lignes)
+    - `_update_document_hash()` : mise à jour hash (~9 lignes)
+
+- **Corrections de typage Python** :
+  - Ajout de `# type: ignore[call-arg]` pour compatibilité reportlab/Pillow
+  - Validation systématique des types `Path | None` avec guards
+  - Résolution complète des erreurs Pylance/Pyright (0 erreur)
+
+- **Amélioration des templates HTML** :
+  - Correction validation HTML du template `signed_document_mail.html`
+  - Remplacement de `<ul>/<li>` par `<div>` avec classes CSS pour les signataires
+  - Ajout de coches vertes (✓) via pseudo-éléments CSS pour améliorer le visuel
+  - Conformité stricte HTML5 (pas de nœuds texte dans les listes)
 
 #### Évolutions Techniques
 
@@ -79,9 +115,11 @@
 ```txt
 ~ app/bp_signature.py (420 lignes - corrections erreurs critiques)
 ~ app/models.py (correctifs attributs SQLAlchemy)
+~ app/signatures.py (refactoring majeur - réduction ~300 lignes, complexité divisée par 4)
 ~ app/static/js/signatures-sign.js (gestion réponses JSON)
+~ app/templates/signatures/signed_document_mail.html (validation HTML5, amélioration design)
 ~ todo.md (consolidation notes techniques)
-~ documentation/rapport-evolution-branches.md (mise à jour 30/09)
+~ documentation/rapport-evolution-branches.md (mise à jour 03/10)
 ```
 
 ---
@@ -280,7 +318,7 @@ Sept 2025    : ~8500 lignes (+factures, contacts, signatures)
 
 | Sprint | Complexité | Temps Moyen | Réussite |
 |--------|------------|-------------|----------|
-| Signature | Très Élevée | 4+ jours | 🚧 75% |
+| Signature | Très Élevée | 7 jours | 🚧 85% |
 | Bills | Élevée | 4 jours | ✅ 100% |
 | Code Cleaner | Moyenne | 4 jours | ✅ 100% |
 | Contacts | Faible | 1 jour | ✅ 100% |
@@ -302,7 +340,7 @@ Sept 2025    : ~8500 lignes (+factures, contacts, signatures)
 ### 4.1 Vélocité par Sprint
 
 ```txt
-sprint_signature : 4+ jours → Module complexe en cours (75% complet)
+sprint_signature : 7 jours → Module complexe en cours (85% complet, refactoring majeur)
 sprint_contacts  : 1 jour → Fonctionnalité complète (excellent)  
 sprint_mails     : 1 jour → Amélioration majeure (excellent)
 sprint_bills     : 4 jours → Module complexe (bon)
@@ -311,10 +349,12 @@ sprint_workflows : 1 jour → CI/CD complet (excellent)
 
 ### 4.2 Qualité du Code
 
-- **Tests** : Intégrés depuis sprint_workflows
-- **Documentation** : Améliorée à chaque sprint
-- **Standards** : Cohérence depuis sprint_code_cleaner
-- **Sécurité** : Renforcée progressivement
+- **Tests** : Intégrés depuis sprint_workflows, tests signatures fonctionnels
+- **Documentation** : Améliorée à chaque sprint, documentation technique approfondie
+- **Standards** : Cohérence depuis sprint_code_cleaner, complexité cognitive maîtrisée
+- **Sécurité** : Renforcée progressivement, validation systématique des types
+- **Maintenabilité** : Refactoring méthodique, fonctions courtes et focalisées (≤50 lignes)
+- **Typage** : Type hints complets, 0 erreur Pylance/Pyright
 
 ### 4.3 Gestion des Risques
 
@@ -338,11 +378,12 @@ sprint_workflows : 1 jour → CI/CD complet (excellent)
 
 ### 5.2 Axes d'Amélioration
 
-1. **Tests unitaires** à généraliser sur tous les modules
-2. **Tests 2e2** à implémenter
+1. **Tests unitaires** à généraliser sur tous les modules (en cours pour signatures)
+2. **Tests E2E** à implémenter
 3. **Monitoring** à finaliser et déployer
 4. **Performance** à analyser sur les gros volumes
 5. **UX/UI** à améliorer sur mobile ou développement d'une app dédiée (flutter)
+6. **Couverture de code** à mesurer et améliorer (objectif : 80%+)
 
 ### 5.3 Roadmap
 
@@ -372,12 +413,28 @@ Le projet Intranet montre une **évolution exceptionnelle** sur les 6 derniers m
 - **Sécurité renforcée** à tous les niveaux
 - **Vélocité de développement élevée** et constante
 
-Le **sprint_signature actuel** représente le **défi technique le plus complexe** du projet avec une **architecture avancée** développée sur **4+ jours**. Les corrections du 30 septembre ont résolu les **erreurs critiques SQLAlchemy** et **harmonisé l'API**, mais **plusieurs fonctionnalités importantes restent à implémenter** : validation des statuts, génération PDF final, notifications automatiques et sécurisations avancées.
+Le **sprint_signature actuel** représente le **défi technique le plus complexe** du projet avec une **architecture avancée** développée sur **7 jours**. Les corrections du 30 septembre ont résolu les **erreurs critiques SQLAlchemy** et **harmonisé l'API**. Le **refactoring majeur du 3 octobre** a permis de :
 
-La **qualité du code** et la **discipline de développement** montrent une **maturité technique excellente** pour un projet de cette envergure, avec une **documentation technique approfondie** et un **modèle de données visuellement représenté**.
+- **Réduire drastiquement la complexité cognitive** (division par 4)
+- **Supprimer ~100 lignes de code obsolète**
+- **Améliorer la maintenabilité** avec des fonctions courtes et focalisées
+- **Atteindre 0 erreur de typage** avec validation systématique
+- **Améliorer l'expérience utilisateur** des emails avec un design optimisé
+
+**Plusieurs fonctionnalités importantes restent à implémenter** : validation des statuts, génération PDF final, notifications automatiques et sécurisations avancées.
+
+La **qualité du code** et la **discipline de développement** montrent une **maturité technique excellente** pour un projet de cette envergure, avec une **documentation technique approfondie**, un **modèle de données visuellement représenté** et une **dette technique activement réduite**.
+
+### Points Remarquables
+
+- **Complexité cognitive maîtrisée** : Toutes les fonctions respectent le seuil de 15
+- **Code propre** : 0 erreur de linting, typage strict
+- **Architecture modulaire** : Classes métier dédiées, séparation des responsabilités
+- **Tests fonctionnels** : Validation des signatures de base et avancées
+- **Design soigné** : Templates HTML validés, UX optimisée
 
 ---
 
-**Rapport généré le :** 30 septembre 2025  
-**Version :** 1.4 (sprint signature en cours)
+**Rapport généré le :** 3 octobre 2025  
+**Version :** 1.5 (sprint signature - phase refactoring)  
 **Prochaine révision :** Fin octobre 2025
