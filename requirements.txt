@@ -26,3 +26,5 @@ waitress==3.0.2
 borb==3.0.2
 pillow==11.3.0
 cairosvg==2.8.2
+pypdf==6.1.1
+reportlab==4.4.4

@@ -86,8 +86,21 @@ def signature_do(doc_id: int, hash_document: str) -> Any:
             
             g.db_session.commit()
 
+            # Vérifier si tous les signataires ont signé
+            total_points = g.db_session.query(Points).filter_by(id_document=doc_id).count()
+            signed_points = g.db_session.query(Points).filter_by(id_document=doc_id, status=1).count()
+            all_signed = (total_points == signed_points)
+            
             message = f"Le document '{doer.document.doc_nom}' a été signé avec succès."
-            return jsonify(success=True, message=message, redirect=True)
+            
+            return jsonify(
+                success=True, 
+                message=message, 
+                redirect=True,
+                all_signed=all_signed,
+                document_id=doc_id,
+                hash_document=hash_document
+            )
         except ValueError as e:
             # En cas d'erreur (OTP erroné, etc.), retourner du JSON
             return jsonify(success=False, message=str(e)), 400
@@ -154,10 +167,10 @@ def signature_request_otp(id_document: int, hash_document: str) -> Any:
     try:
         send_otp_email(to=user.mail, template=body_mail)
         g.db_session.commit()
+        return jsonify(success=True)
     except Exception as e:
         logging.error(f"Erreur lors de la création du code OTP : {e}")
         return jsonify(success=False, message=INTERNAL_SERVER_ERROR), 500
-    return jsonify(success=True)
 
 @signatures_bp.route('/liste', methods=['GET'])
 def signature_do_list() -> Any:

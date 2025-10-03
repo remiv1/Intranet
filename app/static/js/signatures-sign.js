@@ -91,34 +91,70 @@ function initializeEventListeners() {
 // ===========================================
 
 function displaySignaturePoints(points) {
-    console.log('Affichage des points de signature:', points);
+    console.log('=== AFFICHAGE DES POINTS DE SIGNATURE ===');
+    console.log('Nombre de points à afficher:', points ? points.length : 0);
+    console.log('Points reçus:', points);
+    
     if (!points || !Array.isArray(points)) {
         console.error('Points de signature invalides:', points);
         return;
     }
     
-    points.forEach(point => {
-        console.log('Création du rectangle pour le point:', point);
+    // Vérifier que toutes les pages sont bien présentes dans le DOM
+    const pdfPages = document.querySelectorAll('.pdf-page');
+    console.log('Nombre de pages PDF dans le DOM:', pdfPages.length);
+    pdfPages.forEach((page, index) => {
+        const pageNum = page.getAttribute('data-page-number');
+        console.log(`Page ${index + 1} dans le DOM a data-page-number="${pageNum}"`);
+    });
+    
+    points.forEach((point, index) => {
+        console.log(`\n--- Traitement du point ${index + 1}/${points.length} ---`);
+        console.log('Données du point:', point);
         createSignatureRectangle(point);
     });
+    
+    console.log('=== FIN AFFICHAGE DES POINTS ===\n');
 }
 
-function createSignatureRectangle(point) {
-    // Trouver la page correspondante (essayer différentes propriétés)
-    let pageDiv = document.querySelector(`[data-page-number="${point.page_num}"]`)?.parentElement;
-    if (!pageDiv) {
-        pageDiv = document.querySelector(`[data-page-number="${point.pageNum}"]`)?.parentElement;
+function createSignatureRectangle(viewPoint) {
+    // Extraire les données du point depuis la structure ViewPoints
+    const point = viewPoint.point || viewPoint;
+    const user = viewPoint.user || {};
+    const userName = viewPoint.user_complete_name || user.nom || 'Signataire';
+    
+    console.log('Point extrait:', point);
+    console.log('page_num du point:', point.page_num);
+    console.log('Type de page_num:', typeof point.page_num);
+    
+    // Trouver le conteneur de page (div.pdf-page) directement
+    let pageDiv = document.querySelector(`.pdf-page[data-page-number="${point.page_num}"]`);
+    console.log(`Recherche avec .pdf-page[data-page-number="${point.page_num}"]`, pageDiv ? 'TROUVÉ' : 'NON TROUVÉ');
+    
+    if (!pageDiv && point.pageNum) {
+        pageDiv = document.querySelector(`.pdf-page[data-page-number="${point.pageNum}"]`);
+        console.log(`Recherche avec .pdf-page[data-page-number="${point.pageNum}"]`, pageDiv ? 'TROUVÉ' : 'NON TROUVÉ');
     }
-    if (!pageDiv) {
-        pageDiv = document.querySelector(`[data-page-number="${point.page}"]`)?.parentElement;
+    if (!pageDiv && point.page) {
+        pageDiv = document.querySelector(`.pdf-page[data-page-number="${point.page}"]`);
+        console.log(`Recherche avec .pdf-page[data-page-number="${point.page}"]`, pageDiv ? 'TROUVÉ' : 'NON TROUVÉ');
     }
     
     if (!pageDiv) {
-        console.warn(`Page non trouvée pour le point ${point.id}. Propriétés disponibles:`, Object.keys(point));
+        console.error(`❌ ERREUR: Page ${point.page_num} non trouvée pour le point ${point.id}`);
+        console.error('Propriétés du point disponibles:', Object.keys(point));
+        console.error('Valeurs du point:', point);
+        
+        // Lister toutes les pages disponibles
+        const allPages = document.querySelectorAll('.pdf-page[data-page-number]');
+        console.error('Pages disponibles dans le DOM:');
+        allPages.forEach(p => {
+            console.error(`  - Page ${p.getAttribute('data-page-number')} (${p.tagName})`);
+        });
         return;
     }
     
-    console.log('Page trouvée:', pageDiv, 'pour le point:', point);
+    console.log(`✅ Page ${point.page_num} trouvée:`, pageDiv);
     
     // S'assurer que la page a position: relative pour les enfants absolus
     if (getComputedStyle(pageDiv).position === 'static') {
@@ -147,10 +183,10 @@ function createSignatureRectangle(point) {
     
     // Texte dans le rectangle
     rectangle.innerHTML = 'Signature';
-    rectangle.title = `Zone de signature pour ${point.user_name}`;
+    rectangle.title = `Zone de signature pour ${userName} - Page ${point.page_num}`;
     
     pageDiv.appendChild(rectangle);
-    console.log('Rectangle de signature créé et ajouté à la page:', rectangle);
+    console.log(`Rectangle de signature créé et ajouté à la page ${point.page_num}:`, rectangle);
 }
 
 // ===========================================
@@ -608,8 +644,35 @@ function validateSignatureWithOTP(otpCode) {
     // Obtenir les informations du navigateur
     const user_agent = navigator.userAgent;
     
-    // Générer le SVG à partir des données haute précision
-    const svg_graph = generateSVGFromStrokes(customSignatureData.strokes);
+    // Récupérer les données de signature depuis SignaturePad
+    const signaturePadData = signaturePad.toData();
+    
+    // Générer le SVG à partir des données de SignaturePad (toujours disponibles)
+    let svg_graph = signaturePad.toSVG();
+    
+    console.log('Données SignaturePad:', {
+        strokeCount: signaturePadData.length,
+        customStrokeCount: customSignatureData.strokes.length,
+        svgLength: svg_graph.length
+    });
+    
+    // Si customSignatureData est vide, le remplir avec les données de SignaturePad
+    if (customSignatureData.strokes.length === 0 && signaturePadData.length > 0) {
+        console.log('Conversion des données SignaturePad vers customSignatureData');
+        customSignatureData.strokes = signaturePadData.map((stroke, index) => ({
+            id: Date.now() + index,
+            startTime: performance.now(),
+            endTime: performance.now(),
+            points: stroke.points.map(point => ({
+                x: point.x,
+                y: point.y,
+                timestamp: point.time,
+                pressure: point.pressure || 0.5
+            }))
+        }));
+    }
+    
+    console.log('SVG généré (longueur):', svg_graph.length, 'premiers caractères:', svg_graph.substring(0, 200));
     
     // Préparer les données JSON avec toutes les informations
     const data_graph = JSON.stringify({
@@ -680,12 +743,39 @@ function validateSignatureWithOTP(otpCode) {
     .then(data => {
         if (data.success) {
             console.log('Signature validée avec succès');
-            alert('Signature validée avec succès !');
-            // Si redirect est true, rediriger vers la page principale
-            if (data.redirect) {
-                window.location.href = '/ea?success_message=' + encodeURIComponent(data.message);
+            
+            // Vérifier si tous les signataires ont signé
+            if (data.all_signed) {
+                // Tous les signataires ont signé, créer le document final
+                alert('Toutes les signatures ont été collectées ! Le document final est en cours de création...');
+                
+                // Rediriger vers la route de création du document final
+                fetch(`/signature/creer/${data.document_id}/${data.hash_document}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                })
+                .then(response => response.json())
+                .then(finalData => {
+                    if (finalData.success) {
+                        alert('Document final créé avec succès ! ' + finalData.message);
+                        window.location.href = '/ea?success_message=' + encodeURIComponent(finalData.message);
+                    } else {
+                        console.error('Erreur lors de la création du document final:', finalData.message);
+                        alert('Erreur lors de la création du document final: ' + finalData.message);
+                        window.location.href = '/ea?error_message=' + encodeURIComponent(finalData.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Erreur lors de la création du document final:', error);
+                    alert('Erreur lors de la création du document final');
+                    window.location.href = '/ea';
+                });
             } else {
-                location.reload();
+                // Il reste des signatures en attente
+                alert('Signature validée avec succès ! En attente des autres signataires.');
+                window.location.href = '/ea?success_message=' + encodeURIComponent(data.message);
             }
         } else {
             console.error('Erreur lors de la validation:', data.message);

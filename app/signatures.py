@@ -33,6 +33,7 @@ from borb.pdf.layout_element.image.image import Image
 from borb.pdf.layout_element.text.paragraph import Paragraph
 from borb.pdf.page_layout.single_column_layout import SingleColumnLayout
 from borb.pdf.color.hex_color import HexColor
+from PIL import Image as PILImage
 # Imports Cryptography/Secrets
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import rsa, padding
@@ -182,16 +183,15 @@ class SignatureDoer:
             self: SignatureDoer
         """
         otp_valid = (self.otp == self.invitation.code_otp)  # Remplacer par la validation réelle de l'OTP si nécessaire
-        if self.document.status == 1:
-            raise ValueError("Le document a déjà été signé.")
+        
+        # Vérifier si l'utilisateur a déjà signé ses points
+        already_signed = all(point.status == 1 for point in self.object_points)
+        if already_signed:
+            raise ValueError("Vous avez déjà signé ce document.")
         elif self.invitation.expire_at < datetime.now():
             raise ValueError("L'invitation a expiré.")
         elif not self.document or not self.invitation or not self.points or not otp_valid:
             raise ValueError(BAD_INVITATION)
-        
-        # Mise à jour du document
-        self.document.status = 1  # Statut signé
-        self.document.complete_at = self.datetime_submission
 
         # Création de l'entrée dans la table Signatures
         signature: Signatures = Signatures(
@@ -199,7 +199,7 @@ class SignatureDoer:
             signature_hash=self.signature_hash or 'unknown',
             ip_addresse=self.ip_addresse,
             user_agent=self.user_agent or self.request.headers.get('User-Agent', 'unknown'),
-            statut=1,  # Statut signé
+            status=1,  # Statut signé
             svg_graph=self.svg_graph,
             data_graph=self.data_graph,
             largeur_graph=self.largeur_graph,
@@ -209,11 +209,26 @@ class SignatureDoer:
         g.db_session.add(signature)
         g.db_session.flush()
 
-        # Mise à jour des points de signature
+        # Mise à jour des points de signature de l'utilisateur courant
         for point in self.object_points:
             point.status = 1  # Statut signé
             point.signe_at = self.datetime_submission
             point.id_signature = signature.id
+
+        # Vérifier si tous les points du document sont maintenant signés
+        all_points = g.db_session.query(Points).filter_by(id_document=self.document.id).all()
+        all_signed = all(p.status == 1 for p in all_points)
+        
+        if all_signed:
+            # Tous les signataires ont signé, marquer le document comme complètement signé
+            self.document.status = 1  # Statut signé
+            self.document.complete_at = self.datetime_submission
+            logging.info(f"Document {self.document.id} complètement signé par tous les signataires")
+        else:
+            # Il reste des signatures en attente
+            if self.document.status != 0:
+                self.document.status = 0  # Statut en attente
+            logging.info(f"Document {self.document.id} partiellement signé, {sum(1 for p in all_points if p.status == 1)}/{len(all_points)} points signés")
 
         return self
 
@@ -372,24 +387,43 @@ class SignatureMaker:
         # Récupération de la liste des mails, noms et prénoms des utilisateurs
         user_ids = {point['user_id'] for point in self.points}
         users = g.db_session.query(User).filter(User.id.in_(user_ids)).all()
-        self.token = hmac.new(
-            getenv('SECRET_KEY', 'default-secret-key').encode(),
-            f"{self.doc_to_signe.id}-{self.doc_to_signe.hash_fichier}-{datetime.now().isoformat()}".encode(),
-            hashlib.sha256
-        ).hexdigest()
         self.limite_signature = datetime.now() + timedelta(days=int(self.doc_to_signe.echeance) if self.doc_to_signe.echeance and str(self.doc_to_signe.echeance).isdigit() else 3)
+        
         for user in users:
-            # Création d'une invitation dans la table Invitation
-            invitation: Invitation = Invitation(
+            # Vérifier si une invitation existe déjà pour ce document et cet utilisateur
+            existing_invitation = g.db_session.query(Invitation).filter_by(
                 id_document=self.doc_to_signe.id,
-                id_user=user.id,
-                token=self.token,
-                expire_at=self.limite_signature,
-                mail_envoye=True,
-                mail_compte=1
-            )
-            g.db_session.add(invitation)
-            g.db_session.flush()
+                id_user=user.id
+            ).first()
+            
+            if existing_invitation:
+                # Mettre à jour l'invitation existante
+                invitation = existing_invitation
+                invitation.expire_at = self.limite_signature
+                invitation.mail_envoye = True
+                invitation.mail_compte += 1
+                logging.info(f"Invitation existante mise à jour pour l'utilisateur {user.id} sur le document {self.doc_to_signe.id}")
+            else:
+                # Générer un token unique pour chaque utilisateur
+                user_token = hmac.new(
+                    getenv('SECRET_KEY', 'default-secret-key').encode(),
+                    f"{self.doc_to_signe.id}-{self.doc_to_signe.hash_fichier}-{user.id}-{datetime.now().isoformat()}".encode(),
+                    hashlib.sha256
+                ).hexdigest()
+                
+                # Création d'une nouvelle invitation
+                invitation = Invitation(
+                    id_document=self.doc_to_signe.id,
+                    id_user=user.id,
+                    token=user_token,
+                    expire_at=self.limite_signature,
+                    mail_envoye=True,
+                    mail_compte=1
+                )
+                g.db_session.add(invitation)
+                g.db_session.flush()
+            
+            # Envoyer l'email
             mail_template = render_template(
                 'signatures/signature_mail.html',
                 nom_expediteur=f'{session.get("prenom", "")} {session.get("nom", "")}'.strip(),
@@ -724,6 +758,28 @@ class SignedDocumentCreator:
         if not (self.view_points):
             raise ValueError("Aucun point de signature ou utilisateur trouvé pour ce document.")
         
+        # Extraire les signatures et signataires uniques depuis view_points
+        seen_signature_ids: set[Any] = set()
+        seen_user_ids: set[Any] = set()
+
+        for data in self.view_points:
+            signature_data = data.get('signature')
+            user_data = data.get('user')
+            
+            if signature_data and signature_data.get('id') not in seen_signature_ids:
+                seen_signature_ids.add(signature_data['id'])
+                # Récupérer l'objet Signature complet depuis la base
+                sig_obj = g.db_session.query(Signatures).filter_by(id=signature_data['id']).first()
+                if sig_obj:
+                    self.signatures.append(sig_obj)
+            
+            if user_data and user_data.get('id') not in seen_user_ids:
+                seen_user_ids.add(user_data['id'])
+                # Récupérer l'objet User complet depuis la base
+                user_obj = g.db_session.query(User).filter_by(id=user_data['id']).first()
+                if user_obj:
+                    self.signatories.append(user_obj)
+        
         return self
     
     def verify_all_signatures_completed(self) -> 'SignedDocumentCreator':
@@ -744,7 +800,8 @@ class SignedDocumentCreator:
 
         for data in self.view_points:
             point = data['point']
-            if point.status != 1:
+            # point est un dictionnaire, accéder avec ['status']
+            if point['status'] != 1:
                 unsigned_users = True
 
         if unsigned_users:
@@ -754,7 +811,7 @@ class SignedDocumentCreator:
     
     def apply_signatures_to_pdf(self) -> 'SignedDocumentCreator':
         """
-        Applique les signatures SVG sur le document PDF en utilisant la bibliothèque borb.
+        Applique les signatures SVG sur le document PDF en utilisant pypdf.
         
         Returns:
             self: SignedDocumentCreator
@@ -766,38 +823,78 @@ class SignedDocumentCreator:
             raise ValueError("Document ou données de signature manquants.")
         
         try:
+            from pypdf import PdfReader, PdfWriter
+            from reportlab.pdfgen import canvas
+            from reportlab.lib.utils import ImageReader
+            from io import BytesIO
+            
             # Créer le chemin pour le document signé
             signed_filename = f"signed_{self.document_path.name}"
             self.signed_document_path = self.document_path.parent / signed_filename
             
-            # Lire le PDF original
-            self.pdf_document = PDF.read(self.document_path)
-            if self.pdf_document is None:
-                raise ValueError("Impossible de lire le document PDF")
+            # Lire le PDF original avec pypdf
+            reader = PdfReader(str(self.document_path))
+            writer = PdfWriter()
             
-            # Découpage du document en pages
-            self.pages_dict: Dict[int, Page] = {
-                i + 1: self.pdf_document.get_page(i)
-                for i in range(self.pdf_document.get_number_of_pages())
-            }
+            logging.info(f"PDF original lu : {len(reader.pages)} pages")
             
             # Grouper les données de signature par page
-            self.data_by_page: Dict[int, List[Dict[str, Any]]] = {
-                # i est le numéro de la page
-                # Double boucle pour filtrer les données par page et créer la liste de chaque page
-                # et y associer les données nécessaires
-                i: [data for data in self.view_points if data['point'].page_num == i]
-                for i in range(1, self.pdf_document.get_number_of_pages() + 1)
-            }
-            self._apply_signatures_to_page()
+            self.data_by_page: Dict[int, List[Dict[str, Any]]] = {}
+            for data in self.view_points:
+                page_num = data['point']['page_num']
+                if page_num not in self.data_by_page:
+                    self.data_by_page[page_num] = []
+                self.data_by_page[page_num].append(data)
             
-            # Sauvegarder le PDF modifié
-            PDF.write(self.pdf_document, self.signed_document_path)
+            # Traiter chaque page
+            for page_num in range(1, len(reader.pages) + 1):
+                page = reader.pages[page_num - 1]
+                
+                # S'il y a des signatures sur cette page, créer un overlay
+                if page_num in self.data_by_page:
+                    overlay_pdf = self._create_signature_overlay(
+                        page=page,
+                        signatures_data=self.data_by_page[page_num],
+                        page_num=page_num
+                    )
+                    
+                    if overlay_pdf:
+                        # Fusionner l'overlay avec la page originale
+                        overlay_reader = PdfReader(BytesIO(overlay_pdf))
+                        page.merge_page(overlay_reader.pages[0])
+                        logging.info(f"Signatures ajoutées sur la page {page_num}")
+                
+                # Ajouter la page au writer
+                writer.add_page(page)
+            
+            # Écrire le PDF signé
+            logging.info(f"Écriture du PDF signé vers : {self.signed_document_path}")
+            
+            try:
+                with open(self.signed_document_path, 'wb') as output_file:
+                    writer.write(output_file)
+                logging.info(f"PDF écrit avec succès")
+                
+                # Vérifier que le fichier a bien été créé et n'est pas vide
+                if not self.signed_document_path.exists():
+                    raise ValueError(f"Le fichier signé n'a pas été créé : {self.signed_document_path}")
+                
+                file_size = self.signed_document_path.stat().st_size
+                if file_size == 0:
+                    raise ValueError("Le fichier signé est vide (0 bytes)")
+                
+                logging.info(f"PDF signé créé avec succès : {self.signed_document_path} ({file_size} bytes)")
+                
+            except Exception as write_error:
+                logging.error(f"Erreur lors de l'écriture du PDF : {write_error}")
+                raise
 
             return self
             
         except Exception as e:
             logging.error(f"Erreur lors de l'application des signatures : {e}")
+            import traceback
+            logging.error(traceback.format_exc())
             # En cas d'erreur, on fait une copie simple du fichier
             if self.document_path:
                 signed_filename = f"signed_{self.document_path.name}"
@@ -812,32 +909,222 @@ class SignedDocumentCreator:
                     new_hash = hashlib.sha256(file_content).hexdigest()
                 self.document.hash_signed_file = new_hash
     
-    def _apply_signatures_to_page(self) -> None:
+    def _create_signature_overlay(self, page: Any, signatures_data: List[Dict[str, Any]], page_num: int) -> bytes | None:
         """
-        Applique les signatures sur une page spécifique du PDF.
+        Crée un overlay PDF avec les signatures pour une page donnée.
         
         Args:
-            page_num (int): Le numéro de la page
-            page_data (List[Dict[str, Any]]): Liste des données de signature pour cette page
-                Chaque élément contient : point, signature, user, user_mail, user_complete_name
+            page: La page PDF (pypdf)
+            signatures_data: Liste des données de signature pour cette page
+            page_num: Numéro de la page
+            
         Returns:
-            None
-        Raises:
-            ValueError: Si une erreur survient lors de l'application des signatures.
+            bytes: Le PDF overlay en bytes, ou None si aucune signature
         """
-        for page_num, page_data in self.data_by_page.items():
-            try:
-                page = self.pages_dict.get(page_num)
-                if not page:
-                    raise ValueError(f"Page {page_num} non trouvée dans le document.")
+        from reportlab.pdfgen import canvas
+        from reportlab.lib.utils import ImageReader
+        from io import BytesIO
+        
+        try:
+            # Récupérer les dimensions de la page
+            page_box = page.mediabox
+            page_width = float(page_box.width)
+            page_height = float(page_box.height)
+            
+            logging.info(f"Création overlay pour page {page_num}, dimensions: {page_width}x{page_height}")
+            
+            # Créer un buffer pour le PDF overlay
+            packet = BytesIO()
+            can = canvas.Canvas(packet, pagesize=(page_width, page_height))
+            
+            signatures_added = 0
+            
+            # Ajouter chaque signature sur l'overlay
+            logging.info(f"Traitement de {len(signatures_data)} signature(s) pour la page {page_num}")
+            
+            for data in signatures_data:
+                signature = data['signature']
+                point = data['point']
+                nom_complet = data['user_complete_name']
                 
-                for data in page_data:
-                    self._add_svg_signature_to_page(data=data)
-
-            except Exception as e:
-                logging.error(f"Erreur lors de l'application des signatures sur la page {page_num} : {e}")
+                # Vérifier si on a un SVG valide
+                svg_graph = signature.get('svg_graph')
+                largeur = signature.get('largeur_graph', 600)
+                hauteur = signature.get('hauteur_graph', 200)
+                
+                if svg_graph and len(str(svg_graph).strip()) > 0:
+                    # Convertir le SVG en image
+                    svg_image = self._convert_svg_to_image(
+                        svg_content=svg_graph,
+                        width=largeur,
+                        height=hauteur
+                    )
+                    
+                    if svg_image:
+                        # Réduire la taille à 33% (un tiers de la taille originale)
+                        img_width, img_height = svg_image.size
+                        reduction_factor = 1.0 / 3.0  # Réduction à 33%
+                        
+                        new_width = int(img_width * reduction_factor)
+                        new_height = int(img_height * reduction_factor)
+                        svg_image = svg_image.resize((new_width, new_height), PILImage.Resampling.LANCZOS)
+                        logging.info(f"Image réduite à 33% : ({img_width}x{img_height}) → ({new_width}x{new_height})")
+                        
+                        # Redimensionner encore si trop grande
+                        max_width = 450
+                        max_height = 150
+                        
+                        final_width, final_height = svg_image.size
+                        scale_ratio = 1.0
+                        
+                        if final_width > max_width:
+                            scale_ratio = max_width / final_width
+                        if final_height * scale_ratio > max_height:
+                            scale_ratio = max_height / final_height
+                        
+                        if scale_ratio < 1.0:
+                            final_width = int(final_width * scale_ratio)
+                            final_height = int(final_height * scale_ratio)
+                            svg_image = svg_image.resize((final_width, final_height), PILImage.Resampling.LANCZOS)
+                            logging.info(f"Image redimensionnée encore à ({final_width}x{final_height})")
+                        
+                        # Centrer l'image sur le point (au lieu du coin haut-gauche)
+                        # Attention: pypdf utilise le coin bas-gauche comme origine
+                        point_x_pixels = float(point.get('x', 100))
+                        point_y_pixels = float(point.get('y', 100))
+                        
+                        # CONVERSION PIXELS → POINTS PDF
+                        # Les coordonnées sont enregistrées en pixels d'écran (canvas HTML avec scale=1.5)
+                        # Le canvas HTML a des dimensions: page_width * scale × page_height * scale
+                        # Pour convertir en points PDF, on divise simplement par le scale
+                        # Formule: points_pdf = pixels / scale
+                        # où scale = 1.5 (défini dans signatures-common.js: pdfScale)
+                        PDF_SCALE = 1.5  # Correspond à pdfScale dans le JavaScript
+                        
+                        # Convertir les coordonnées (division simple par le scale)
+                        point_x = point_x_pixels / PDF_SCALE
+                        point_y = point_y_pixels / PDF_SCALE
+                        
+                        logging.info(f"🔄 Conversion pixels→PDF: ({point_x_pixels:.2f}, {point_y_pixels:.2f}) → ({point_x:.2f}, {point_y:.2f})")
+                        
+                        # Calculer la position pour centrer l'image sur le point
+                        img_w = svg_image.width
+                        img_h = svg_image.height
+                        
+                        # VALIDATION DES COORDONNÉES
+                        # Vérifier que le point est dans les limites de la page
+                        if point_y > page_height:
+                            logging.warning(f"⚠️ Point Y ({point_y:.2f}) hors de la page (hauteur: {page_height})")
+                            logging.warning("   Recalage automatique du point vers le centre de la page")
+                            # Repositionner au centre de la page
+                            point_x = page_width / 2
+                            point_y = page_height / 2
+                        
+                        if point_x > page_width:
+                            logging.warning(f"⚠️ Point X ({point_x:.2f}) hors de la page (largeur: {page_width})")
+                            point_x = page_width / 2
+                        
+                        # S'assurer que la signature ne déborde pas de la page
+                        x_pos = point_x - (img_w / 2)
+                        y_pos = page_height - point_y - (img_h / 2)
+                        
+                        # Ajuster si la signature déborde à gauche
+                        if x_pos < 0:
+                            x_pos = 10
+                        # Ajuster si la signature déborde à droite
+                        if x_pos + img_w > page_width:
+                            x_pos = page_width - img_w - 10
+                        # Ajuster si la signature déborde en bas
+                        if y_pos < 0:
+                            y_pos = 10
+                        # Ajuster si la signature déborde en haut
+                        if y_pos + img_h > page_height:
+                            y_pos = page_height - img_h - 10
+                        
+                        logging.info(f"Page: {page_width}x{page_height}, Point: ({point_x}, {point_y}), Image: {img_w}x{img_h}")
+                        logging.info(f"Position calculée: ({x_pos}, {y_pos})")
+                        
+                        # Dessiner l'image sur le canvas
+                        img_reader = ImageReader(svg_image)
+                        can.drawImage(img_reader, x_pos, y_pos, 
+                                    width=img_w, height=img_h,
+                                    mask='auto', preserveAspectRatio=True)
+                        
+                        logging.info(f"✓ Signature centrée sur point ({point_x}, {point_y}), taille {img_w}x{img_h}")
+                        signatures_added += 1
+                        
+                        # Ajouter le texte de signature centré en dessous de l'image
+                        can.setFont("Helvetica", 8)
+                        
+                        # Préparer les textes
+                        text_line1 = f"Signé par: {nom_complet}"
+                        text_line2 = f"Le: {signature.get('signe_at', 'Date inconnue')}"
+                        
+                        # Calculer la largeur des textes pour les centrer
+                        text_width1 = can.stringWidth(text_line1, "Helvetica", 8)
+                        text_width2 = can.stringWidth(text_line2, "Helvetica", 8)
+                        
+                        # Position Y en dessous de l'image (avec marge de 4 pixels)
+                        text_y_line1 = y_pos - 12
+                        text_y_line2 = text_y_line1 - 10
+                        
+                        # Vérifier que le texte ne dépasse pas le bas de la page
+                        # Si le texte déborde, on le place au-dessus de la signature
+                        MIN_MARGIN = 5  # Marge minimum du bas de page
+                        if text_y_line2 < MIN_MARGIN:
+                            # Placer au-dessus de la signature
+                            text_y_line1 = y_pos + img_h + 12
+                            text_y_line2 = text_y_line1 + 10
+                            logging.info(f"⚠️ Métadonnées repositionnées au-dessus (y={text_y_line2:.2f} < {MIN_MARGIN})")
+                        
+                        # Centrer horizontalement les textes par rapport à l'image
+                        text_x1 = x_pos + (img_w - text_width1) / 2
+                        text_x2 = x_pos + (img_w - text_width2) / 2
+                        
+                        # S'assurer que le texte ne déborde pas à gauche
+                        if text_x1 < 0:
+                            text_x1 = 5
+                        if text_x2 < 0:
+                            text_x2 = 5
+                        
+                        # S'assurer que le texte ne déborde pas à droite
+                        if text_x1 + text_width1 > page_width:
+                            text_x1 = page_width - text_width1 - 5
+                        if text_x2 + text_width2 > page_width:
+                            text_x2 = page_width - text_width2 - 5
+                        
+                        # Dessiner les textes
+                        can.drawString(text_x1, text_y_line1, text_line1)
+                        can.drawString(text_x2, text_y_line2, text_line2)
+                        
+                        logging.info(f"📝 Métadonnées: ligne1=({text_x1:.2f}, {text_y_line1:.2f}), ligne2=({text_x2:.2f}, {text_y_line2:.2f})")
+                    else:
+                        logging.warning(f"Impossible de convertir le SVG en image pour le point {point.get('id')}")
+                else:
+                    logging.warning(f"Pas de SVG valide pour le point {point.get('id')}")
+            
+            # Finaliser le canvas seulement si des signatures ont été ajoutées
+            if signatures_added == 0:
+                logging.warning(f"Aucune signature ajoutée sur la page {page_num}")
+                return None
+            
+            can.save()
+            packet.seek(0)
+            
+            logging.info(f"{signatures_added} signature(s) ajoutée(s) dans l'overlay de la page {page_num}")
+            return packet.getvalue()
+            
+        except Exception as e:
+            logging.error(f"Erreur lors de la création de l'overlay: {e}")
+            import traceback
+            logging.error(traceback.format_exc())
+            return None
     
-    def _add_svg_signature_to_page(self, *, data: Dict[str, Any]) -> None:
+    # Anciennes méthodes borb - obsolètes avec pypdf
+    # def _apply_signatures_to_page() - supprimée, remplacée par pypdf + reportlab
+    # def _add_svg_signature_to_page() - supprimée, remplacée par _create_signature_overlay avec pypdf
+    
+    def _add_svg_signature_to_page_OBSOLETE(self, *, data: Dict[str, Any]) -> None:
         """
         Ajoute une signature SVG directement dans le PDF à la position spécifiée.
         
@@ -852,20 +1139,70 @@ class SignedDocumentCreator:
         signature = data['signature']
         point = data['point']
         nom_complet = data['user_complete_name']
+        
+        # Vérifier que la signature existe
+        if not signature:
+            logging.warning(f"Aucune signature trouvée pour le point {point.get('id', 'unknown')}")
+            return
+        
         try:
+            # Récupérer la page
+            page = self.pages_dict[point['page_num']]
+            
+            # Vérifier si on a un SVG valide
+            svg_graph = signature.get('svg_graph')
+            largeur = signature.get('largeur_graph', 600)
+            hauteur = signature.get('hauteur_graph', 200)
+            
+            logging.info(f"Traitement signature pour point {point.get('id')} - SVG présent: {bool(svg_graph)}, Longueur: {len(svg_graph) if svg_graph else 0}")
+            
             # Convertir le SVG en image pour l'intégrer dans le PDF
-            svg_image = self._convert_svg_to_image(svg_content=signature.svg_graph,
-                                                    width=signature.largeur_graph,
-                                                    height=signature.hauteur_graph)
-            page = self.pages_dict[point.page_num]
-            if signature.svg_graph and svg_image:
-                # Ajout de l'image dans le PDF
-                signature_image = Image(bytes_path_pil_image_or_url=svg_image,
-                                        size=svg_image.size,
-                                        horizontal_alignment=point.x,
-                                        vertical_alignment=point.y)
-                SingleColumnLayout(page).append_layout_element(signature_image)
-                # Ajouter les métadonnées de signature
+            svg_image = None
+            if svg_graph and len(str(svg_graph).strip()) > 0:
+                svg_image = self._convert_svg_to_image(svg_content=svg_graph,
+                                                        width=largeur,
+                                                        height=hauteur)
+            
+            if svg_graph and svg_image:
+                # Redimensionner l'image si nécessaire pour éviter les débordements
+                # Largeur maximale disponible dans une page A4 (en tenant compte des marges)
+                max_width = 450  # Points (environ 15.8 cm)
+                max_height = 150  # Points (environ 5.3 cm)
+                
+                img_width, img_height = svg_image.size
+                
+                # Calculer le ratio de redimensionnement si l'image est trop grande
+                scale_ratio = 1.0
+                if img_width > max_width:
+                    scale_ratio = max_width / img_width
+                if img_height * scale_ratio > max_height:
+                    scale_ratio = max_height / img_height
+                
+                # Redimensionner l'image si nécessaire
+                if scale_ratio < 1.0:
+                    new_width = int(img_width * scale_ratio)
+                    new_height = int(img_height * scale_ratio)
+                    svg_image = svg_image.resize((new_width, new_height), PILImage.Resampling.LANCZOS)
+                    logging.info(f"Image redimensionnée de ({img_width}x{img_height}) à ({new_width}x{new_height})")
+                
+                # Stocker l'image pour l'ajouter plus tard
+                # On ne peut pas utiliser SingleColumnLayout sur un PDF existant
+                # car cela corrompt la structure
+                if not hasattr(self, 'signature_images'):
+                    self.signature_images = []
+                
+                self.signature_images.append({
+                    'image': svg_image,
+                    'page_num': point['page_num'],
+                    'x': point.get('x', 100),
+                    'y': point.get('y', 100),
+                    'point_id': point.get('id'),
+                    'nom_complet': nom_complet
+                })
+                
+                logging.info(f"Image de signature préparée pour la page {point.get('page_num')}")
+                
+                # Ajouter les métadonnées de signature en texte
                 self._add_signature_metadata_to_page(page=page,
                                                       signature=signature,
                                                       nom_complet=nom_complet,
@@ -896,6 +1233,22 @@ class SignedDocumentCreator:
             from io import BytesIO
             import cairosvg
             
+            # Valider le contenu SVG
+            if not svg_content:
+                logging.warning(f"Contenu SVG invalide : {type(svg_content)}")
+                return None
+            
+            if len(svg_content.strip()) == 0:
+                logging.warning("Contenu SVG vide")
+                return None
+            
+            # Vérifier que le contenu ressemble à du SVG
+            if '<svg' not in svg_content.lower():
+                logging.warning(f"Le contenu ne semble pas être du SVG : {svg_content[:100]}")
+                return None
+            
+            logging.info(f"Conversion SVG de {len(svg_content)} caractères, dimensions: {width}x{height}")
+            
             # Convertir SVG en PNG avec cairosvg
             png_data = cairosvg.svg2png(
                 bytestring=svg_content.encode('utf-8'),
@@ -907,6 +1260,7 @@ class SignedDocumentCreator:
             if png_data is not None and isinstance(png_data, bytes):
                 # Créer une image PIL depuis les données PNG
                 image = PILImage.open(BytesIO(png_data))
+                logging.info(f"Image créée avec succès : {image.size}")
                 return image
             else:
                 raise ValueError("Conversion SVG en PNG a échoué, données invalides.")
@@ -916,52 +1270,64 @@ class SignedDocumentCreator:
         except Exception as e:
             raise ValueError(f"Erreur lors de la conversion SVG : {e}")
     
-    def _add_text_signature_fallback(self, *, page: Page, nom_complet: str, signature: Signatures, point: Points) -> None:
+    def _add_text_signature_fallback(self, *, page: Page, nom_complet: str, signature: Dict[str, Any], point: Dict[str, Any]) -> None:
         """
         Ajoute une signature textuelle en fallback.
         
         Args:
             page: La page PDF borb
             nom_complet (str): Nom complet du signataire
-            signature (Signatures): L'objet signature
-            x (float): Position X
-            y (float): Position Y
+            signature (Dict): Dictionnaire contenant les données de signature
+            point (Dict): Dictionnaire contenant les données du point
         """
         try:
-            date_signature = signature.signe_at.strftime("%d/%m/%Y %H:%M") if signature.signe_at else "Date inconnue"
+            # Convertir la date de string ISO à datetime si nécessaire
+            signe_at = signature.get('signe_at')
+            if isinstance(signe_at, str):
+                from datetime import datetime
+                signe_at = datetime.fromisoformat(signe_at)
+            
+            date_signature = signe_at.strftime("%d/%m/%Y %H:%M") if signe_at else "Date inconnue"
             signature_text = f"Signé électroniquement par: {nom_complet}\nLe {date_signature}"
             
             # Ajouter le texte dans le PDF
-            
             paragraph = Paragraph(text=signature_text, border_color=HexColor('100068'),
                                   font_size=10, font_color=HexColor("e0e0e0"),
-                                  horizontal_alignment=point.x, vertical_alignment=point.y)
+                                  horizontal_alignment=point['x'], vertical_alignment=point['y'])
             SingleColumnLayout(page).append_layout_element(paragraph)
             
         except Exception as e:
             raise ValueError(f"Erreur lors de l'ajout du texte de fallback : {e}")
     
-    def _add_signature_metadata_to_page(self, *, page: Page, nom_complet: str, signature: Signatures, point: Points) -> None:
+    def _add_signature_metadata_to_page(self, *, page: Page, nom_complet: str, signature: Dict[str, Any], point: Dict[str, Any]) -> None:
         """
         Ajoute des métadonnées de signature sous la signature principale.
         
         Args:
             page: La page PDF borb
-            signature (Signatures): L'objet signature
+            signature (Dict): Dictionnaire contenant les données de signature
             nom_complet (str): Nom complet du signataire
-            point (Points): Le point de signature
+            point (Dict): Dictionnaire contenant les données du point
         Returns:
             None
         Raises:
             ValueError: Si la date de signature est invalide
         """
         try:
-            date_signature = signature.signe_at.strftime("%d/%m/%Y %H:%M") if signature.signe_at else "Date inconnue"
-            metadata_text = f"Hash: {signature.signature_hash[:8]}... | IP: {signature.ip_addresse} | {date_signature} | {nom_complet}"
+            # Convertir la date de string ISO à datetime si nécessaire
+            signe_at = signature.get('signe_at')
+            if isinstance(signe_at, str):
+                from datetime import datetime
+                signe_at = datetime.fromisoformat(signe_at)
+            
+            date_signature = signe_at.strftime("%d/%m/%Y %H:%M") if signe_at else "Date inconnue"
+            signature_hash = signature.get('signature_hash', 'unknown')
+            ip_addresse = signature.get('ip_addresse', 'unknown')
+            metadata_text = f"Hash: {signature_hash[:8]}... | IP: {ip_addresse} | {date_signature} | {nom_complet}"
             
             paragraph = Paragraph(text=metadata_text, border_color=HexColor('100068'),
                                   font_size=10, font_color=HexColor("e0e0e0"),
-                                  horizontal_alignment=point.x, vertical_alignment=point.y - 25)
+                                  horizontal_alignment=point['x'], vertical_alignment=point['y'] - 25)
             SingleColumnLayout(page).append_layout_element(paragraph)
             
         except Exception as e:
@@ -985,8 +1351,10 @@ class SignedDocumentCreator:
             # Créer le certificat sécurisé avec signature cryptographique
             document_hash = self.document.hash_fichier if self.document else "unknown"
             secure_cert = SecureCertificateManager.create_secure_certificate(
-                data=self.document_data,
+                signatures=self.signatures,
+                signatories=self.signatories,
                 document=self.document,
+                view_points=self.view_points,
             )
             
             # Vérifier immédiatement le certificat créé
@@ -1031,12 +1399,25 @@ class SignedDocumentCreator:
         if not self.signed_document_path or not self.document_path:
             raise ValueError("Document signé non généré.")
         
+        # Vérifier que le fichier signé existe et n'est pas vide
+        if not self.signed_document_path.exists():
+            raise ValueError(f"Le fichier signé n'existe pas : {self.signed_document_path}")
+        
+        file_size = self.signed_document_path.stat().st_size
+        if file_size == 0:
+            raise ValueError("Le fichier signé est vide, impossible de remplacer l'original")
+        
+        logging.info(f"Sauvegarde du document final : {self.signed_document_path} ({file_size} bytes)")
+        
         # Sauvegarder l'original avec un suffixe _original
         original_backup = self.document_path.parent / f"original_{self.document_path.name}"
-        shutil.move(self.document_path, original_backup)
+        if self.document_path.exists():
+            shutil.move(self.document_path, original_backup)
+            logging.info(f"Original sauvegardé : {original_backup}")
         
         # Déplacer le document signé à la place de l'original
         shutil.move(self.signed_document_path, self.document_path)
+        logging.info(f"Document signé déplacé vers : {self.document_path}")
         
         # Mettre à jour le document en base (marquer comme finalisé)
         if self.document:
@@ -1045,7 +1426,7 @@ class SignedDocumentCreator:
 
         if self.signatures:
             for signature in self.signatures:
-                signature.statut = 1
+                signature.status = 1
         
         return self
     
@@ -1124,7 +1505,7 @@ class SecureCertificateManager:
         )
     
     @staticmethod
-    def _add_sygnatories_info(signatories: List[User], signatures: List[Signatures], cert_data: Dict[str, Any]) -> Dict[str, Any]:
+    def _add_sygnatories_info(signatories: List[User], signatures: List[Signatures], cert_data: Dict[str, Any], sig_to_user: Dict[int, User]) -> Dict[str, Any]:
         """
         Ajoute les informations des signataires au certificat.
         
@@ -1132,9 +1513,11 @@ class SecureCertificateManager:
             signatories (List[User]): Liste des utilisateurs signataires
             signatures (List[Signatures]): Liste des signatures
             cert_data (Dict[str, Any]): Dictionnaire du certificat à remplir
+            sig_to_user (Dict[int, User]): Mapping signature_id -> User
         """
         for signature in signatures:
-            signatory = next((s for s in signatories if any(sig.id == signature.id for sig in signatures)), None)
+            # Utiliser le mapping pour trouver l'utilisateur correspondant
+            signatory = sig_to_user.get(signature.id)
             if signatory:
                 signatory_info: Dict[str, Any] = {
                     "id": signatory.id,
@@ -1150,23 +1533,25 @@ class SecureCertificateManager:
         return cert_data
                 
     @staticmethod
-    def _add_signatures_details(signatories: List[User], signatures: List[Signatures], cert_data: Dict[str, Any]) -> Dict[str, Any]:
+    def _add_signatures_details(signatories: List[User], signatures: List[Signatures], cert_data: Dict[str, Any], sig_to_user: Dict[int, User]) -> Dict[str, Any]:
         """
         Ajoute les détails techniques des signatures au certificat.
         Args:
             signatories (List[User]): Liste des utilisateurs signataires
             signatures (List[Signatures]): Liste des signatures
             cert_data (Dict[str, Any]): Dictionnaire du certificat à remplir
+            sig_to_user (Dict[int, User]): Mapping signature_id -> User
         Returns:
             Dict[str, Any]: Dictionnaire du certificat mis à jour
         """
         for signature in signatures:
-            signatory = next((s for s in signatories if any(sig.id == signature.id for sig in signatures)), None)
+            # Utiliser le mapping pour trouver l'utilisateur correspondant
+            signatory = sig_to_user.get(signature.id)
             if signatory:
                 # Détails techniques de la signature
                 signature_detail: Dict[str, Any] = {
                     "signature_id": signature.id,
-                    "status": signature.statut,
+                    "status": signature.status,
                     "svg_data_hash": hashlib.sha256(signature.svg_graph.encode() if signature.svg_graph else b'').hexdigest(),
                     "data_graph_hash": hashlib.sha256(signature.data_graph.encode() if signature.data_graph else b'').hexdigest(),
                     "dimensions": {
@@ -1180,17 +1565,30 @@ class SecureCertificateManager:
         return cert_data
     
     @staticmethod
-    def create_secure_certificate(data: Dict[str, Any], document: DocToSigne) -> Dict[str, Any]:
+    def create_secure_certificate(signatures: List[Signatures], signatories: List[User], document: DocToSigne, view_points: List[Dict[str, Any]] | None = None) -> Dict[str, Any]:
         """
         Crée un certificat sécurisé avec signature cryptographique.
         
         Args:
-            data (List[Dict[str, Any]]): Liste des vues des points de signature à inclure dans le certificat
+            signatures (List[Signatures]): Liste des objets Signatures
+            signatories (List[User]): Liste des objets User signataires
+            document (DocToSigne): Le document signé
+            view_points (List[Dict[str, Any]]): Liste optionnelle des view_points pour correspondance
         Returns:
             Dict contenant le certificat sécurisé
         """
-        signatories = data['user']
-        signatures = data['signature']
+        # Créer un mapping signature_id -> user pour faciliter la correspondance
+        sig_to_user: Dict[int, User] = {}
+        if view_points:
+            for vp in view_points:
+                sig_dict = vp.get('signature')
+                user_dict = vp.get('user')
+                if sig_dict and user_dict and sig_dict.get('id'):
+                    # Trouver l'objet User correspondant dans signatories
+                    user = next((u for u in signatories if u.id == user_dict.get('id')), None)
+                    if user:
+                        sig_to_user[sig_dict['id']] = user
+        
         try:
             # Création de la clé privée pour la signature et de l'identifiant unique du certificat
             private_key = SecureCertificateManager.generate_signing_key()
@@ -1212,8 +1610,8 @@ class SecureCertificateManager:
                 }
             }
             
-            cert_data = SecureCertificateManager._add_sygnatories_info(signatories, signatures, cert_data)
-            cert_data = SecureCertificateManager._add_signatures_details(signatories, signatures, cert_data)
+            cert_data = SecureCertificateManager._add_sygnatories_info(signatories, signatures, cert_data, sig_to_user)
+            cert_data = SecureCertificateManager._add_signatures_details(signatories, signatures, cert_data, sig_to_user)
             
             # Créer la signature cryptographique du certificat
             cert_json = json.dumps(cert_data, sort_keys=True, separators=(',', ':'))

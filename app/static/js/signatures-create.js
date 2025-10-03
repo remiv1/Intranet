@@ -88,9 +88,21 @@ function addClickListenerToPDF() {
             const pageDiv = canvas.parentElement;
             const rect = canvas.getBoundingClientRect();
             
-            // Calculer les coordonnées relatives au canvas
-            const x = event.clientX - rect.left;
-            const y = event.clientY - rect.top;
+            // Calculer les coordonnées relatives au canvas AFFICHÉ (avec zoom navigateur)
+            const clickX = event.clientX - rect.left;
+            const clickY = event.clientY - rect.top;
+            
+            // NORMALISER les coordonnées pour compenser le zoom du navigateur
+            // Le canvas a des dimensions réelles (canvas.width, canvas.height)
+            // mais il est affiché avec des dimensions différentes (rect.width, rect.height) si zoom
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            
+            // Coordonnées normalisées (comme si pas de zoom)
+            const x = clickX * scaleX;
+            const y = clickY * scaleY;
+            
+            console.log(`Clic: (${clickX.toFixed(2)}, ${clickY.toFixed(2)}) → Normalisé: (${x.toFixed(2)}, ${y.toFixed(2)}), Scale: ${scaleX.toFixed(3)}`);
             
             // Trouver le numéro de page
             const pageNum = parseInt(canvas.getAttribute('data-page-number')) || 1;
@@ -136,14 +148,25 @@ function createSignaturePoint(x, y, pageNum, pageDiv) {
 
 /**
  * Crée un marqueur visuel sur le PDF
+ * @param {number} x - Coordonnée X normalisée (sans zoom)
+ * @param {number} y - Coordonnée Y normalisée (sans zoom)
  */
 function createVisualMarker(pointId, x, y, pageNum, pageDiv) {
+    // x et y sont les coordonnées normalisées (canvas.width/height)
+    // Il faut les convertir en coordonnées d'affichage (getBoundingClientRect)
+    const canvas = pageDiv.querySelector('canvas');
+    const rect = canvas.getBoundingClientRect();
+    
+    // Conversion coordonnées normalisées → coordonnées affichées
+    const displayX = (x * rect.width) / canvas.width;
+    const displayY = (y * rect.height) / canvas.height;
+    
     const marker = document.createElement('div');
     marker.className = 'signature-marker';
     marker.id = `marker-${pointId}`;
     marker.style.position = 'absolute';
-    marker.style.left = `${x - 12}px`;
-    marker.style.top = `${y - 12}px`;
+    marker.style.left = `${displayX - 12}px`;
+    marker.style.top = `${displayY - 12}px`;
     marker.style.width = '24px';
     marker.style.height = '24px';
     marker.style.backgroundColor = '#dc3545';

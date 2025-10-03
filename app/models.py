@@ -813,7 +813,7 @@ class Signatures(Base):
         signature_hash (str): Hash de la signature pour vérification.
         ip_addresse (str): Adresse IP de l'utilisateur au moment de la signature.
         user_agent (str): User-Agent du navigateur au moment de la signature.
-        statut (int): Statut de la signature (0: en attente, 1: signé, -1: annulé, -2: expiré).
+        status (int): Statut de la signature (0: en attente, 1: signé, -1: annulé, -2: expiré).
         svg_graph (str): Données SVG de la signature graphique (optionnel).
         data_graph (str): Données JSON des coordonnées de la signature graphique (optionnel).
         largeur_graph (int): Largeur de la zone de signature graphique (optionnel).
@@ -836,7 +836,7 @@ class Signatures(Base):
     signature_hash = mapped_column(String(128), nullable=False)     # hash de la signature
     ip_addresse = mapped_column(String(45), nullable=True)
     user_agent = mapped_column(String(1024), nullable=True)
-    statut = mapped_column(Integer, default=0)                      # 0: en attente, 1: signé, -1: annulé, -2: expiré
+    status = mapped_column(Integer, default=0)                      # 0: en attente, 1: signé, -1: annulé, -2: expiré
     
     # Signature graphique - AJOUT
     svg_graph = mapped_column(Text, nullable=True)                  # Format SVG de la signature tracée
@@ -860,7 +860,7 @@ class Signatures(Base):
             ```
         """
         return (f"<Signatures(id={self.id}, id_user={self.id_user}, signe_at={self.signe_at}, "
-            f"statut={self.statut})>")
+            f"status={self.status})>")
     
     def to_dict(self) -> Dict[str, Any]:
         """
@@ -879,7 +879,7 @@ class Signatures(Base):
             "signature_hash": self.signature_hash,
             "ip_addresse": self.ip_addresse,
             "user_agent": self.user_agent,
-            "statut": self.statut,
+            "status": self.status,
             "svg_graph": self.svg_graph,
             "data_graph": self.data_graph,
             "largeur_graph": self.largeur_graph,
@@ -1064,8 +1064,8 @@ class ViewPoints:
         for p, u, s in self.points:
             point: Dict[str, Any] = {
                 "user": u.to_dict() if u else None,
-                "user_mail": u.email if u else None,
-                "user_complete_name": u.get_full_name() if u else None,
+                "user_mail": u.mail if u else None,
+                "user_complete_name": f'{u.prenom} {u.nom}' if u else None,
                 "point": p.to_dict(),
                 "signature": s.to_dict() if s else None
             }

@@ -32,9 +32,18 @@ function initializePDFViewer(filename, loader, container, onComplete = null, tem
         // Vider le conteneur
         container.innerHTML = '';
         
+        // Compteur pour suivre les pages rendues
+        let renderedPages = 0;
+        
         // Rendre toutes les pages
         for (let pageNum = 1; pageNum <= numPages; pageNum++) {
-            renderPDFPage(pdf, pageNum, numPages, loader, container, onComplete);
+            renderPDFPage(pdf, pageNum, numPages, loader, container, function() {
+                renderedPages++;
+                // Appeler le callback seulement quand toutes les pages sont rendues
+                if (renderedPages === numPages && onComplete && typeof onComplete === 'function') {
+                    onComplete();
+                }
+            });
         }
         
     }, function(reason) {
@@ -79,15 +88,17 @@ function renderPDFPage(pdf, pageNum, numPages, loader, container, onComplete) {
         };
         
         page.render(renderContext).promise.then(function() {
-            // Si c'est la dernière page, masquer le loader
-            if (pageNum === numPages) {
+            console.log(`Page ${pageNum} rendue`);
+            
+            // Masquer le loader après la première page pour un affichage progressif
+            if (pageNum === 1) {
                 loader.style.display = "none";
                 container.style.display = "block";
-                
-                // Exécuter le callback si fourni
-                if (onComplete && typeof onComplete === 'function') {
-                    onComplete();
-                }
+            }
+            
+            // Exécuter le callback pour cette page
+            if (onComplete && typeof onComplete === 'function') {
+                onComplete();
             }
         });
     });
