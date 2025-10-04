@@ -8,6 +8,7 @@ from werkzeug.utils import secure_filename
 from typing import Optional, Dict, Any, List
 from datetime import datetime
 from os.path import splitext
+import io
 
 Base = declarative_base()
 PK_CONTRACT = '01_contrats.id'
@@ -711,6 +712,7 @@ class DocToSigne(Base):
     # Relations
     user = relationship("User", back_populates="documents")
     points = relationship("Points", back_populates="document", cascade=CASCADE)
+    invitation = relationship("Invitation", back_populates="document", cascade=CASCADE)
 
     def __repr__(self) -> str:
         """
@@ -724,6 +726,28 @@ class DocToSigne(Base):
             ```
         """
         return f"<DocToSigne(id={self.id}, doc_nom={self.doc_nom}, status={self.status})>"
+    
+    def download(self) -> Optional[io.BytesIO]:
+        """
+        Fonction pour télécharger le fichier du document à signer.
+        Utilise la fonction download_file du module docs.py.
+        Arguments : None
+        Returns :
+            io.BytesIO: Fichier binaire téléchargé, ou None si échec.
+        Exemple :
+            ```python
+            file = doc.download()
+            # or
+            doc.download()
+            ```
+        """
+        try:
+            if self.chemin_fichier:
+                with open(self.chemin_fichier, 'rb') as f:
+                    file_data = f.read()
+                    return io.BytesIO(file_data)
+        except Exception:
+            return None
 
 class Points(Base):
     """
@@ -930,7 +954,7 @@ class Invitation(Base):
     code_otp = mapped_column(String(6), nullable=True)        # OTP pour validation finale
     
     # Relations
-    document = relationship("DocToSigne")
+    document = relationship("DocToSigne", back_populates="invitation")
     user = relationship("User")
 
     def __repr__(self) -> str:

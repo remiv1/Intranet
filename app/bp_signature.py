@@ -14,14 +14,16 @@ Chaque route gère les méthodes GET et POST pour afficher les formulaires et tr
 # Imports Flask/Werkzeug
 from flask import (
     Blueprint, render_template, request, g, send_from_directory,
-    session, url_for, redirect, jsonify
+    session, url_for, redirect, jsonify, send_file
 )
+from sqlalchemy import or_
+from sqlalchemy.orm import joinedload
 from werkzeug.datastructures import FileStorage
 # Imports locaux
 from models import User, DocToSigne, Points, Invitation
 from signatures import SignatureDoer, SignatureMaker, SecureDocumentAccess, SignedDocumentCreator, send_otp_email
 # Imports standards
-from typing import Any
+from typing import Any, Dict, List
 from pathlib import Path
 import logging, random
 
@@ -175,14 +177,35 @@ def signature_request_otp(id_document: int, hash_document: str) -> Any:
 @signatures_bp.route('/liste', methods=['GET'])
 def signature_do_list() -> Any:
     """
-    Permet d'afficher la liste des documents à signer,
-    des documents signés et ceux dont la signature n'est pas allée au bout.
+    Permet d'afficher la liste des documents quelque soient leur status.
     Méthode supportée : GET.
     GET : Affiche la liste des documents.
     Filtrage côté client via JavaScript.
     """
-    # Logique pour afficher la liste des documents à signer
-    return render_template(ADMINISTRATION, context='signature_list')
+    # Récupération des documents
+    documents = g.db_session.query(DocToSigne) \
+                    .join(Points) \
+                    .join(Invitation) \
+                    .options(
+                        joinedload(DocToSigne.points),
+                        joinedload(DocToSigne.invitation)
+                        ) \
+                    .filter(
+                        or_(Points.id_user == session.get('id', None), DocToSigne.id_user == session.get('id', None))
+                    ).all()
+    documents_to_signe: List[Dict[str, Any]] = [
+    {
+        'doc': doc,
+        'partial': (any(point.status == 1 for point in doc.points) and
+                    any(point.status == 0 for point in doc.points)),
+        'invitation': next((inv for inv in doc.invitation if inv.id_user == session.get('id', None)), None)
+    }
+    for doc in documents if doc.status == 0
+    ]
+    documents_archived = [doc for doc in documents if doc.status != 0]
+    return render_template(ADMINISTRATION, context='signature_list', tab='a',
+                           documents_to_signe=documents_to_signe,
+                           documents_archived=documents_archived)
 
 @signatures_bp.route('/creer/<int:id_document>/<hash_document>', methods=['POST'])
 def create_final_signed_document(id_document: int, hash_document: str) -> Any:
@@ -339,3 +362,25 @@ def download_pdf(filename: str):
         filename_real = real_file_path.name
         
         return send_from_directory(folder_path, filename_real)
+
+@signatures_bp.route('/download-signed/<int:doc_id>/<hash_document>')
+def download_signed_doc(doc_id: int, hash_document: str):
+    """
+    Permet de télécharger le document final signé (PDF) après que tous les signataires ont signé.
+    Sécurisé par vérification d'accès via points de signature.
+    """
+    document = g.db_session.query(DocToSigne).filter_by(id=doc_id, hash_fichier=hash_document).first()
+    if not document:
+        return "Document non trouvé", 404
+
+    # Vérifier si le document a été signé
+    if document.status != 1:
+        return "Document non signé", 403
+
+    # Télécharger le fichier du document
+    file_downloaded = document.download()
+    if not file_downloaded:
+        return "Erreur lors du téléchargement du fichier.", 501
+
+    # Envoyer le fichier en réponse
+    return send_file(file_downloaded, as_attachment=True, download_name=document.doc_nom)

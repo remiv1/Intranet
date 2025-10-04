@@ -25,6 +25,13 @@
             },
             {
                 "classe": 2,
+                "titre": "Espace administratif",
+                "descriptif": "Espace réservé pour le personnel administratif de l'établissement (en construction)",
+                "buttonid": "Ea",
+                "onclick": "ea"
+            },
+            {
+                "classe": 2,
                 "titre": "Gestion des contrats",
                 "descriptif": "Permet de gérer/accéder aux contrats en cours pour l'établissement et d'en gérer les documents et évènements",
                 "buttonid": "Ddc",
@@ -57,13 +64,6 @@
                 "descriptif": "Espace réservé pour les élèves de l'établissement (en construction)",
                 "buttonid": "Ere",
                 "onclick": "ere"
-            },
-            {
-                "classe": 2,
-                "titre": "Espace administratif",
-                "descriptif": "Espace réservé pour le personnel administratif de l'établissement (en construction)",
-                "buttonid": "Ea",
-                "onclick": "ea"
             }
         ]
     }

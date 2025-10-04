@@ -287,7 +287,7 @@ def add_contrats_document(id_contrat: int) -> ResponseReturnValue:
             g.db_session.add(document)
             g.db_session.flush()  # Pour obtenir l'ID avant le commit
             document.create_name(binary_file=binary_file)
-            document.upload(binary_file)
+            document.upload(file_to_upload=binary_file)
 
             # Ajout et Fermeture de la session
             g.db_session.commit()
@@ -335,7 +335,7 @@ def add_contrats_bill(id_contrat: int) -> ResponseReturnValue:
             g.db_session.commit()
 
             # Enregistrement du fichier sur le serveur
-            bill.upload(binary_file)
+            bill.upload(file_to_upload=binary_file)
 
             # Retour du formulaire
             message = f'Facture {bill.titre_facture} ajoutée avec succès'

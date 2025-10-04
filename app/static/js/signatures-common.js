@@ -299,3 +299,24 @@ function validateSignatureData(signatureData) {
         errors: errors
     };
 }
+
+// Fonction pour gérer l'affichage des onglets
+function openTab(evt, tabName) {
+    let i, tabcontent, tablinks;
+    tabcontent = document.getElementsByClassName("tabcontent");
+    // Masquer tous les contenus de tab
+    for (i = 0; i < tabcontent.length; i++) {
+        tabcontent[i].classList.remove("d-block");
+        tabcontent[i].classList.add("d-none");
+    }
+    // Désactiver tous les onglets
+    tablinks = document.getElementsByClassName("tablinks");
+    for (i = 0; i < tablinks.length; i++) {
+        tablinks[i].className = tablinks[i].className.replace(" active", "");
+    }
+    // Afficher le contenu du tab sélectionné
+    document.getElementById(tabName).classList.remove('d-none');
+    document.getElementById(tabName).classList.add('d-block');
+    // Activer l'onglet sélectionné
+    evt.currentTarget.className += " active";
+}

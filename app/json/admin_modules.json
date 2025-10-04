@@ -11,15 +11,15 @@
         "modules": [
             {
                 "classe": 2,
-                "titre": "Déposer un document pour signature",
+                "titre": "Faire signer un document",
                 "descriptif": "Permet de déposer un document à signer par un ou plusieurs utilisateurs de l'Intranet",
                 "buttonid": "signature_make",
                 "onclick": "signature.signature_make"
             },
             {
                 "classe": 2,
-                "titre": "Accéder à la liste des documents à signer",
-                "descriptif": "Permet d'accéder à la liste des documents en attente de signature",
+                "titre": "Liste des documents",
+                "descriptif": "Accédez à la liste des documents, signés, annulés ou en attente de signature",
                 "buttonid": "signature_do_list",
                 "onclick": "signature.signature_do_list"
             },

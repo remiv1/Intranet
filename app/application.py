@@ -40,7 +40,7 @@ from habilitations import (validate_habilitation, ADMINISTRATEUR, GESTIONNAIRE, 
 from bp_contracts import contracts_bp
 from bp_signature import signatures_bp
 from config import Config
-from models import Base, User, Document, Signatures
+from models import Base, User, DocToSigne, Points, Signatures, Invitation
 from docs import print_document, delete_file
 from rapport_echeances import envoi_contrats_renego
 from utilities import get_jsoned_datas
@@ -442,6 +442,9 @@ def gestion_utilisateurs(message: Optional[str] = None, success_message: Optiona
     Returns:
         Response: La page de gestion des utilisateurs ou une redirection vers la page de déconnexion.
     """
+    message = request.args.get('message', message)
+    success_message = request.args.get('success_message', success_message)
+    error_message = request.args.get('error_message', error_message)
     users: list[User] = g.db_session.query(User).all()
     users.sort(key=lambda x: (x.nom, x.prenom))
     return render_template('gestion_utilisateurs.html', users=users, message=message,
@@ -608,9 +611,9 @@ def ajout_utilisateurs() -> Response:
         message = f'Erreur lors de l\'ajout de l\'utilisateur : {e}'
         return redirect(url_for('gestion_utilisateurs', error_message=message))
 
-@peraudiere.route('/suppr-utilisateurs', methods=['POST'])
+@peraudiere.route('/suppr-utilisateurs/<id_user>', methods=['POST'])
 @validate_habilitation(ADMINISTRATEUR)
-def suppr_utilisateurs() -> Response:
+def suppr_utilisateurs(id_user: int) -> Response:
     """
     Route pour la suppression d'un utilisateur.
     Gère la suppression d'un utilisateur de la base de données.
@@ -620,37 +623,43 @@ def suppr_utilisateurs() -> Response:
         Response: Redirection vers la page de gestion des utilisateurs.
     """
     # Récupération des données du formulaire
-    identifiant = request.form.get('identifiant', '')
     try:
         # Récupération de l'utilisateur
-        user = g.db_session.query(User).filter(User.identifiant == identifiant).first()
+        user = g.db_session.query(User).filter(User.identifiant == id_user).first()
+        if user.id == session['id']:
+            message = 'Vous ne pouvez pas supprimer votre propre compte utilisateur.'
+            return redirect(url_for('gestion_utilisateurs', error_message=message))
         if user:
             # Vérification des liens avec les documents à signer et les signatures
-            docs = g.db_session.query(Document).filter(Document.user_id == user.id).count()
-            sigs = g.db_session.query(Signatures).filter(Signatures.user_id == user.id).count()
+            docs = g.db_session.query(DocToSigne) \
+                            .join(Points) \
+                            .join(Signatures) \
+                            .join(Invitation) \
+                            .filter(DocToSigne.id_user == user.id) \
+                            .count()
             
             # Si des liens existent, désactivation du compte au lieu de la suppression
-            if docs + sigs > 0:
+            if docs > 0:
                 user.fin = datetime.now()
                 g.db_session.commit()
-                message = f'L\'utilisateur {identifiant} ne peut pas être supprimé car il est lié à des documents ou des signatures. Son compte a été désactivé.'
+                message = f'L\'utilisateur {id_user} ne peut pas être supprimé car il est lié à des documents ou des signatures. Son compte a été désactivé.'
                 return redirect(url_for('gestion_utilisateurs', message=message))
             
             # Sinon, suppression pure et simple de l'utilisateur
             else:
                 g.db_session.delete(user)
                 g.db_session.commit()
-                message = f'Utilisateur {identifiant} supprimé avec succès'
+                message = f'Utilisateur {id_user} supprimé avec succès'
                 return redirect(url_for('gestion_utilisateurs', success_message=message))
         
         # Si l'utilisateur n'existe pas (peu possible car le formulaire est généré dynamiquement)
         else:
-            message = f'L\'utilisateur {identifiant} n\'existe pas'
+            message = f'L\'utilisateur {id_user} n\'existe pas'
             return redirect(url_for('gestion_utilisateurs', error_message=message))
     
     # Gestion des erreurs
     except Exception as e:
-        message = f'Erreur lors de la suppression de l\'utilisateur {identifiant} : {e}'
+        message = f'Erreur lors de la suppression de l\'utilisateur {id_user} : {e}'
         return redirect(url_for('gestion_utilisateurs', error_message=message))
 
 @peraudiere.route('/modif-utilisateurs', methods=['POST'])

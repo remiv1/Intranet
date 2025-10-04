@@ -1,0 +1,108 @@
+<h2>Liste des signatures</h2>
+<!-- Onglet de gestion des signatures -->
+<div class="tab">
+    <button class="tablinks{{ ' active' if tab == 'a' else '' }}"
+            onclick="openTab(event, 'Archived')" id="archivedList">Signatures réalisées</button>
+    <button class="tablinks{{ ' active' if tab == 'c' else '' }}"
+            onclick="openTab(event, 'Current')" id="currentList">
+            Signatures en attente {% if documents_to_signe %}<i class="bi bi-exclamation-square-fill"></i>{% endif %}
+    </button>
+</div>
+<!-- Conteneur du premier onglet -->
+<div id="Archived" class="tabcontent{{ ' d-block' if tab == 'a' else ' d-none' }}">
+    <div id="collapseOne" class="show" aria-labelledby="headingOne" data-parent="#accordion">
+        <div class="card-body">
+            <table id="signaturesTable" class="table table-bordered">
+                <thead>
+                <tr>
+                    <th scope="col d-none">id</th>
+                    <th scope="col">Nom du document</th>
+                    <th scope="col">Date de création</th>
+                    <th scope="col">Date de signature</th>
+                    <th scope="col">Statut</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for doc in documents_archived %}
+                    <tr>
+                        <th scope="row d-none">{{ doc.id }}</th>
+                        <td>
+                            <a href="{{ url_for('signature.download_signed_doc', doc_id=doc.id, hash_document=doc.hash_fichier) }}">
+                                {{ doc.doc_nom }}
+                            </a>
+                        </td>
+                        <td>{{ doc.cree_at }}</td>
+                        <td>{{ doc.complete_at }}</td>
+                        <td>
+                            {% if doc.status == 1 %}
+                                <i class="bi bi-vector-pen icone-ok" title="Signé"> Signé </i>
+                            {% elif doc.status == -1 %}
+                                <i class="bi bi-x-octagon icone-nok"> Annulé </i>
+                            {% elif doc.status == -2 %}
+                                <i class="bi bi-battery-low icone-nok"> Expiré </i>
+                            {% else %}
+                                {{ doc.status }}
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% else %}
+                    <tr>
+                        <td colspan="5" class="text-center">Aucun document en cours.</td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+    </div>
+</div>
+<!-- Conteneur du deuxième onglet -->
+<div id="Current" class="tabcontent{{ ' d-block' if tab == 'c' else ' d-none' }}">
+    <div id="collapseTwo" class="show" aria-labelledby="headingTwo" data-parent="#accordion">
+        <div class="card-body">
+            <table id="signaturesTable2" class="table table-bordered">
+                <thead>
+                <tr>
+                    <th scope="col d-none">id</th>
+                    <th scope="col">Nom du document</th>
+                    <th scope="col">Date de création</th>
+                    <th scope="col">Date d'expiration</th>
+                    <th scope="col">Statut</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for item in documents_to_signe %}
+                    <tr>
+                        <th scope="row d-none">{{ item.doc.id }}</th>
+                        <td>
+                            {% if item.invitation %}
+                            <a href="{{ url_for('signature.signature_do', doc_id=item.doc.id, hash_document = item.doc.hash_fichier) }}?token={{ item.invitation.token }}">
+                                {{ item.doc.doc_nom }}
+                            </a>
+                            {% endif %}
+                            {% if not item.invitation %}
+                            {{ item.doc.doc_nom }}
+                            {% endif %}
+                        </td>
+                        <td>{{ item.doc.cree_at }}</td>
+                        <td>{{ item.doc.limite_signature }}</td>
+                        <td>
+                            {% if item.doc.status == 0 and item.partial == False %}
+                                <i class="bi bi-hourglass-split icone-ok" title="En attente"> En attente </i>
+                            {% elif item.doc.status == 0 and item.partial == True %}
+                                <i class="bi bi-check2-circle icone-nok" title="Partiellement signé"> Partiellement signé </i>
+                            {% else %}
+                                {{ item.doc.status }}
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% else %}
+                    <tr>
+                        <td colspan="5" class="text-center">Aucun document en cours.</td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

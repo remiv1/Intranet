@@ -10,6 +10,7 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-rbsA2VBKQhggwzxH7pPCaAqO46MgnOM80zW1RWuH61DGLwZJEdK2Kadq2F9CUG65" crossorigin="anonymous">
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
     <!--CSS propriétaires-->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style-general.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style-accueil.css') }}">
@@ -55,6 +56,8 @@
                         Déposer un document à signer
                         {% elif context == 'signature_do' %}
                         Signer un document
+                        {% elif context == 'signature_list' %}
+                        Liste des documents à signer
                         {% endif %}
                     </li>
                 </ol>
@@ -92,6 +95,8 @@
                 {% include 'signatures/signature_make.html' %}
             {% elif context == 'signature_do' %}
                 {% include 'signatures/signature_do.html' %}
+            {% elif context == 'signature_list' %}
+                {% include 'signatures/signature_list.html' %}
             {% else %}
             <h2>Accueil de l'espace administratif</h2>
             <div class="row">
