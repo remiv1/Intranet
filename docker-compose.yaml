@@ -11,6 +11,8 @@ services:
       - ${PRINT_LOCAL_PATH}:${PRINT_DOCKER_PATH}
       - ./alembic:/app/alembic
       - ./alembic.ini:/app/alembic.ini
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
     environment:
       - DB_URL=${DB_URL}
     env_file:
@@ -32,6 +34,8 @@ services:
     volumes:
       - ./app/nginx/nginx.conf:/etc/nginx/nginx.conf
       - /opt/certs:/etc/nginx/certs
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
     ports:
       - "443:443"  #  Port HTTPS
       - "80:80"
@@ -54,6 +58,8 @@ services:
       - .env
     volumes:
       - dbdata:${DB_DOCKER_PATH}
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
     networks:
       - intranet_net
 
