@@ -472,7 +472,7 @@ class SignatureMaker:
         if self.old_name and self.new_name:
             # Définition des chemins
             temp_dir = SecureDocumentAccess.TEMP_DIR
-            final_dir = getenv('SIGNATURE_DOCKER_PATH', '/tmp/')
+            final_dir = getenv('SIGNATURE_DOCKER_PATH', '/tmp/') + f'/{self.doc_to_signe.id}/'
             Path(final_dir).mkdir(parents=True, exist_ok=True)
             old_path = Path(temp_dir) / self.old_name
             new_path = Path(final_dir) / self.new_name
