@@ -1,5 +1,14 @@
 # Evolutions de la base de données
 
+## Version 1.1.0 [2025-10-15]
+
+- Ajouts des tables nécessaires pour la gestion des signatures électroniques mutli-signatires, multi-signatures dans les documents :
+  - `20_documents_à signer` : pour répertorier les documents nécessitant une signature électronique.
+  - `21_points` : pour stocker les informations sur les points de signature dans les documents.
+  - `22_signatures` : pour enregistrer les signatures rattachées aux points de signatures (une signature peut être liée à plusieurs points de signature).
+  - `23_invitations` : pour gérer les invitations envoyées aux signataires.
+  - `24_audit_logs` : pour conserver un historique des actions liées aux signatures électroniques.
+
 ## Version 1.0.1 [2025-10-01]
 
 - Mise à jour des champs de tables pour être en format snake_case :

@@ -3,7 +3,7 @@
         "metadonnees":
         {
             "__comment": "Modules accessibles via la page d'accueil de l'Intranet",
-            "__version": "1.0.0",
+            "__version": "1.1.0",
             "__auteur": "Rémi VERSCHUUR"
         }
     },
@@ -22,6 +22,13 @@
                 "descriptif": "Permet de gérer les utilisateurs déjà existant de l'Intranet",
                 "buttonid": "Gdu",
                 "onclick": "gestion_utilisateurs"
+            },
+            {
+                "classe": 2,
+                "titre": "Espace administratif",
+                "descriptif": "Espace réservé pour le personnel administratif de l'établissement (en construction)",
+                "buttonid": "Ea",
+                "onclick": "ea"
             },
             {
                 "classe": 2,

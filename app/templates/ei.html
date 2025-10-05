@@ -10,6 +10,7 @@
     <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
     <!--CSS propriétaires-->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style-impression.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style-general.css') }}">
@@ -19,7 +20,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Fenix&family=Pattaya&display=swap" rel="stylesheet">
     <!-- Sprite SVG Bootstrap -->
-    <svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+    <svg class="d-none" xmlns="http://www.w3.org/2000/svg">
         <symbol id="house-door-fill" viewBox="0 0 16 16">
             <path d="M8 1.52l6 5V14h-4V9H6v5H2V6.52l6-5zm8 5.67v6.11a1 1 0 0 1-1 1h-4a1 1 0 0 1-1-1v-4H6v4a1 1 0 0 1-1 1H1a1 1 0 0 1-1-1V7.19l-.94-.73a.8.8 0 0 1-.06-1.14l7-5.33a1.16 1.16 0 0 1 1.4 0l7 5.33a.8.8 0 0 1-.06 1.14L16 7.19z">
         </symbol>
@@ -53,7 +54,8 @@
             <nav aria-label="breadcrumb">
                 <ol class="breadcrumb breadcrumb-custom overflow-hidden text-center bg-body-tertiary border rounded-3">
                     <li class="breadcrumb-item">
-                        <a class="link-body-emphasis fw-semibold text-decoration-none" href="{{ url_for('home') }}">
+                        <a class="link-body-emphasis fw-semibold text-decoration-none"
+                            href="{{ url_for('home') }}" title="accueil">
                             <svg class="bi" width="16" height="16">
                                 <use xlink:href="#house-door-fill"></use>
                             </svg>
@@ -74,26 +76,26 @@
             {% endif %}
             <h2>Paramétrage</h2>
             <form id="form-impression" class="row" action="{{ url_for('print_doc') }}" method="post" enctype="multipart/form-data">
-                <select name="format" class="form-control col-sm-4" id="format">
+                <select name="format" class="form-control col-sm-4" id="format" title="Format du papier">
                     <option value="A5">A5</option>
                     <option value="A4" selected>A4</option>
                     <option value="A3">A3</option>
                 </select>
-                <select name="recto_verso" class="form-control col-sm-4" id="recto_verso">
+                <select name="recto_verso" class="form-control col-sm-4" id="recto_verso" title="Impression recto verso">
                     <option value="one-sided">Recto seulement</option>
                     <option value="two-sided-short-edge">Recto-verso / Côté court</option>
                     <option value="two-sided-long-edge" selected>Recto-verso / Côté long</option>
                 </select>
-                <select name="orientation" class="form-control col-sm-4" id="orientation">
+                <select name="orientation" class="form-control col-sm-4" id="orientation" title="Orientation de la page">
                     <option value="3">Portrait</option>
                     <option value="4">Paysage</option>
                 </select>
-                <select name="couleur" class="form-control col-sm-4" id="couleur">
+                <select name="couleur" class="form-control col-sm-4" id="couleur" title="Couleur d'impression">
                     <option value="monochrome">Noir et blanc</option>
                     <option value="color">Couleur</option>
                 </select>
-                <input type="number" name="copies" class="form-control col-sm-4" id="copies" value="1">
-                <input class="form-control col-sm-4" type="file" name="document" id="document" accept="application/pdf">
+                <input type="number" name="copies" class="form-control col-sm-4" id="copies" value="1" min="1" max="100" title="Nombre de copies">
+                <input class="form-control col-sm-4" type="file" name="document" id="document" accept="application/pdf" title="Sélectionner un fichier PDF" required>
                 <button type="submit">Valider</button>
             </form>
         </div>

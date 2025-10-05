@@ -38,8 +38,9 @@ from sqlalchemy.engine.url import URL
 from habilitations import (validate_habilitation, ADMINISTRATEUR, GESTIONNAIRE, PROFESSEURS_PRINCIPAUX,
                            PROFESSEURS, ELEVES, IMPRESSIONS)
 from bp_contracts import contracts_bp
+from bp_signature import signatures_bp
 from config import Config
-from models import Base, User
+from models import Base, User, DocToSigne, Points, Signatures, Invitation
 from docs import print_document, delete_file
 from rapport_echeances import envoi_contrats_renego
 from utilities import get_jsoned_datas
@@ -67,6 +68,7 @@ peraudiere = Flask(__name__)
 
 # Enregistrement du blueprint pour les contrats
 peraudiere.register_blueprint(contracts_bp)
+peraudiere.register_blueprint(signatures_bp)
 
 # Charger la configuration depuis config.py
 peraudiere.config.from_object(Config)
@@ -96,6 +98,15 @@ engine = create_engine(db_url,
 
 # Créer les tables de la base de données (avec retry en cas d'erreur de connexion)
 def initialize_database(max_retries: int = 10, retry_delay: int = 2) -> bool | None:
+    """
+    Fonction pour initialiser la base de données avec retry en cas d'erreur de connexion.
+    Sert aussi de healthcheck pour l'application.
+    Args:
+        max_retries (int): Le nombre maximum de tentatives de connexion.
+        retry_delay (int): Le délai entre chaque tentative de connexion (en secondes).
+    Returns:
+        bool | None: True si la connexion est réussie, None sinon.
+    """
     import time
     
     # Tenter de créer les tables avec des retries
@@ -118,10 +129,17 @@ initialize_database()
 class UsersMethods:
     """
     Classe pour gérer les méthodes liées aux utilisateurs.
-    Méthodes statiques :
-    - get_user_from_credentials : Récupère un utilisateur à partir des identifiants fournis dans une requête.
-    - valid_authentication : Valide l'authentification d'un utilisateur et initialise la session.
-    - generate_nb_false_pwd : Gère le compteur d'essais de mot de passe incorrects et verrouille l'utilisateur si nécessaire.
+    Méthodes statiques:
+        get_user_from_credentials:
+            Récupère un utilisateur à partir des identifiants fournis dans une requête.
+        valid_authentication:
+            Valide l'authentification d'un utilisateur et initialise la session.
+        generate_nb_false_pwd:
+            Gère le compteur d'essais de mot de passe incorrects et verrouille l'utilisateur si nécessaire.
+        get_user_validation_message:
+            Retourne le message d'erreur approprié selon l'état de l'utilisateur.
+        handle_login_redirect:
+            Gère la redirection après une tentative de connexion.
     """
     
     @staticmethod
@@ -172,6 +190,7 @@ class UsersMethods:
             session['nom'] = user.nom
             session['mail'] = user.mail
             session['habilitation'] = str(user.habilitation)
+            session['id'] = user.id
             try:
                 # Stocker les informations de l'utilisateur dans la session
                 user.false_test=0
@@ -204,6 +223,39 @@ class UsersMethods:
             message = f'Erreur lors de la mise à jour du compteur d\'essais : {e}'
         return message
 
+    @staticmethod
+    def get_user_validation_message(user: User) -> str | None:
+        """
+        Retourne le message d'erreur approprié selon l'état de l'utilisateur.
+        Args:
+            user (User): L'utilisateur à valider.
+        Returns:
+            str | None: Le message d'erreur ou None si l'utilisateur est valide.
+        """
+        if user.locked:
+            return 'Votre compte est verrouillé, veuillez contacter votre administrateur.'
+        elif user.fin and user.fin <= datetime.now():
+            return 'Votre compte a expiré, veuillez contacter votre administrateur.'
+        return None
+
+    @staticmethod
+    def handle_login_redirect(redirect_url: str | None, success: bool = False, error_message: str | None = None) -> Response:
+        """
+        Gère la redirection après une tentative de connexion.
+        Args:
+            redirect_url (str | None): L'URL de redirection originale.
+            success (bool): True si la connexion a réussi.
+            error_message (str | None): Message d'erreur à afficher.
+        Returns:
+            Response: La redirection appropriée.
+        """
+        if success:
+            if redirect_url and redirect_url != '' and redirect_url != 'None':
+                return redirect(redirect_url)
+            return redirect(url_for('home', success_message='Connexion réussie'))
+        
+        return redirect(url_for('login', error_message=error_message, preview_request=redirect_url))
+
 @peraudiere.before_request
 def before_request() -> Any:
     """
@@ -232,7 +284,9 @@ def before_request() -> Any:
             if 'prenom' not in session or 'nom' not in session:
                 session.clear()
                 error_message = 'Merci de vous connecter pour accéder à cette ressource'
-                return redirect(url_for('login', error_message=error_message))
+                # Capturer l'URL complète pour la redirection après connexion (uniquement pour les requêtes GET)
+                preview_request = request.url if request.method == 'GET' else None
+                return redirect(url_for('login', error_message=error_message, preview_request=preview_request))
 
 @peraudiere.teardown_appcontext
 def teardown_request(exception: Optional[BaseException]) -> None:
@@ -299,38 +353,48 @@ def login() -> str | Response:
     message = request.args.get('message', None)
     success_message = request.args.get('success_message', None)
     error_message = request.args.get('error_message', None)
+    preview_request = request.args.get('preview_request', None)
 
     # === Gestion de la méthode POST (traitement du formulaire de connexion) ===
     if request.method == 'POST':
-        try:
-            # récupération du contenu du formulaire
-            user, _, password = UsersMethods.get_user_from_credentials(request)
-
-            # Vérifier si l'utilisateur existe et si le mot de passe est correct
-            if UsersMethods.valid_authentication(user, password):
-                return redirect(url_for('home', success_message='Connexion réussie'))
-            # Gestion des comptes vérouillés
-            elif user.fin:
-                if user.fin <= datetime.now():
-                    message = 'Votre compte a expiré, veuillez contacter votre administrateur.'
-            elif user.locked:
-                message = 'Votre compte est verrouillé, veuillez contacter votre administrateur.'
-            # Gestion des erreurs de mots de passe
-            else:
-                message = UsersMethods.generate_nb_false_pwd(user)
-
-            # Rediriger vers la page de connexion avec le message approprié
-            return redirect(url_for('login', error_message=message))
-
-        except Exception as e:
-            # En cas d'erreur, retour sur la page de connexion après rollback
-            message = f'Erreur lors de la connexion, veuillez réessayer : {e}'
-            return redirect(url_for('login', error_message=message))
+        return _handle_login_post()
 
     # === Gestion de la méthode GET (affichage de la page de connexion) ===
-    else:
-        return render_template('login.html', message=message, success_message=success_message,
-                               error_message=error_message)
+    return render_template('login.html', message=message, success_message=success_message,
+                           error_message=error_message, preview_request=preview_request)
+
+def _handle_login_post() -> Response:
+    """
+    Gère la logique POST de la route login.
+    Returns:
+        Response: La redirection appropriée selon le résultat de l'authentification.
+    """
+    try:
+        # Récupération de l'URL de redirection depuis le formulaire
+        redirect_url = request.form.get('preview_request', None)
+        
+        # récupération du contenu du formulaire
+        user, _, password = UsersMethods.get_user_from_credentials(request)
+
+        # Vérifier si l'utilisateur existe et si le mot de passe est correct
+        if UsersMethods.valid_authentication(user, password):
+            return UsersMethods.handle_login_redirect(redirect_url, success=True)
+        
+        # Vérifier les conditions de blocage de l'utilisateur
+        validation_message = UsersMethods.get_user_validation_message(user)
+        if validation_message:
+            return UsersMethods.handle_login_redirect(redirect_url, error_message=validation_message)
+        
+        # Gestion des erreurs de mots de passe
+        error_message = UsersMethods.generate_nb_false_pwd(user)
+        return UsersMethods.handle_login_redirect(redirect_url, error_message=error_message)
+
+    except Exception as e:
+        # Récupération de l'URL de redirection depuis le formulaire en cas d'erreur
+        redirect_url = request.form.get('preview_request', None)
+        # En cas d'erreur, retour sur la page de connexion après rollback
+        error_message = f'Erreur lors de la connexion, veuillez réessayer : {e}'
+        return UsersMethods.handle_login_redirect(redirect_url, error_message=error_message)
 
 @peraudiere.route('/logout', methods=['GET'])
 def logout() -> Response:
@@ -378,6 +442,9 @@ def gestion_utilisateurs(message: Optional[str] = None, success_message: Optiona
     Returns:
         Response: La page de gestion des utilisateurs ou une redirection vers la page de déconnexion.
     """
+    message = request.args.get('message', message)
+    success_message = request.args.get('success_message', success_message)
+    error_message = request.args.get('error_message', error_message)
     users: list[User] = g.db_session.query(User).all()
     users.sort(key=lambda x: (x.nom, x.prenom))
     return render_template('gestion_utilisateurs.html', users=users, message=message,
@@ -427,6 +494,28 @@ def ei(message: Optional[str] = None, success_message: Optional[str] = None,
     """
     return render_template('ei.html', message=message, success_message=success_message,
                            error_message=error_message)
+
+@peraudiere.route('/ea')
+@validate_habilitation(GESTIONNAIRE)
+def ea(message: Optional[str] = None, success_message: Optional[str] = None,
+        error_message: Optional[str] = None, context: Optional[str] = None) -> str | Response:
+    """
+    Route pour l'espace réservé aux administrateurs.
+    Gère l'affichage de l'espace réservé aux administrateurs.
+    Args:
+        None
+    Returns:
+        Response: La page de l'espace réservé aux administratifs.
+    """
+    message = request.args.get('message', message)
+    success_message = request.args.get('success_message', success_message)
+    error_message = request.args.get('error_message', error_message)
+    context = request.args.get('context', context)
+    # définition des sections disponibles en fonction des habilitations
+    sections: List[Dict[str, Any]] = get_jsoned_datas(file='admin_modules.json', level_one='modules', dumped=False)
+
+    return render_template('ea.html', message=message, success_message=success_message,
+                           error_message=error_message, sections=sections, context=context)
 
 @peraudiere.route('/print-doc', methods=['POST'])
 @validate_habilitation(IMPRESSIONS)
@@ -522,9 +611,9 @@ def ajout_utilisateurs() -> Response:
         message = f'Erreur lors de l\'ajout de l\'utilisateur : {e}'
         return redirect(url_for('gestion_utilisateurs', error_message=message))
 
-@peraudiere.route('/suppr-utilisateurs', methods=['POST'])
+@peraudiere.route('/suppr-utilisateurs/<id_user>', methods=['POST'])
 @validate_habilitation(ADMINISTRATEUR)
-def suppr_utilisateurs() -> Response:
+def suppr_utilisateurs(id_user: int) -> Response:
     """
     Route pour la suppression d'un utilisateur.
     Gère la suppression d'un utilisateur de la base de données.
@@ -533,16 +622,44 @@ def suppr_utilisateurs() -> Response:
     Returns:
         Response: Redirection vers la page de gestion des utilisateurs.
     """
-    identifiant = request.form.get('identifiant', '')
+    # Récupération des données du formulaire
     try:
-        user = g.db_session.query(User).filter(User.identifiant == identifiant).first()
+        # Récupération de l'utilisateur
+        user = g.db_session.query(User).filter(User.identifiant == id_user).first()
+        if user.id == session['id']:
+            message = 'Vous ne pouvez pas supprimer votre propre compte utilisateur.'
+            return redirect(url_for('gestion_utilisateurs', error_message=message))
         if user:
-            g.db_session.delete(user)
-            g.db_session.commit()
-        message = f'Utilisateur {identifiant} supprimé avec succès'
-        return redirect(url_for('gestion_utilisateurs', success_message=message))
+            # Vérification des liens avec les documents à signer et les signatures
+            docs = g.db_session.query(DocToSigne) \
+                            .join(Points) \
+                            .join(Signatures) \
+                            .join(Invitation) \
+                            .filter(DocToSigne.id_user == user.id) \
+                            .count()
+            
+            # Si des liens existent, désactivation du compte au lieu de la suppression
+            if docs > 0:
+                user.fin = datetime.now()
+                g.db_session.commit()
+                message = f'L\'utilisateur {id_user} ne peut pas être supprimé car il est lié à des documents ou des signatures. Son compte a été désactivé.'
+                return redirect(url_for('gestion_utilisateurs', message=message))
+            
+            # Sinon, suppression pure et simple de l'utilisateur
+            else:
+                g.db_session.delete(user)
+                g.db_session.commit()
+                message = f'Utilisateur {id_user} supprimé avec succès'
+                return redirect(url_for('gestion_utilisateurs', success_message=message))
+        
+        # Si l'utilisateur n'existe pas (peu possible car le formulaire est généré dynamiquement)
+        else:
+            message = f'L\'utilisateur {id_user} n\'existe pas'
+            return redirect(url_for('gestion_utilisateurs', error_message=message))
+    
+    # Gestion des erreurs
     except Exception as e:
-        message = f'Erreur lors de la suppression de l\'utilisateur {identifiant} : {e}'
+        message = f'Erreur lors de la suppression de l\'utilisateur {id_user} : {e}'
         return redirect(url_for('gestion_utilisateurs', error_message=message))
 
 @peraudiere.route('/modif-utilisateurs', methods=['POST'])
@@ -563,9 +680,6 @@ def modif_utilisateurs() -> Response:
     mdp = request.form.get('mdp', '')
     unlock = int(request.form.get('unlock', 0)) if request.form.get('unlock') == '1' else 0
     try:
-        # Hachage du mot de passe
-        mdp = sha256(mdp.encode()).hexdigest()
-
         # Création du niveau d'habilitation
         habilitation_values: List[str] = []
         habilitation_values.extend(value for key, value in request.form.items() if key.startswith('habil'))
@@ -581,7 +695,7 @@ def modif_utilisateurs() -> Response:
             user.nom = nom
             user.mail = mail
             user.identifiant = identifiant
-            user.sha_mdp = mdp if mdp != '' else user.sha_mdp
+            user.sha_mdp = sha256(mdp.encode()).hexdigest() if len(mdp) > 0 else user.sha_mdp
             if unlock == 1:
                 user.false_test = 0
                 user.locked = False
@@ -614,8 +728,6 @@ def gestion_droits_post() -> Response:
     mdp = request.form.get('mdp', '')
 
     try:
-        # Hachage du mot de passe
-        mdp = sha256(mdp.encode()).hexdigest()
         habilitation_values: List[str] = []  # Création du niveau d'habilitation
         habilitation_values.extend(value for key, value in request.form.items() if key.startswith('habil'))
         sorted_habil = sorted(habilitation_values, key=int)     # Tri des valeurs d'habilitation
@@ -626,7 +738,7 @@ def gestion_droits_post() -> Response:
 
         # Modification des informations de l'utilisateur
         if user:
-            user.sha_mdp = mdp if mdp != '' else user.sha_mdp
+            user.sha_mdp = sha256(mdp.encode()).hexdigest() if len(mdp) > 0 else user.sha_mdp
             user.habilitation = habilitation
             g.db_session.commit()
 

@@ -1,0 +1,159 @@
+.tab {
+    background-color: white;
+    display: table-row;
+  }
+
+  .tab button {
+    background-color: var(--secondary-color);
+    color: var(--primary-color);
+    font-family: var(--font-document);
+    float: left;
+    border: none;
+    outline: none;
+    cursor: pointer;
+    transition: 0.5s;
+    margin: 0 10px 0 0;
+    border-radius: 10px 10px 0 0;
+  }
+
+  .tab button:hover {
+    background-color: var(--secondary-color);
+    color: var(--primary-color);
+  }
+
+  .tab button.active {
+    background-color: var(--primary-color);
+    color: var(--secondary-color);
+  }
+
+  .tabcontent {
+    border: solid 3px;
+    border-radius: 0 0 10px 10px;
+  }
+
+  .container {
+    min-width: 80%;
+    margin-left: 10%;
+    margin-right: 10%;
+    align-content: normal;
+  }
+
+.icone-ok {
+    color: var(--secondary-color);
+    background-color: var(--primary-color);
+    font-size: 1.2em;
+    border-radius: 5px;
+    padding: 5px;
+}
+.icone-nok {
+    color: var(--primary-color);
+    background-color: var(--secondary-color);
+    font-size: 1.2em;
+    border-radius: 5px;
+    padding: 5px;
+}
+
+/* Conteneur principal pour le viewer PDF */
+.pdf-viewer-container {
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 15px;
+    background-color: #f8f9fa;
+    max-height: 80vh;
+    overflow-y: auto;
+}
+
+/* Loader PDF */
+#pdf-loader {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    height: 300px;
+    color: var(--primary-color);
+}
+
+/* Panel des signataires */
+.signature-panel {
+    border: 1px solid var(--primary-color);
+    border-radius: 8px;
+    padding: 20px;
+    background-color: #e0e0e0;
+    max-height: 80vh;
+    overflow-y: auto;
+}
+
+.signature-panel h5 {
+    color: var(--primary-color);
+    border-bottom: 2px solid var(--primary-color);
+    padding-bottom: 10px;
+    margin-bottom: 20px;
+}
+
+/* Liste des points de signature */
+#signature-points-list {
+    margin-bottom: 20px;
+}
+
+.signature-point-item {
+    border: 1px solid #e0e0e0;
+    border-radius: 5px;
+    padding: 10px;
+    margin-bottom: 10px;
+    background-color: #e0e0e0;
+}
+
+.signature-point-item h6 {
+    margin: 0 0 5px 0;
+    color: #495057;
+}
+
+/* Pages PDF */
+.pdf-page {
+    margin-bottom: 20px;
+    position: relative;
+    border: 1px solid #ccc;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* Marqueurs de signature */
+.signature-marker {
+    position: absolute;
+    width: 24px;
+    height: 24px;
+    background-color: #ff4444;
+    border: 2px solid #cc0000;
+    border-radius: 50%;
+    cursor: pointer;
+    z-index: 1000;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: bold;
+    color: white;
+    text-shadow: 1px 1px 1px rgba(0,0,0,0.5);
+}
+
+.signature-marker:hover {
+    transform: scale(1.2);
+    box-shadow: 0 2px 8px rgba(255, 68, 68, 0.4);
+}
+
+.signature-marker.validated {
+    background-color: #44ff44;
+    border-color: #00cc00;
+}
+
+/* Canvas PDF cliquable */
+.pdf-page canvas {
+    cursor: crosshair;
+}
+
+#signature-canvas {
+    border: 2px solid #dee2e6;
+    border-radius: 8px;
+    background: white;
+    touch-action: none;
+}

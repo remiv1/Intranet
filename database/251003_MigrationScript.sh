@@ -1,0 +1,1 @@
+docker exec -i nom_du_conteneur mariadb -u root -p intranet_db < 251003_MigrationScript.sql

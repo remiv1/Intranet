@@ -7,12 +7,13 @@ services:
     depends_on:
       - db
     volumes:
-      - ${FILES_LOCAL_PATH}:${FILES_DOCKER_PATH}  #  Persistance des fichiers de contrats
-      - ${PRINT_LOCAL_PATH}:${PRINT_DOCKER_PATH}
+      - documents_data:${FILES_DOCKER_PATH}  #  Persistance des fichiers de contrats
+      - print_data:${PRINT_DOCKER_PATH} #  Persistance des fichiers de documents envoyés à l'impression
+      - signature_data:${SIGNATURE_DOCKER_PATH} # Persistance des fichiers de signatures
       - ./alembic:/app/alembic
       - ./alembic.ini:/app/alembic.ini
-#      - /etc/localtime:/etc/localtime:ro
-#      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
     environment:
       - DB_URL=${DB_URL}
     env_file:
@@ -20,6 +21,8 @@ services:
     ports:
       - 5000
     restart: always
+    ports:
+      - "5000:5000"  #  Port de l'application Flask
     entrypoint: ["sh", "app/entrypoint.sh"]
     extra_hosts:
       - "host.docker.internal:host-gateway"
@@ -36,14 +39,14 @@ services:
     volumes:
       - ./app/nginx/nginx.conf:/etc/nginx/nginx.conf
       - /opt/certs:/etc/nginx/certs
-#      - /etc/localtime:/etc/localtime:ro
-#      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
     ports:
       - "443:443"  #  Port HTTPS
       - "80:80"
     networks:
       - intranet_net
-#    restart: always
+    restart: always
 
   db:
     build:
@@ -61,8 +64,8 @@ services:
       - .env
     volumes:
       - dbdata:${DB_DOCKER_PATH}
-#      - /etc/localtime:/etc/localtime:ro
-#      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
     networks:
       - intranet_net
 
@@ -72,6 +75,24 @@ volumes:
     driver_opts:
       type: none
       device: ${DB_LOCAL_PATH}
+      o: bind
+  signature_data:
+    driver: local
+    driver_opts:
+      type: none
+      device: ${SIGNATURE_LOCAL_PATH}
+      o: bind
+  documents_data:
+    driver: local
+    driver_opts:
+      type: none
+      device: ${FILES_LOCAL_PATH}
+      o: bind
+  print_data:
+    driver: local
+    driver_opts:
+      type: none
+      device: ${PRINT_LOCAL_PATH}
       o: bind
 
 networks:

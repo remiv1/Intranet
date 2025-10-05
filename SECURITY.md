@@ -16,6 +16,7 @@ If you discover a security vulnerability in this project, please report it by em
 Alternatively, you can open a GitHub issue and mark it as "Security".
 
 We commit to:
+
 - Acknowledge your report within 48 hours
 - Provide a response within 7 days
 - Fix accepted vulnerabilities as quickly as possible

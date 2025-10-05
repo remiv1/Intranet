@@ -10,6 +10,10 @@
 [![HTML5](https://img.shields.io/badge/HTML5-orange.svg)](https://developer.mozilla.org/fr/docs/Web/HTML)
 [![JavaScript](https://img.shields.io/badge/JavaScript-yellow.svg)](https://developer.mozilla.org/fr/docs/Web/JavaScript)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![PDF.js](https://img.shields.io/badge/PDF.js-3.10.111-blue.svg)](https://mozilla.github.io/pdf.js/)
+[![jQuery](https://img.shields.io/badge/jQuery-3.7.1-blue.svg)](https://jquery.com/)
+[![Bootstrap](https://img.shields.io/badge/Bootstrap-5.3.3-purple.svg)](https://getbootstrap.com/)
+[![SignaturePad](https://img.shields.io/badge/SignaturePad-4.1.6-blue.svg)](https://github.com/szimek/signature_pad)
 
 ## 🛠️ Évolutions et Roadmap
 
@@ -44,7 +48,7 @@ Cette application web développée avec Flask permet la gestion complète d'un �
 
 ## 🏗️ Architecture
 
-### Technologies utilisées
+### Stack technologique
 
 - **Backend** : Flask 3.1.0 (Python 3.12)
 - **Base de données** : MariaDB (MySQL) 12.0.2
@@ -56,44 +60,116 @@ Cette application web développée avec Flask permet la gestion complète d'un �
 
 ### Structure du projet
 
-```txt
+```text
 .
-├── alembic/                # ⚗️ Migrations de la base de données
-├── app/                    # 🐍 Application Flask principale
-│   ├── nginx/              # 🔐 Configuration Nginx
-│   ├── static/             # Fichiers statiques (CSS, JS, images)
-│   │    ├── css/           # Styles CSS
-│   │    ├── js/            # Scripts JavaScript
-│   │    └── img/           # Images et icônes
-│   ├── templates/          # Templates HTML Jinja2
-│   ├── __init__.py         # 🐍 Initialisation de l'application
-│   ├── application.py      # 🐍 Application et routes flask
-│   ├── config.py           # 🔐 Configuration Flask
-│   ├── Dockerfile          # 🐳 Dockerfile pour l'application
-│   ├── docs.py             # 📁 Gestion des documents
-│   ├── entrypoint.sh       # 🔐 Script de démarrage
-│   ├── habilitations.py    # 🔐 Gestion des habilitations et permissions
-│   ├── impression.py       # 🖨️ Gestion des impressions
-│   ├── models.py           # ⚗️ Modèles de données SQLAlchemy
-│   ├── rapport_echeance.py # ⚙️ Création des rapports d'échéances
-│   └── run.py              # ⚙️ Point d'entrée principal
-├── backup/                 # 🗄️ Sauvegarde Base de données MariaDB et scripts de sauvegardes
-├── database/               # 🗄️ Dossier de la base de données
-│   ├── CHANGELOG.md        # ⚗️ Historique des versions de la base de données
-│   ├── Dockerfile.mariadb  # 🐳 Fichier Docker pour MariaDB
-│   └── init_user.sql       # 🗄️ Création du premier utilisateur admin
-├── documents/              # 📁 Stockage des documents uploadés (peut être mis ailleurs)
-├── print/                  # 🖨️ Stockage des documents à imprimer (peut être mis ailleurs)
-├── veraudiere/             # 🐍 Environnement virtuel Python
-├── .env.example            # ⚙️ Fichier de configuration exemple
-├── alembic.ini             # ⚙️ Fichier de configuration des migrations
-├── docker-compose.yaml     # 🐳 Orchestration des services
-├── generate-env.sh         # 🔐 Script de génération de configuration
-├── INSTALL                 # 📋 Guide d'installation
-├── LICENSE                 # 📜 Licence Apache
-├── requirements.txt        # 🐍 Dépendances Python
-└── todo.md                 # 🚀 Liste des tâches à réaliser
+├── alembic/                          # ⚗️ Migrations de la base de données
+│   ├── versions/                     # Scripts de migration versionnés
+│   │   ├── b5f240cb2287_renommage_des_champs_camelcase_en_snake_.py
+│   │   └── c8293d28c674_ajout_de_la_table_13_factures.py
+│   ├── env.py                        # Configuration de l'environnement Alembic
+│   └── script.py.mako                # Template pour nouveaux scripts de migration
+├── app/                              # 🐍 Application Flask principale
+│   ├── __init__.py                   # 🚀 Initialisation Flask + configuration
+│   ├── application.py                # 🛣️ Routes principales et logique métier
+│   ├── bp_contracts.py               # 📋 Blueprint pour la gestion des contrats
+│   ├── bp_signature.py               # ✍️ Blueprint pour le système de signatures
+│   ├── config.py                     # ⚙️ Configuration Flask et variables d'environnement
+│   ├── docs.py                       # 📄 Gestion des documents et téléchargements
+│   ├── habilitations.py              # 🔐 Système d'habilitations et permissions
+│   ├── impression.py                 # 🖨️ Système d'impression à distance
+│   ├── models.py                     # 🗄️ Modèles SQLAlchemy et structure BDD
+│   ├── rapport_echeances.py          # 📊 Génération des rapports d'échéances
+│   ├── run.py                        # 🚀 Point d'entrée principal de l'application
+│   ├── signatures.py                 # ✍️ Logique métier pour les signatures électroniques
+│   ├── utilities.py                  # 🔧 Fonctions utilitaires et helpers
+│   ├── json/                         # 📋 Fichiers de configuration JSON
+│   │   ├── admin_modules.json        # Configuration des modules d'administration
+│   │   ├── menus.json                # Structure et typologie des menus
+│   │   └── modules.json              # Configuration des modules métier
+│   ├── nginx/                        # 🌐 Configuration serveur web
+│   │   └── nginx.conf                # Configuration principale Nginx
+│   ├── static/                       # 🎨 Ressources statiques
+│   │   ├── css/                      # 🎨 Feuilles de style CSS
+│   │   │   ├── style-accueil.css     # Styles page d'accueil
+│   │   │   ├── style-contrats.css    # Styles module contrats
+│   │   │   ├── style-general.css     # Styles généraux de l'application
+│   │   │   ├── style-impression.css  # Styles module impression
+│   │   │   ├── style-login.css       # Styles page de connexion
+│   │   │   ├── style-menu.css        # Styles navigation et menus
+│   │   │   ├── style-signature.css   # Styles module signatures
+│   │   │   └── style-tableau.css     # Styles tableaux de données
+│   │   ├── js/                       # 📱 Scripts JavaScript côté client
+│   │   └── img/                      # 🖼️ Images et icônes de l'interface
+│   ├── templates/                    # 📄 Templates Jinja2
+│   │   ├── contrats.html             # Liste des contrats
+│   │   ├── contrat_detail.html       # Détail d'un contrat
+│   │   ├── ea.html                   # Template EA (Évènements/Actions)
+│   │   ├── ei.html                   # Template EI (Entités/Individus)
+│   │   ├── ere.html                  # Template ERE (Événements/Rapports/Échéances)
+│   │   ├── erp.html                  # Template ERP (Entreprise/Ressources/Planning)
+│   │   ├── erpp.html                 # Template ERPP (extension ERP)
+│   │   ├── gestion_droits.html       # Gestion des droits utilisateurs
+│   │   ├── gestion_utilisateurs.html # Administration des utilisateurs
+│   │   ├── index.html                # Tableau de bord principal
+│   │   ├── login.html                # Page de connexion
+│   │   ├── mail_echeance.html        # Template emails d'échéances
+│   │   └── signatures/               # Templates module signatures
+│   │       ├── signature_do.html     # Interface de signature
+│   │       └── signature_make.html   # Création de signatures
+│   ├── Dockerfile.app                # 🐳 Image Docker de l'application
+│   └── entrypoint.sh                 # � Script de démarrage du conteneur
+├── backup/                           # � Scripts et outils de sauvegarde
+│   ├── README.md                     # Documentation des sauvegardes
+│   ├── simple-backup.sh              # Script de sauvegarde simple
+│   └── simple-restore.sh             # Script de restauration simple
+├── database/                         # 🗄️ Configuration et scripts BDD
+│   ├── CHANGELOG.md                  # Historique des versions de la BDD
+│   ├── Dockerfile.mariadb            # 🐳 Image Docker MariaDB personnalisée
+│   └── init_user.sql                 # Script de création utilisateur admin initial
+├── documentation/                    # 📚 Documentation technique du projet
+│   ├── rapport-evolution-branches.md # Rapport d'évolution des branches Git
+│   ├── UML_BdD.dia                   # Diagramme UML de la base (format Dia)
+│   └── UML_BdD.svg                   # Diagramme UML de la base (format SVG)
+├── documents/                        # 📁 Stockage des fichiers uploadés
+│   └── signatures/                   # Documents de signatures électroniques
+│       └── temp/                     # Fichiers temporaires de signatures
+├── print/                            # 🖨️ File d'attente d'impression
+├── test/                             # 🧪 Tests unitaires et d'intégration
+│   ├── conftest.py                   # Configuration pytest
+│   ├── fixtures.py                   # Fixtures pour les tests
+│   ├── pytest.ini                    # Configuration pytest
+│   ├── README.md                     # Documentation des tests
+│   ├── test_application.py           # Tests de l'application principale
+│   └── test_mock_session_refactoring.py # Tests de refactoring des sessions
+├── venveraudiere/                    # 🐍 Environnement virtuel Python
+│   ├── Include/                      # Headers Python
+│   ├── Lib/                          # Bibliothèques Python
+│   │   └── site-packages/            # Packages installés
+│   ├── Scripts/                      # Exécutables (Windows)
+│   │   ├── activate                  # Script d'activation (Unix)
+│   │   ├── activate.bat              # Script d'activation (Windows)
+│   │   ├── Activate.ps1              # Script d'activation (PowerShell)
+│   │   ├── flask.exe                 # Exécutable Flask
+│   │   ├── python.exe                # Interpréteur Python
+│   │   └── pip.exe                   # Gestionnaire de packages
+│   └── pyvenv.cfg                    # Configuration de l'environnement virtuel
+├── alembic.ini                       # ⚙️ Configuration des migrations Alembic
+├── CODE_OF_CONDUCT.md                # 📜 Code de conduite du projet
+├── CONTRIBUTING.md                   # 📋 Guide de contribution
+├── docker-compose.dev.yaml           # 🐳 Composition Docker pour développement
+├── docker-compose.yaml               # 🐳 Orchestration des services Docker (production)
+├── generate-env.sh                   # 🔐 Script de génération automatique du .env
+├── INSTALL.md                        # 📋 Guide d'installation détaillé
+├── LICENCE.md                        # 📜 Licence MIT du projet
+├── README.md                         # 📖 Documentation principale
+├── requirements.txt                  # 🐍 Dépendances Python
+├── SECURITY.md                       # 🔒 Politique de sécurité
+└── todo.md                           # � Liste des tâches et améliorations à venir
 ```
+
+### Structure de la base de données
+
+![Schéma UML de la base de données](documentation/UML_BdD.svg)
 
 ## 🚀 Installation et Déploiement
 
@@ -157,103 +233,6 @@ Le fichier `.env` contient toutes les variables de configuration nécessaires :
 | `EMAIL_PORT`         | Port SMTP                                | `587`                             |
 
 > **Remarque** : Adaptez les chemins et identifiants selon votre environnement. Ne partagez jamais le fichier `.env` publiquement.
-
-## 🗄️ Base de Données
-
-### Architecture de la base de données
-
-L'application utilise **MariaDB** avec 5 tables principales interconnectées :
-
-```sql
-┌──────────────────────┐    ┌──────────────────────┐    ┌───────────────────────┐
-│   99_Users           │    │  01_Contrats         │    │ 11_Documents          │
-│                      │    │                      │    │ ├─ id (PK)            │
-│ ├─ id (PK)           │    │ ├─ id (PK)           │ ◄──┤ ├─ id_contrat(FK)     │
-│ ├─ identifiant       │    │ ├─ type_contrat      │    │ ├─ type_document      │
-│ ├─ sha_mdp           │    │ ├─ sous_type_contrat │    │ ├─ sous_type_document │
-│ ├─ habilitation      │    │ ├─ entreprise        │    │ ├─ descriptif         │
-│ └─ locked            │    │ ├─ date_debut        │    │ ├─ str_lien           │
-└──────────────────────┘    │ └─ date_fin          │    │ └─ date_document      │
-                            └──────────────────────┘    └───────────────────────┘
-                                │             |
-                                │             │       
-            ┌───────────────────────┐       ┌───────────────────────┐
-            │ 12_Evenements         │       │  13_factures          │
-            │ ├─ id (PK)            │       │ ├─ id (PK)            │
-            │ ├─ id_contrat(FK)     │       │ ├─ id_contrat(FK)     │
-            │ ├─ type_evenement     │       │ ├─ date_facture       │
-            │ ├─ sous_type_evenement│       │ ├─ titre_facture      │
-            │ ├─ date_evenement     │       │ ├─ str_lien           │
-            │ └─ descriptif         │       │ ├─ montant            │
-            │                       │       │ └─ name               │
-            └───────────────────────┘       └───────────────────────┘
-```
-
-### 📊 Structure détaillée des tables
-
-#### Table `99_Users` - Gestion des utilisateurs
-
-| Champ          | Type         | Description                |
-|----------------|--------------|----------------------------|
-| `id`           | INT(11) PK   | Identifiant unique         |
-| `prenom`       | VARCHAR(255) | Prénom de l'utilisateur    |
-| `nom`          | VARCHAR(255) | Nom de l'utilisateur       |
-| `mail`         | VARCHAR(255) | Adresse email              |
-| `identifiant`  | VARCHAR(25)  | Login de connexion         |
-| `sha_mdp`      | VARCHAR(255) | Mot de passe hashé SHA-256 |
-| `habilitation` | INT(11)      | Niveau d'autorisation      |
-| `debut`        | DATE         | Date de début d'accès      |
-| `fin`          | DATE         | Date de fin d'accès        |
-| `locked`       | BIT(1)       | Compte verrouillé (0/1)    |
-
-#### Table `01_Contrats` - Gestion des contrats
-
-| Champ               | Type         | Description               |
-|---------------------|--------------|---------------------------|
-| `id`                | INT(11) PK   | Identifiant unique        |
-| `type_contrat`      | VARCHAR(50)  | Type de contrat           |
-| `sous_type_contrat` | VARCHAR(50)  | Sous-type de contrat      |
-| `entreprise`        | VARCHAR(255) | Nom de l'entreprise       |
-| `id_externe_contrat`| VARCHAR(50)  | Numéro de contrat externe |
-| `intitule`          | VARCHAR(255) | Intitulé du contrat       |
-| `date_debut`        | DATE         | Date de début             |
-| `date_fin_preavis`  | DATE         | Date de fin de préavis    |
-| `date_fin`          | DATE         | Date de fin de contrat    |
-
-#### Table `11_Documents` - Documents liés aux contrats
-
-| Champ               | Type         | Description               |
-|---------------------|--------------|---------------------------|
-| `id`                | INT(11) PK   | Identifiant unique        |
-| `id_contrat`        | INT(11) FK   | Référence vers le contrat |
-| `type_document`     | VARCHAR(50)  | Type de document          |
-| `sous_type_document`| VARCHAR(50)  | Sous-type de document     |
-| `Descriptif`        | VARCHAR(255) | Description du document   |
-| `str_lien`          | VARCHAR(255) | Chemin vers le fichier    |
-| `date_document`     | DATE         | Date du document          |
-
-#### Table `12_Evenements` - Événements liés aux contrats
-
-| Champ                  | Type         | Description                |
-|------------------------|--------------|----------------------------|
-| `id`                   | INT(11) PK   | Identifiant unique         |
-| `id_contrat`           | INT(11) FK   | Référence vers le contrat  |
-| `date_evenement`       | DATE         | Date de l'événement        |
-| `type_evenement`       | VARCHAR(50)  | Type d'événement           |
-| `sous_type_evenement`  | VARCHAR(50)  | Sous-type d'événement      |
-| `descriptif`           | VARCHAR(255) | Description de l'événement |
-
-#### Table `13_factures` - Factures liées aux contrats
-
-| Champ               | Type         | Description               |
-|---------------------|--------------|---------------------------|
-| `id`                | INT(11) PK   | Identifiant unique        |
-| `id_contrat`        | INT(11) FK   | Référence vers le contrat |
-| `date_facture`      | DATE         | Date de la facture        |
-| `titre_facture`     | VARCHAR(255) | Titre de la facture       |
-| `montant`           | DECIMAL(10,2)| Montant de la facture     |
-| `str_lien`          | VARCHAR(255) | Chemin vers le fichier    |
-| `name`              | VARCHAR(30)  | Nom de la facture         |
 
 ### 🔐 Système d'Habilitations
 

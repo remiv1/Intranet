@@ -55,21 +55,38 @@ nano .env
 mkdir -p $(grep FILES_LOCAL_PATH .env | cut -d'=' -f2)
 mkdir -p $(grep PRINT_LOCAL_PATH .env | cut -d'=' -f2)
 mkdir -p $(grep DB_LOCAL_PATH .env | cut -d'=' -f2)
+mkdir -p $(grep SIGNATURE_LOCAL_PATH .env | cut -d'=' -f2)
 
 # Définir les permissions appropriées
 sudo chown -R $USER:$USER $(grep FILES_LOCAL_PATH .env | cut -d'=' -f2)
 sudo chown -R $USER:$USER $(grep PRINT_LOCAL_PATH .env | cut -d'=' -f2)
+sudo chown -R $USER:$USER $(grep DB_LOCAL_PATH .env | cut -d'=' -f2)
+sudo chown -R $USER:$USER $(grep SIGNATURE_LOCAL_PATH .env | cut -d'=' -f2)
 sudo chmod 755 $(grep FILES_LOCAL_PATH .env | cut -d'=' -f2)
 ```
 
 #### Étape 6 : Configuration SSL (Optionnel mais recommandé)
 
-Placer vos certificats SSL dans app/nginx/certs/
+Faire une demande de certificats SSL via Let's Encrypt ou utiliser vos propres certificats.
 
 ```bash
-sudo cp votre-certificat.pem app/nginx/certs/cert.pem
-sudo cp votre-cle-privee.pem app/nginx/certs/privkey.pem
-sudo chmod 600 app/nginx/certs/privkey.pem
+openssl version
+```
+
+Si vous utilisez Let's Encrypt, vous pouvez configurer Certbot après le déploiement initial.
+
+```bash
+sudo apt-get install certbot
+sudo certbot certonly --standalone -d votre-domaine.com
+```
+
+Placer vos certificats SSL dans /etc/nginx/certs/ et ajuster les noms de fichiers dans nginx.conf
+
+```bash
+sudo cp votre-certificat.pem /etc/nginx/certs/__cert__.pem
+sudo cp votre-cle-privee.pem /etc/nginx/certs/__privkey__.pem
+sudo chmod 600 /etc/nginx/certs/__privkey__.pem
+sudo nano app/nginx/nginx.conf
 ```
 
 #### Étape 7 : Construction et lancement
