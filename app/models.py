@@ -996,7 +996,7 @@ class AuditLog(Base):
     id_user = mapped_column(Integer, ForeignKey(PK_USER), nullable=True)
 
     # Événement
-    action = mapped_column(Integer, nullable=False)  # -2: annulé, -1: expiré, 0: créé, 1: consulté, 2: signé, 3: expédié
+    action = mapped_column(Integer, nullable=False)  # -2: annuler, -1: expirer, 0: créer, 1: consulter, 2: signer, 3: expédier
     details = mapped_column(String(255), nullable=True)
     
     # Contexte technique

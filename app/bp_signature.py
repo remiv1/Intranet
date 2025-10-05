@@ -20,7 +20,7 @@ from sqlalchemy import or_
 from sqlalchemy.orm import joinedload
 from werkzeug.datastructures import FileStorage
 # Imports locaux
-from models import User, DocToSigne, Points, Invitation
+from models import User, DocToSigne, Points, Invitation, AuditLog
 from signatures import SignatureDoer, SignatureMaker, SecureDocumentAccess, SignedDocumentCreator, send_otp_email
 # Imports standards
 from typing import Any, Dict, List
@@ -53,10 +53,19 @@ def signature_make() -> Any:
                             .create_points() \
                             .fix_documents() \
                             .send_invitation()
-        except (IOError, FileNotFoundError) as e:
+            audit_log = AuditLog(
+                id_user=session.get('id', None),
+                ip_addresse=request.remote_addr,
+                user_agent=request.user_agent.string,
+                id_document=document.doc_to_signe.id,
+                action=0,
+                details='success'
+            )
+            g.db_session.add(audit_log)
+            g.db_session.commit()
+        except (IOError, FileNotFoundError, ValueError) as e:
             message = f"Erreur lors du traitement du document : {str(e)}"
             return render_template(ADMINISTRATION, error_message=message)
-        g.db_session.commit()
         message = f"Le document '{document.doc_to_signe.doc_nom}' a été créé et les invitations ont été envoyées."
         return redirect(url_for('ea', success_message=message))
 
@@ -85,7 +94,15 @@ def signature_do(doc_id: int, hash_document: str) -> Any:
                         .post_request(id_document=doc_id, hash_document=hash_document) \
                         .get_signature_points() \
                         .handle_signature_submission()
-            
+            audit_log = AuditLog(
+                id_user=doer.signatory_id,
+                ip_addresse=request.remote_addr,
+                user_agent=request.user_agent.string,
+                id_document=doer.document.id,
+                action=2,
+                details='success'
+            )
+            g.db_session.add(audit_log)
             g.db_session.commit()
 
             # Vérifier si tous les signataires ont signé
@@ -116,7 +133,16 @@ def signature_do(doc_id: int, hash_document: str) -> Any:
         doer = SignatureDoer(request) \
                     .get_request(id_document=doc_id, hash_document=hash_document) \
                     .get_signature_points()
-        
+        audit_log = AuditLog(
+            id_user=doer.signatory_id,
+            ip_addresse=request.remote_addr,
+            user_agent=request.user_agent.string,
+            id_document=doer.document.id,
+            action=1,
+            details='success'
+        )
+        g.db_session.add(audit_log)
+        g.db_session.commit()
         # Sérialiser les points de signature en JSON pour éviter les erreurs de parsing JavaScript
         import json
         from datetime import datetime
@@ -139,6 +165,16 @@ def signature_do(doc_id: int, hash_document: str) -> Any:
                                token=doer.token, curent_user_name=doer.signatory_name,
                                echeance=doer.invitation.expire_at)
     except ValueError:
+        audit_log = AuditLog(
+            id_user=session.get('id', None),
+            ip_addresse=request.remote_addr,
+            user_agent=request.user_agent.string,
+            id_document=doc_id,
+            action=1,
+            details='connexion échouée'
+        )
+        g.db_session.add(audit_log)
+        g.db_session.commit()
         return render_template(ADMINISTRATION, error_message=BAD_INVITATION)
 
 @signatures_bp.route('/<int:id_document>/otp/<hash_document>', methods=['POST'])
@@ -159,6 +195,16 @@ def signature_request_otp(id_document: int, hash_document: str) -> Any:
                         .filter_by(id=id_document, hash_fichier=hash_document) \
                         .first()
     if not invitation or not document:
+        audit_log = AuditLog(
+            id_user=session.get('id', None),
+            ip_addresse=request.remote_addr,
+            user_agent=request.user_agent.string,
+            id_document=id_document,
+            action=2,
+            details='Erreur OTP - invitation non trouvée'
+        )
+        g.db_session.add(audit_log)
+        g.db_session.commit()
         return jsonify(success=False, message=BAD_INVITATION), 400
     invitation.code_otp = str(random.randint(10000, 999999)).zfill(6)
     body_mail = render_template(
@@ -168,9 +214,28 @@ def signature_request_otp(id_document: int, hash_document: str) -> Any:
     )
     try:
         send_otp_email(to=user.mail, template=body_mail)
+        audit_log = AuditLog(
+            id_user=session.get('id', None),
+            ip_addresse=request.remote_addr,
+            user_agent=request.user_agent.string,
+            id_document=id_document,
+            action=2,
+            details='OTP envoyé avec succès'
+        )
+        g.db_session.add(audit_log)
         g.db_session.commit()
         return jsonify(success=True)
     except Exception as e:
+        audit_log = AuditLog(
+            id_user=session.get('id', None),
+            ip_addresse=request.remote_addr,
+            user_agent=request.user_agent.string,
+            id_document=id_document,
+            action=2,
+            details='Erreur lors de la création du code OTP'
+        )
+        g.db_session.add(audit_log)
+        g.db_session.commit()
         logging.error(f"Erreur lors de la création du code OTP : {e}")
         return jsonify(success=False, message=INTERNAL_SERVER_ERROR), 500
 
@@ -203,6 +268,19 @@ def signature_do_list() -> Any:
     for doc in documents if doc.status == 0
     ]
     documents_archived = [doc for doc in documents if doc.status != 0]
+    try:
+        audit_log = AuditLog(
+            id_user=session.get('id', None),
+            ip_addresse=request.remote_addr,
+            user_agent=request.user_agent.string,
+            id_document=documents[0].id if documents else None,
+            action=1,
+            details='Liste des documents affichée'
+        )
+        g.db_session.add(audit_log)
+        g.db_session.commit()
+    except Exception:
+        pass
     return render_template(ADMINISTRATION, context='signature_list', tab='a',
                            documents_to_signe=documents_to_signe,
                            documents_archived=documents_archived)
@@ -234,7 +312,16 @@ def create_final_signed_document(id_document: int, hash_document: str) -> Any:
                .save_final_document() \
                .send_signed_document_by_email()
         
-        # Sauvegarder les modifications en base
+        # Sauvegarder les modifications en base et logger l'action
+        audit_log = AuditLog(
+            id_user=current_user_id,
+            ip_addresse=request.remote_addr,
+            user_agent=request.user_agent.string,
+            id_document=id_document,
+            action=1,
+            details='Document finalisé et envoyé par email'
+        )
+        g.db_session.add(audit_log)
         g.db_session.commit()
         
         # Retourner une réponse de succès
@@ -283,6 +370,16 @@ def upload_document() -> Any:
         pdf_document: FileStorage | None = request.files.get('pdf', None)
         filename = getattr(pdf_document, "filename", None)
         if not pdf_document or not filename:
+            audit_log = AuditLog(
+                id_user=session.get('id', None),
+                ip_addresse=request.remote_addr,
+                user_agent=request.user_agent.string,
+                id_document=None,
+                action=0,
+                details='Aucun document PDF téléchargé ou nom de fichier invalide.'
+            )
+            g.db_session.add(audit_log)
+            g.db_session.commit()
             return render_template(ADMINISTRATION, error_message="Aucun document PDF téléchargé ou nom de fichier invalide.")
         elif filename.lower().endswith('.pdf'):
             # Nettoyer les fichiers expirés avant de créer un nouveau
@@ -355,6 +452,16 @@ def download_pdf(filename: str):
         real_file_path = Path(document.chemin_fichier)
         
         if not real_file_path.exists():
+            audit_log = AuditLog(
+                id_user=id_user,
+                ip_addresse=request.remote_addr,
+                user_agent=request.user_agent.string,
+                id_document=document.id,
+                action=1,
+                details=f'Fichier non trouvé pour le document {filename}'
+            )
+            g.db_session.add(audit_log)
+            g.db_session.commit()
             return "Fichier non trouvé", 404
         
         # Servir le fichier depuis son emplacement réel
@@ -371,15 +478,45 @@ def download_signed_doc(doc_id: int, hash_document: str):
     """
     document = g.db_session.query(DocToSigne).filter_by(id=doc_id, hash_fichier=hash_document).first()
     if not document:
+        audit_log = AuditLog(
+            id_user=session.get('id', None),
+            ip_addresse=request.remote_addr,
+            user_agent=request.user_agent.string,
+            id_document=doc_id,
+            action=1,
+            details='Tentative de téléchargement de document non trouvé'
+        )
+        g.db_session.add(audit_log)
+        g.db_session.commit()
         return "Document non trouvé", 404
 
     # Vérifier si le document a été signé
     if document.status != 1:
+        audit_log = AuditLog(
+            id_user=session.get('id', None),
+            ip_addresse=request.remote_addr,
+            user_agent=request.user_agent.string,
+            id_document=doc_id,
+            action=1,
+            details='Tentative de téléchargement d\'un document non signé'
+        )
+        g.db_session.add(audit_log)
+        g.db_session.commit()
         return "Document non signé", 403
 
     # Télécharger le fichier du document
     file_downloaded = document.download()
     if not file_downloaded:
+        audit_log = AuditLog(
+            id_user=session.get('id', None),
+            ip_addresse=request.remote_addr,
+            user_agent=request.user_agent.string,
+            id_document=doc_id,
+            action=1,
+            details='Erreur lors du téléchargement du fichier signé par utilisateur autorisé.'
+        )
+        g.db_session.add(audit_log)
+        g.db_session.commit()
         return "Erreur lors du téléchargement du fichier.", 501
 
     # Envoyer le fichier en réponse
