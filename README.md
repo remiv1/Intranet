@@ -1,5 +1,6 @@
 # 🎓 Intranet - Application de Gestion d'Établissement
 
+[![Version](https://img.shields.io/badge/Version-1.3.0-brightgreen.svg)](https://github.com/remiv1/Intranet/releases/tag/version-1.3.0)
 [![Flask](https://img.shields.io/badge/Flask-3.1.0-green.svg)](https://flask.palletsprojects.com/)
 [![SQLAlchemy](https://img.shields.io/badge/SQLAlchemy-2.0.38-green.svg)](https://www.sqlalchemy.org/)
 [![Alembic](https://img.shields.io/badge/Alembic-1.11.1-green.svg)](https://alembic.sqlalchemy.org/)
@@ -10,16 +11,26 @@
 [![HTML5](https://img.shields.io/badge/HTML5-orange.svg)](https://developer.mozilla.org/fr/docs/Web/HTML)
 [![JavaScript](https://img.shields.io/badge/JavaScript-yellow.svg)](https://developer.mozilla.org/fr/docs/Web/JavaScript)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![PDF.js](https://img.shields.io/badge/PDF.js-3.10.111-blue.svg)](https://mozilla.github.io/pdf.js/)
+[![PDF.js](https://img.shields.io/badge/PDF.js-3.11.174-blue.svg)](https://mozilla.github.io/pdf.js/)
 [![jQuery](https://img.shields.io/badge/jQuery-3.7.1-blue.svg)](https://jquery.com/)
 [![Bootstrap](https://img.shields.io/badge/Bootstrap-5.3.3-purple.svg)](https://getbootstrap.com/)
-[![SignaturePad](https://img.shields.io/badge/SignaturePad-4.1.6-blue.svg)](https://github.com/szimek/signature_pad)
+[![SignaturePad](https://img.shields.io/badge/SignaturePad-4.1.7-blue.svg)](https://github.com/szimek/signature_pad)
 
 ## 🛠️ Évolutions et Roadmap
 
-### ✅ Évolutions Récentes (Septembre 2025)
+### ✅ Évolutions Récentes (Septembre-Octobre 2025)
 
-- **🖋️ Module de Signature Électronique** : Système complet de signature PDF avec placement interactif des points, capture graphique haute fidélité et sécurisation HMAC
+#### Version 1.3.0 (5 octobre 2025) - Module Signature Électronique ✨
+- **🖋️ Signature Électronique Complète** : 
+  - Placement interactif des points de signature sur PDF
+  - Capture graphique haute fidélité avec SignaturePad
+  - Génération automatique de PDF signés avec toutes les signatures
+  - Sécurisation HMAC pour l'accès aux documents
+  - Automatisme d'expiration des documents (événement MySQL CRON)
+  - Journalisation complète des actions utilisateur
+  - Architecture 3 classes métier : SignatureMaker, SignatureDoer, SignedDocumentCreator
+  
+#### Version 1.2.0 (Septembre 2025) - Modules de Gestion
 - **👥 Gestion des Contacts** : CRUD complet pour les contacts liés aux contrats avec interface responsive
 - **📧 Système d'Emails Avancé** : Templates HTML, tokens API sécurisés et logging amélioré
 - **💰 Module de Factures** : Gestion complète des factures avec upload sécurisé et nomenclature automatique
@@ -29,14 +40,16 @@
 ### 🚧 En Cours de Développement
 
 - **📊 Monitoring Avancé** : Intégration MongoDB pour les logs d'activité et dashboard de monitoring
-- **🔍 Finalisation Signatures** : Complétion du workflow de validation et notification par email
+- **� Notifications Signatures** : Email automatique avec PDF signé en pièce jointe aux signataires
 
 ### 📋 Prochaines Évolutions Prévues
 
-- **📈 Module de Reporting** : Tableaux de bord et statistiques avancées (Q4 2025)
-- **📱 Optimisation Mobile** : Amélioration de l'expérience utilisateur sur mobile
-- **⚡ Optimisation Performance** : Analyse et amélioration des performances sur gros volumes
-- **🔐 Sécurité Renforcée** : Audit sécurité et implémentation 2FA
+- **� Améliorations Signatures** : Notifications automatiques par email, rate limiting OTP, audit logs avancés (T4 2025)
+- **🧪 Tests Unitaires** : Couverture complète du module signature (T4 2025)
+- **�📈 Module de Reporting** : Tableaux de bord et statistiques avancées (T4 2025)
+- **📱 Optimisation Mobile** : Amélioration de l'expérience utilisateur sur mobile (T1 2026)
+- **⚡ Optimisation Performance** : Analyse et amélioration des performances sur gros volumes (T1 2026)
+- **🔐 Sécurité Renforcée** : Audit sécurité et implémentation 2FA (T1 2026)
 
 > 📖 **Rapport détaillé** : Consultez le [rapport d'évolution des branches](./documentation/rapport-evolution-branches.md) pour un historique complet du développement.
 
@@ -207,32 +220,79 @@ docker compose up -d
 
 Le fichier `.env` contient toutes les variables de configuration nécessaires :
 
+#### 🗄️ Configuration Base de Données
+
 | Variable             | Description                              | Exemple                           |
 |----------------------|------------------------------------------|-----------------------------------|
 | `ROOT_PASSWORD`      | Mot de passe root MySQL                  | `mot_de_passe_securise`           |
-| `DB_USER`            | Utilisateur de la base de données        | `lsorueidpr`                      |
+| `DB_USER`            | Utilisateur de la base de données        | `intranet_user`                   |
 | `DB_PASSWORD`        | Mot de passe de la base de données       | `mot_de_passe_securise`           |
-| `DB_HOST`            | Hôte de la base de données               | `intranet_db`                     |
-| `DB_NAME`            | Nom de la base de données                | `msldkfjgury`                     |
-| `DB_URL`             | URL de connexion à la base de données    | `mysql+mysqlconnector://...`            |
-| `SECRET_KEY`         | Clé secrète Flask                        | `cle_secrete_a_generer`           |
-| `FILES_DOCKER_PATH`  | Chemin Docker des documents              | `/documents`                      |
-| `PRINT_DOCKER_PATH`  | Chemin Docker des impressions            | `/print`                          |
-| `FILES_LOCAL_PATH`   | Chemin local des documents               | `/home/partage/documents`         |
-| `PRINT_LOCAL_PATH`   | Chemin local des impressions             | `/home/partage/print`             |
+| `DB_HOST`            | Hôte de la base de données               | `db`                              |
+| `DB_NAME`            | Nom de la base de données                | `intranet_db`                     |
+| `DB_URL`             | URL de connexion à la base de données    | `mysql+mysqlconnector://...`      |
 | `DB_DOCKER_PATH`     | Chemin Docker de la base de données      | `/var/lib/mysql`                  |
-| `DB_LOCAL_PATH`      | Chemin local de la base de données       | `/var/lib/mysql`                  |
-| `PRINTER_NAME`       | Nom de l'imprimante                      | `Imprim_name`                     |
-| `SSH_PORT`           | Port SSH                                 | `22`                              |
-| `SSH_HOST`           | Hôte SSH                                 | `adresse_ip_a_tester`             |
-| `SSH_USERNAME`       | Utilisateur SSH                          | `mqlskdjfhg`                      |
-| `SSH_PASSWORD`       | Mot de passe SSH                         | `mqlskdjfhdueirpcl`               |
-| `EMAIL_USER`         | Adresse email d'envoi                    | `mail@domaine.com`                |
-| `EMAIL_PASSWORD`     | Mot de passe email                       | `msdokgnôpqioghn`                 |
-| `EMAIL_SMTP`         | Serveur SMTP                             | `adresse_smtp`                    |
-| `EMAIL_PORT`         | Port SMTP                                | `587`                             |
+| `DB_LOCAL_PATH`      | Chemin local de la base de données       | `/var/lib/docker/volumes/...`     |
 
-> **Remarque** : Adaptez les chemins et identifiants selon votre environnement. Ne partagez jamais le fichier `.env` publiquement.
+#### 🔐 Sécurité
+
+| Variable             | Description                              | Exemple                           |
+|----------------------|------------------------------------------|-----------------------------------|
+| `SECRET_KEY`         | Clé secrète Flask (sessions, HMAC)      | `cle_secrete_32_chars_min`        |
+
+> ⚠️ **Important** : `SECRET_KEY` est utilisée pour les sessions Flask ET la sécurisation HMAC des documents de signature. Changez-la régulièrement et utilisez minimum 32 caractères aléatoires.
+
+#### 📁 Chemins de Stockage
+
+| Variable                | Description                              | Exemple                           |
+|-------------------------|------------------------------------------|-----------------------------------|
+| `FILES_DOCKER_PATH`     | Chemin Docker des documents              | `/app/documents`                  |
+| `FILES_LOCAL_PATH`      | Chemin local des documents               | `/var/www/intranet/documents`     |
+| `PRINT_DOCKER_PATH`     | Chemin Docker des impressions            | `/app/print`                      |
+| `PRINT_LOCAL_PATH`      | Chemin local des impressions             | `/var/www/intranet/print`         |
+| `SIGNATURE_DOCKER_PATH` | Chemin Docker documents signés           | `/app/documents/signatures`       |
+| `SIGNATURE_LOCAL_PATH`  | Chemin local documents signés            | `/var/www/intranet/documents/signatures` |
+| `TEMP_DOCKER_PATH`      | Chemin Docker fichiers temporaires       | `/tmp`                            |
+
+> 📝 **Note** : Les dossiers de signatures sont créés automatiquement. Le dossier `/tmp/signature` n'est pas monté dans Docker pour raisons de sécurité.
+
+#### 🖨️ Configuration Impression
+
+| Variable             | Description                              | Exemple                           |
+|----------------------|------------------------------------------|-----------------------------------|
+| `PRINTER_NAME`       | Nom de l'imprimante réseau               | `HP_LaserJet_Pro`                 |
+| `SSH_PORT`           | Port SSH pour transfert fichiers         | `22`                              |
+| `SSH_HOST`           | Hôte SSH du serveur d'impression         | `192.168.1.100`                   |
+| `SSH_USER`           | Utilisateur SSH                          | `ssh_user`                        |
+| `SSH_PASSWORD`       | Mot de passe SSH                         | `mot_de_passe_ssh_securise`       |
+
+#### 📧 Configuration Email (SMTP)
+
+| Variable             | Description                              | Exemple                           |
+|----------------------|------------------------------------------|-----------------------------------|
+| `EMAIL_USER`         | Adresse email d'envoi                    | `noreply@etablissement.fr`        |
+| `EMAIL_PASSWORD`     | Mot de passe du compte email             | `mot_de_passe_email_securise`     |
+| `EMAIL_SMTP`         | Serveur SMTP                             | `smtp.gmail.com`                  |
+| `EMAIL_PORT`         | Port SMTP                                | `587` (TLS) ou `465` (SSL)        |
+| `API_MAIL_TOKEN`     | Token API pour rapports par email        | `token_api_securise`              |
+
+> 📧 **Usage** : Utilisé pour les notifications d'échéances, codes OTP de signature, et envoi des documents signés.
+
+#### 🐳 Configuration Docker (Dev/CI)
+
+| Variable             | Description                              | Exemple                           |
+|----------------------|------------------------------------------|-----------------------------------|
+| `DB_PORTS`           | Mapping ports base de données            | `3306:3306`                       |
+| `WEB_PORTS`          | Mapping ports application web            | `5000:5000`                       |
+| `EXPOSE_PORTS`       | Mode exposition des ports                | `Workflow` ou `Production`        |
+
+---
+
+> **⚠️ Sécurité** : 
+> - Ne partagez **jamais** le fichier `.env` publiquement
+> - Utilisez `./generate-env.sh` pour générer des valeurs sécurisées
+> - Changez `SECRET_KEY` régulièrement (minimum tous les 6 mois)
+> - Utilisez des mots de passe d'au moins 32 caractères
+> - Sauvegardez le `.env` dans un endroit sûr et chiffré
 
 ### 🔐 Système d'Habilitations
 
@@ -299,7 +359,20 @@ L'application utilise un système d'habilitations numérique flexible :
 - [ ] **Recherche temporelle** par périodes
 - [ ] **Export** des données au format CSV/PDF
 
-### 🖨️ Impression à Distance
+### �️ Signatures Électroniques
+
+- [x] **Création de documents à signer** avec placement interactif des points de signature
+- [x] **Interface de signature** avec capture graphique haute fidélité (SignaturePad)
+- [x] **Sécurisation des accès** avec cryptographie HMAC-SHA256
+- [x] **Génération PDF signés** avec regroupement des signatures par page
+- [x] **Gestion multi-signataires** avec suivi en temps réel
+- [x] **Expiration automatique** des documents via événement MySQL (CRON horaire)
+- [x] **Journalisation complète** des actions utilisateur
+- [x] **Affichage des documents signés** dans la vue détail du contrat
+- [x] **Support PDF.js** pour visualisation interactive
+- [ ] **Notifications automatiques** par email avec PDF signé en pièce jointe
+
+### �🖨️ Impression à Distance
 
 - [x] **Upload et impression** de documents
 - [x] **Configuration avancée** des paramètres :
@@ -755,20 +828,32 @@ Ce projet open-source a été créé bénévolement pour répondre aux besoins s
 
 ### 📈 Roadmap
 
-#### Version actuelle : 1.x
+#### Version actuelle : 1.3.0 (5 octobre 2025)
 
 - [x] Gestion complète des contrats
 - [x] Système d'impression à distance  
+- [x] Module de signature électronique complet
+- [x] Gestion des factures et contacts
 - [x] Interface responsive
-- [x] Sécurité renforcée
+- [x] Sécurité renforcée (HMAC, HTTPS)
+- [x] CI/CD avec GitHub Actions
 
-#### Version future : 2.x
+#### Version 1.4.0 (Q4 2025)
+
+- [ ] Notifications automatiques de signatures
+- [ ] Tests unitaires complets (80%+ couverture)
+- [ ] Rate limiting sur les OTP
+- [ ] Audit logs avancés
+- [ ] Monitoring MongoDB déployé
+
+#### Version 2.0 (2026)
 
 - [ ] API REST complète
-- [ ] Application mobile
+- [ ] Application mobile (Flutter)
 - [ ] Intégration calendrier
 - [ ] Notifications push
 - [ ] Dashboard analytics avancé
+- [ ] Module de reporting étendu
 
 ### 🤝 Remerciements
 

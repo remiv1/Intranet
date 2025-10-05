@@ -318,7 +318,7 @@ def create_final_signed_document(id_document: int, hash_document: str) -> Any:
             ip_addresse=request.remote_addr,
             user_agent=request.user_agent.string,
             id_document=id_document,
-            action=1,
+            action=3,
             details='Document finalisé et envoyé par email'
         )
         g.db_session.add(audit_log)
