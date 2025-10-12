@@ -11,7 +11,7 @@ services:
       - ${PRINT_LOCAL_PATH}:${PRINT_DOCKER_PATH}
       - ./alembic:/app/alembic
       - ./alembic.ini:/app/alembic.ini
-    ports: 
+    ports:
       - "${WEB_PORTS}"  #  Port exposé pour le service web uniquement en mode Workflow
     environment:
       - DB_URL=${DB_URL}
