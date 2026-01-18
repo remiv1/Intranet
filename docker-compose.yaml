@@ -22,6 +22,8 @@ services:
     entrypoint: ["sh", "app/entrypoint.sh"]
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    ports:
+      - "5000:5000"
     networks:
       intranet_net:
       cups_network:
@@ -82,6 +84,24 @@ volumes:
       o: bind
   mongo_data:
     driver: local
+  documents_data:
+    driver: local
+    driver_opts:
+      type: none
+      device: ${FILES_LOCAL_PATH}
+      o: bind
+  print_data:
+    driver: local
+    driver_opts:
+      type: none
+      device: ${PRINT_LOCAL_PATH}
+      o: bind
+  signature_data:
+    driver: local
+    driver_opts:
+      type: none
+      device: ${SIGNATURE_LOCAL_PATH}
+      o: bind
 
 networks:
   intranet_net:
