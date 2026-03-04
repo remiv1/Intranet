@@ -1,4 +1,4 @@
-USE intranet_db;
+USE Peraudiere;
 
 DELIMITER $$
 
