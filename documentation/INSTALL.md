@@ -1,5 +1,7 @@
 # 🚀 Guide d'Installation Rapide - Intranet
 
+[<- Retour à la page d'accueil](../README.md)
+
 ## Installation en 5 minutes
 
 ### ✅ Liste de contrôle pré-installation
@@ -185,3 +187,5 @@ dos2unix *.sh
 - 🐙 **GitHub** : [Issues](https://github.com/remiv1/Intranet/issues)
 - 📧 **Email** : [remiv1@gmail.com]
 - 📚 **Documentation** : [README.md](README.md)
+
+[<- Retour à la page d'accueil](../README.md)

@@ -8,7 +8,7 @@ Système de provisioning VPN à la demande, avec accès différenciés par utili
 
 ## Infrastructure physique
 
-```
+```txt
 [Livebox Orange]
       │
       │ IPv6 natif — pas de NAT, routage transparent
@@ -26,7 +26,7 @@ Système de provisioning VPN à la demande, avec accès différenciés par utili
 ## Adressage IPv6
 
 | Ressource | Type d'adresse | Visible internet |
-|---|---|---|
+| --- | --- | --- |
 | VM Extranet | IPv6 publique (préfixe Orange) | Oui — port 443 uniquement |
 | VM WireGuard | IPv6 publique (préfixe Orange) | Oui — port UDP 51820 uniquement |
 | VMs internes | IPv6 ULA `fd00::/8` | **Non** — non routable par définition |
@@ -56,7 +56,7 @@ Système de provisioning VPN à la demande, avec accès différenciés par utili
 
 ## Flux de provisioning VPN
 
-```
+```txt
 1. Utilisateur s'authentifie sur l'Extranet (auth Flask existante — rôles, anti-brute-force)
         │
 2. L'Extranet détermine les VMs accessibles selon le rôle utilisateur
@@ -94,7 +94,7 @@ VM_ACCESS_MAP = {
 ## Cycle de vie des clés
 
 | Événement | Action |
-|---|---|
+| --- | --- |
 | Demande utilisateur | Génération paire de clés + enregistrement peer |
 | Minuit (cron) | Purge de tous les peers expirés |
 | Suppression manuelle | API DELETE sur la VM WireGuard |
@@ -125,7 +125,7 @@ class VPNPeer(db.Model):
 
 ## Couches de sécurité
 
-```
+```txt
 Couche 1 — Authentification Flask
           Rôles, anti-brute-force, sessions (existant)
 

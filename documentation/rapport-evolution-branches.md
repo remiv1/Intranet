@@ -9,7 +9,7 @@
 ## 1. Récapitulatif Général
 
 | Branche | Période | Durée | Commits | Fonctionnalités Principales | État |
-|---------|---------|-------|---------|------------------------------|------|
+| --- | --- | --- | --- | --- | --- |
 | **main** | Mars 2025 - Oct 2025 | 7 mois | 250+ | Base de l'application, gestion contrats | ✅ Stable |
 | **sprint_signature** | 27 Sept - 5 Oct 2025 | 9 jours | 50+ | Module signature électronique complet | ✅ Mergé |
 | **sprint_contacts** | 27 Sept 2025 | 1 jour | 3 | Gestion des contacts contrats | ✅ Mergé |
@@ -333,7 +333,7 @@ Oct 2025     : ~10000 lignes (+signatures électroniques complètes)
 ### 3.2 Complexité des Fonctionnalités
 
 | Sprint | Complexité | Temps Réel | Réussite |
-|--------|------------|------------|----------|
+| --- | --- | --- | --- |
 | Signature | Très Élevée | 9 jours | ✅ 100% |
 | Bills | Élevée | 4 jours | ✅ 100% |
 | Code Cleaner | Moyenne | 4 jours | ✅ 100% |
@@ -404,6 +404,7 @@ sprint_workflows : 1 jour → CI/CD complet (excellent)
 ### 5.3 Roadmap
 
 #### Complété ✅
+
 1. ~~**Module signature électronique complet**~~ (Finalisé - 5 octobre 2025)
    - ✅ Automatisme d'expiration des documents
    - ✅ Génération PDF final avec toutes les signatures
@@ -411,19 +412,20 @@ sprint_workflows : 1 jour → CI/CD complet (excellent)
    - ✅ Interface utilisateur complète
 
 #### En cours et à venir
-1. **Améliorations signature électronique** - T4 2025
+
+1. **Améliorations signature électronique**
    - Notifications automatiques par email avec PDF en pièce jointe
    - Rate limiting sur les OTP
    - Audit logs avancés
    - Tests unitaires du module signature
-2. **Tests CI/CD automatisés** (octobre 2025)
-3. **Partage de documents sécurisé** (T4 2025)
-4. **Génération de documents sur modèles** (T4 2025)
-5. **Automatisation des sauvegardes** (T4 2025)
-6. **Module reporting avancé** (T4 2025)
-7. **Tests E2E** à implémenter (T1 2026)
-8. **Déploiement monitoring** (T1 2026)
-9. **Création app mobile** (T2 2026)
+2. **Tests CI/CD automatisés**
+3. **Partage de documents sécurisé**
+4. **Génération de documents sur modèles**
+5. **Automatisation des sauvegardes**
+6. **Module reporting avancé**
+7. **Tests E2E** à implémenter
+8. **Déploiement monitoring**
+9. **Création app mobile**
 
 ---
 
@@ -468,6 +470,7 @@ Le module de signature électronique est **opérationnel et prêt en production*
 La **qualité du code** et la **discipline de développement** montrent une **maturité technique excellente** pour un projet de cette envergure, avec une **documentation technique approfondie**, un **modèle de données visuellement représenté** et une **dette technique activement réduite**.
 
 **Statistiques du Sprint Signature :**
+
 - **Durée :** 9 jours (27 septembre - 5 octobre 2025)
 - **Commits :** 50+ commits structurés
 - **Lignes de code :** ~1500 lignes ajoutées (net après refactoring)
