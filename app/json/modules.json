@@ -39,14 +39,14 @@
             },
             {
                 "classe": 3,
-                "titre": "Espace réservé",
+                "titre": "Espace Professeurs Principaux",
                 "descriptif": "Espace réservé pour les professeurs principaux des classes (en construction)",
                 "buttonid": "Erpp",
                 "onclick": "erpp"
             },
             {
                 "classe": 4,
-                "titre": "Espace réservé",
+                "titre": "Espace Professeurs",
                 "descriptif": "Espace réservé pour les professeurs de l'établissement (en construction)",
                 "buttonid": "Erp",
                 "onclick": "erp"
@@ -60,10 +60,17 @@
             },
             {
                 "classe": 5,
-                "titre": "Espace réservé",
+                "titre": "Espace Elèves",
                 "descriptif": "Espace réservé pour les élèves de l'établissement (en construction)",
                 "buttonid": "Ere",
                 "onclick": "ere"
+            },
+            {
+                "classe": 7,
+                "titre": "Accès au VPN",
+                "descriptif": "Espace de chargement de la configuration VPN pour les utilisateurs autorisés",
+                "buttonid": "Vpn",
+                "onclick": "vpn"
             }
         ]
     }

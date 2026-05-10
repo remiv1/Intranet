@@ -13,4 +13,4 @@ if [ -n "$DB_URL" ]; then
 fi
 
 echo "🚀 Lancement de l'application Flask (run.py)..."
-exec python app/run.py
+exec python -m app.run

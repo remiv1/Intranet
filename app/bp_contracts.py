@@ -13,21 +13,21 @@ Routes disponibles (prefixe '/contrats') :
 - '/contrat-<int:id_contrat>' : Détail d'un contrat (GET) et modification d'un contrat (POST)
 - '/contrat-<int:id_contrat>/evenement' : Création d'un évènement d'un contrat (POST)
 - '/contrat-<int:id_contrat>/document' : Création d'un document d'un contrat (POST)
-- '/contrat-<int:id_contrat>/evenement-<int:id_evenement>' : Modification d'un évènement d'un contrat (POST)
-- '/contrat-<int:id_contrat>/document-<int:id_document>' : Modification d'un document d'un contrat (POST)
-- '/contrat-<int:id_contrat>/download/<name>' : Téléchargement d'un document enregistré sur le serveur (GET)
+- '/contrat-<int:id_contrat>/evenement-<int:id_evenement>' : Modif d'un évènement contrat (POST)
+- '/contrat-<int:id_contrat>/document-<int:id_document>' : Modif d'un document d'un contrat (POST)
+- '/contrat-<int:id_contrat>/download/<name>' : Téléchargement d'un document (GET)
 """
 
+from typing import Any
+from logging import getLogger
 from flask import Blueprint, render_template, request, g, redirect, url_for
 from flask.typing import ResponseReturnValue
-from utilities import (
+from .utilities import (
     get_jsoned_datas, NOT_ALLOWED, JSON_MENUS, TYPINGS, ACCUEIL_CONTRAT, DETAIL_CONTRAT
     )
-from models import Contract, Contacts, Event, Document, Bill
-from typing import Any
-from habilitations import validate_habilitation, GESTIONNAIRE
-from docs import download_file
-from logging import getLogger
+from .models import Contract, Contacts, Event, Document, Bill
+from .habilitations import validate_habilitation, GESTIONNAIRE
+from .docs import download_file
 
 log = getLogger(__name__)
 
@@ -65,7 +65,8 @@ def contrats() -> ResponseReturnValue:
 
         # Retourne la page de gestion des contrats et des messages éventuels
         return render_template('contrats.html', contracts=contracts, message=message,
-                               success_message=success_message, error_message=error_message, menus_data=menus)
+                               success_message=success_message, error_message=error_message,
+                               menus_data=menus)
 
     # === Gestion de la méthode POST (ajout d'un nouveau contrat) ===
     elif request.method == 'POST':
@@ -129,14 +130,20 @@ def contrats_by_num(id_contrat: int) -> ResponseReturnValue:
         contacts = list(g.db_session.query(Contacts).filter(Contacts.id_contrat == id_contrat))
 
         # Récupération des filtres depuis le fichier JSON
-        document_typing = get_jsoned_datas(file=JSON_MENUS, level_one=TYPINGS, level_two='Documents', dumped=False)
-        event_typing = get_jsoned_datas(file=JSON_MENUS, level_one=TYPINGS, level_two='Evènements', dumped=False)
+        document_typing = get_jsoned_datas(
+            file=JSON_MENUS, level_one=TYPINGS, level_two='Documents', dumped=False
+            )
+        event_typing = get_jsoned_datas(
+            file=JSON_MENUS, level_one=TYPINGS, level_two='Evènements', dumped=False
+            )
 
         # Affichage de la page de détail du contrat
-        return render_template('contrat_detail.html', contract=contract, events=events, documents=documents,
-                               bills=bills, contacts=contacts,
-                               message=message, success_message=success_message, error_message=error_message,
-                               document_typing=document_typing, event_typing=event_typing, tab=tab)
+        return render_template(
+            'contrat_detail.html', contract=contract, events=events, documents=documents,
+            bills=bills, contacts=contacts, message=message, success_message=success_message,
+            error_message=error_message, document_typing=document_typing,
+            event_typing=event_typing, tab=tab
+        )
 
     # === Gestion de la méthode POST (modification du contrat) ===
     elif request.method == 'POST' and request.form.get('_method') == 'PUT':
@@ -210,13 +217,19 @@ def add_contrats_contact(id_contrat: int) -> ResponseReturnValue:
 
             # Message de succès et redirection
             message = f'Contact {contact.id} ajouté avec succès'
-            return redirect(url_for(DETAIL_CONTRAT, id_contrat=id_contrat, success_message=message, tab=tab))
+            return redirect(url_for(
+                DETAIL_CONTRAT, id_contrat=id_contrat, success_message=message, tab=tab)
+                )
         except Exception as e:
             # Message d'erreur et redirection
             message = f'Erreur lors de l\'ajout du contact : {e}'
-            return redirect(url_for(DETAIL_CONTRAT, id_contrat=id_contrat, error_message=message, tab=tab))
+            return redirect(url_for(
+                DETAIL_CONTRAT, id_contrat=id_contrat, error_message=message, tab=tab)
+            )
     else:
-        return redirect(url_for(DETAIL_CONTRAT, id_contrat=id_contrat, error_message=NOT_ALLOWED, tab=tab))
+        return redirect(
+            url_for(DETAIL_CONTRAT, id_contrat=id_contrat, error_message=NOT_ALLOWED, tab=tab)
+        )
 
 @contracts_bp.route('/contrat-<int:id_contrat>/evenement', methods=['POST'])
 @validate_habilitation(GESTIONNAIRE)
@@ -244,20 +257,26 @@ def add_contrats_event(id_contrat: int) -> ResponseReturnValue:
                           type_evenement = type_evenement,
                           sous_type_evenement = sous_type_evenement,
                           descriptif = descriptif)
-            
+
             # Ajout commit de la session
             g.db_session.add(event)
             g.db_session.commit()
 
             # Message de succès et redirection
             message = f'Évènement {event.id} ajouté avec succès'
-            return redirect(url_for(DETAIL_CONTRAT, id_contrat=id_contrat, success_message=message, tab=tab))
+            return redirect(url_for(
+                DETAIL_CONTRAT, id_contrat=id_contrat, success_message=message, tab=tab)
+                )
         except Exception as e:
             # Message d'erreur et redirection
             message = f'Erreur lors de l\'ajout de l\'évènement : {e}'
-            return redirect(url_for(DETAIL_CONTRAT, id_contrat=id_contrat, error_message=message, tab=tab))
+            return redirect(url_for(
+                DETAIL_CONTRAT, id_contrat=id_contrat, error_message=message, tab=tab)
+                )
     else:
-        return redirect(url_for(DETAIL_CONTRAT, id_contrat=id_contrat, error_message=NOT_ALLOWED, tab=tab))
+        return redirect(
+            url_for(DETAIL_CONTRAT, id_contrat=id_contrat, error_message=NOT_ALLOWED, tab=tab)
+        )
 
 @contracts_bp.route('/contrat-<int:id_contrat>/document', methods=['POST'])
 @validate_habilitation(GESTIONNAIRE)
@@ -281,9 +300,11 @@ def add_contrats_document(id_contrat: int) -> ResponseReturnValue:
         binary_file: Any = request.files.get('documentD', None)
         try:
             # Création du document dans la base de données
-            document = Document(id_contrat = id_contrat, date_document = date_document,
-                                type_document = type_document, sous_type_document = sous_type_document,
-                                descriptif = descriptif)
+            document = Document(
+                id_contrat = id_contrat, date_document = date_document,
+                type_document = type_document, sous_type_document = sous_type_document,
+                descriptif = descriptif
+            )
             g.db_session.add(document)
             g.db_session.flush()  # Pour obtenir l'ID avant le commit
             document.create_name(binary_file=binary_file)
@@ -294,12 +315,18 @@ def add_contrats_document(id_contrat: int) -> ResponseReturnValue:
 
             # Retour du formulaire
             message = f'Document {document.str_lien} ajouté avec succès'
-            return redirect(url_for(DETAIL_CONTRAT, id_contrat=id_contrat, success_message=message, tab=tab))
+            return redirect(url_for(
+                DETAIL_CONTRAT, id_contrat=id_contrat, success_message=message, tab=tab)
+                )
         except Exception as e:
             message = f'Erreur lors de l\'ajout du document {descriptif} : {e}'
-            return redirect(url_for(DETAIL_CONTRAT, id_contrat=id_contrat, error_message=message, tab=tab))
+            return redirect(
+                url_for(DETAIL_CONTRAT, id_contrat=id_contrat, error_message=message, tab=tab)
+            )
     else:
-        return redirect(url_for(DETAIL_CONTRAT, id_contrat=id_contrat, error_message=NOT_ALLOWED, tab=tab))
+        return redirect(
+            url_for(DETAIL_CONTRAT, id_contrat=id_contrat, error_message=NOT_ALLOWED, tab=tab)
+        )
 
 @contracts_bp.route('/contrat-<int:id_contrat>/facture', methods=['POST'])
 @validate_habilitation(GESTIONNAIRE)
@@ -339,12 +366,18 @@ def add_contrats_bill(id_contrat: int) -> ResponseReturnValue:
 
             # Retour du formulaire
             message = f'Facture {bill.titre_facture} ajoutée avec succès'
-            return redirect(url_for(DETAIL_CONTRAT, id_contrat=id_contrat, success_message=message, tab=tab))
+            return redirect(url_for(
+                DETAIL_CONTRAT, id_contrat=id_contrat, success_message=message, tab=tab)
+                )
         except Exception as e:
             message = f'Erreur lors de l\'ajout de la facture {titre_facture} : {e}'
-            return redirect(url_for(DETAIL_CONTRAT, id_contrat=id_contrat, error_message=message, tab=tab))
+            return redirect(
+                url_for(DETAIL_CONTRAT, id_contrat=id_contrat, error_message=message, tab=tab)
+            )
     else:
-        return redirect(url_for(DETAIL_CONTRAT, id_contrat=id_contrat, error_message=NOT_ALLOWED, tab=tab))
+        return redirect(
+            url_for(DETAIL_CONTRAT, id_contrat=id_contrat, error_message=NOT_ALLOWED, tab=tab)
+        )
 
 @contracts_bp.route('/contrat-<int:id_contrat>/contact-<int:id_contact>', methods=['POST'])
 @validate_habilitation(GESTIONNAIRE)
@@ -391,15 +424,27 @@ def modif_contact_id(id_contact: int, id_contrat: int) -> ResponseReturnValue:
                 g.db_session.commit()
 
                 message = f'Contact {contact.id} modifié avec succès'
-                return redirect(url_for(DETAIL_CONTRAT, id_contrat = id_contrat, success_message=message, tab=tab))
+                return redirect(
+                    url_for(
+                        DETAIL_CONTRAT, id_contrat = id_contrat, success_message=message, tab=tab
+                    )
+                )
             else:
                 message = f'Contact {id_contact} non trouvé'
-                return redirect(url_for(DETAIL_CONTRAT, id_contrat = id_contrat, error_message=message, tab=tab))
+                return redirect(
+                    url_for(
+                        DETAIL_CONTRAT, id_contrat = id_contrat, error_message=message, tab=tab
+                    )
+                )
         except Exception:
             message = f'Erreur lors de la modification du contact {id_contact}'
-            return redirect(url_for(DETAIL_CONTRAT, id_contrat = id_contrat, error_message=message, tab=tab))
+            return redirect(
+                url_for(DETAIL_CONTRAT, id_contrat = id_contrat, error_message=message, tab=tab)
+            )
     else:
-        return redirect(url_for(DETAIL_CONTRAT, id_contrat = id_contrat, error_message=NOT_ALLOWED, tab=tab))
+        return redirect(
+            url_for(DETAIL_CONTRAT, id_contrat = id_contrat, error_message=NOT_ALLOWED, tab=tab)
+        )
 
 @contracts_bp.route('/contrat-<int:id_contrat>/evenement-<int:id_event>', methods=['POST'])
 @validate_habilitation(GESTIONNAIRE)
@@ -438,15 +483,27 @@ def modif_event_id(id_event: int, id_contrat: int) -> ResponseReturnValue:
                 g.db_session.commit()
 
                 message = f'Évènement {event.id} modifié avec succès'
-                return redirect(url_for(DETAIL_CONTRAT, id_contrat = id_contrat, success_message=message, tab=tab))
+                return redirect(
+                    url_for(
+                        DETAIL_CONTRAT, id_contrat = id_contrat, success_message=message, tab=tab
+                    )
+                )
             else:
                 message = f'Évènement {id_event} non trouvé'
-                return redirect(url_for(DETAIL_CONTRAT, id_contrat = id_contrat, error_message=message, tab=tab))
+                return redirect(
+                    url_for(
+                        DETAIL_CONTRAT, id_contrat = id_contrat, error_message=message, tab=tab
+                    )
+                )
         except Exception:
             message = f'Erreur lors de la modification de l\'évènement {id_event}'
-            return redirect(url_for(DETAIL_CONTRAT, id_contrat = id_contrat, error_message=message, tab=tab))
+            return redirect(
+                url_for(DETAIL_CONTRAT, id_contrat = id_contrat, error_message=message, tab=tab)
+            )
     else:
-        return redirect(url_for(DETAIL_CONTRAT, id_contrat = id_contrat, error_message=NOT_ALLOWED, tab=tab))
+        return redirect(
+            url_for(DETAIL_CONTRAT, id_contrat = id_contrat, error_message=NOT_ALLOWED, tab=tab)
+        )
 
 @contracts_bp.route('/contrat-<int:id_contrat>/document-<int:id_document>', methods=['POST'])
 @validate_habilitation(GESTIONNAIRE)
@@ -467,7 +524,9 @@ def modif_document_id(id_document: int, id_contrat: int) -> ResponseReturnValue:
     if request.method == 'POST' and request.form.get('_method') == 'PUT':
         try:
             # Récupération du document
-            document: Document = g.db_session.query(Document).filter(Document.id == id_document).first()
+            document: Document = g.db_session.query(Document) \
+                                    .filter(Document.id == id_document) \
+                                    .first()
 
             # Récupération des anciennes valeurs pour conversion du fichier
             old_str_lien = document.str_lien or ''
@@ -488,14 +547,22 @@ def modif_document_id(id_document: int, id_contrat: int) -> ResponseReturnValue:
 
             # Message de succès et redirection
             message = f'Document {document.str_lien} modifié avec succès'
-            return redirect(url_for(DETAIL_CONTRAT, id_contrat = id_contrat, success_message=message, tab=tab))
+            return redirect(
+                url_for(
+                    DETAIL_CONTRAT, id_contrat = id_contrat, success_message=message, tab=tab
+                )
+            )
 
         except Exception as e:
             # Message d'erreur et redirection
             message = f'Erreur lors de la modification du document {id_document} : {e}'
-            return redirect(url_for(DETAIL_CONTRAT, id_contrat = id_contrat, error_message=message, tab=tab))
+            return redirect(
+                url_for(DETAIL_CONTRAT, id_contrat = id_contrat, error_message=message, tab=tab)
+            )
     else:
-        return redirect(url_for(DETAIL_CONTRAT, id_contrat = id_contrat, error_message=NOT_ALLOWED, tab=tab))
+        return redirect(
+            url_for(DETAIL_CONTRAT, id_contrat = id_contrat, error_message=NOT_ALLOWED, tab=tab)
+        )
 
 @contracts_bp.route('contrat-<int:id_contrat>/facture-<int:id_bill>', methods=['POST'])
 @validate_habilitation(GESTIONNAIRE)
@@ -537,14 +604,23 @@ def modif_bill_id(id_bill: int, id_contrat: int) -> ResponseReturnValue:
 
             # Message de succès et redirection
             message = f'Facture {bill.titre_facture} modifiée avec succès'
-            return redirect(url_for(DETAIL_CONTRAT, id_contrat = id_contrat, success_message=message, tab=tab))
+            return redirect(
+                url_for(DETAIL_CONTRAT, id_contrat = id_contrat, success_message=message, tab=tab)
+            )
         except Exception as e:
             message = f'Erreur lors de la modification de la facture {id_bill} : {e}'
-            return redirect(url_for(DETAIL_CONTRAT, id_contrat = id_contrat, error_message=message, tab=tab))
+            return redirect(
+                url_for(DETAIL_CONTRAT, id_contrat = id_contrat, error_message=message, tab=tab)
+            )
     else:
-        return redirect(url_for(DETAIL_CONTRAT, id_contrat = id_contrat, error_message=NOT_ALLOWED, tab=tab))
+        return redirect(
+            url_for(DETAIL_CONTRAT, id_contrat = id_contrat, error_message=NOT_ALLOWED, tab=tab)
+        )
 
-@contracts_bp.route('/contrat-<int:id_contrat>/contact-<int:id_contact>/supprimer', methods=['POST'])
+@contracts_bp.route(
+        '/contrat-<int:id_contrat>/contact-<int:id_contact>/supprimer',
+        methods=['POST']
+    )
 @validate_habilitation(GESTIONNAIRE)
 def delete_contact_id(id_contact: int, id_contrat: int) -> ResponseReturnValue:
     """
@@ -568,15 +644,25 @@ def delete_contact_id(id_contact: int, id_contrat: int) -> ResponseReturnValue:
                 g.db_session.commit()
 
                 message = f'Contact {contact.id} supprimé avec succès'
-                return redirect(url_for(DETAIL_CONTRAT, id_contrat = id_contrat, success_message=message, tab=tab))
+                return redirect(
+                    url_for(
+                        DETAIL_CONTRAT, id_contrat = id_contrat, success_message=message, tab=tab
+                    )
+                )
             else:
                 message = f'Contact {id_contact} non trouvé'
-                return redirect(url_for(DETAIL_CONTRAT, id_contrat = id_contrat, error_message=message, tab=tab))
+                return redirect(
+                    url_for(DETAIL_CONTRAT, id_contrat = id_contrat, error_message=message, tab=tab)
+                )
         except Exception as e:
             message = f'Erreur lors de la suppression du contact {id_contact} : {e}'
-            return redirect(url_for(DETAIL_CONTRAT, id_contrat = id_contrat, error_message=message, tab=tab))
+            return redirect(
+                url_for(DETAIL_CONTRAT, id_contrat = id_contrat, error_message=message, tab=tab)
+            )
     else:
-        return redirect(url_for(DETAIL_CONTRAT, id_contrat = id_contrat, error_message=NOT_ALLOWED, tab=tab))
+        return redirect(
+            url_for(DETAIL_CONTRAT, id_contrat = id_contrat, error_message=NOT_ALLOWED, tab=tab)
+        )
 
 @contracts_bp.route('/download/<name>', methods=['GET'])
 @validate_habilitation(GESTIONNAIRE)

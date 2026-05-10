@@ -7,13 +7,18 @@ services:
     depends_on:
       - db
     volumes:
-      - documents_data:${FILES_DOCKER_PATH}  #  Persistance des fichiers de contrats
-      - print_data:${PRINT_DOCKER_PATH} #  Persistance des fichiers de documents envoyés à l'impression
-      - signature_data:${SIGNATURE_DOCKER_PATH} # Persistance des fichiers de signatures
-      - ./alembic:/app/alembic
-      - ./alembic.ini:/app/alembic.ini
-      - /etc/localtime:/etc/localtime:ro  #  Synchronisation de l'heure avec l'hôte
-      - /etc/timezone:/etc/timezone:ro  #  Synchronisation du fuseau horaire avec l'hôte
+#     - documents_data:${FILES_DOCKER_PATH}  #  Persistance des fichiers de contrats
+#     - print_data:${PRINT_DOCKER_PATH} #  Persistance des fichiers de documents envoyés à l'impression
+#     - signature_data:${SIGNATURE_DOCKER_PATH} # Persistance des fichiers de signatures
+#     - ./alembic:/app/alembic
+#     - ./alembic.ini:/app/alembic.ini
+      - ${FILES_LOCAL_PATH}:${FILES_DOCKER_PATH}  #  A supprimer lors du merge final.
+      - ${PRINT_LOCAL_PATH}:${PRINT_DOCKER_PATH} #  A supprimer lors du merge final.
+      - ${SIGNATURE_LOCAL_PATH}:${SIGNATURE_DOCKER_PATH} #  A supprimer lors du merge final.
+      - ./alembic:/app/alembic:z #  A supprimer lors du merge final.
+      - ./alembic.ini:/app/alembic.ini:z #  A supprimer lors du merge final.
+#      - /etc/localtime:/etc/localtime:ro  #  Synchronisation de l'heure avec l'hôte
+#      - /etc/timezone:/etc/timezone:ro  #  Synchronisation du fuseau horaire avec l'hôte
     environment:
       - DB_URL=${DB_URL}
     env_file:
@@ -33,13 +38,13 @@ services:
     depends_on:
       - web
     volumes:
-      - ./app/nginx/nginx.conf:/etc/nginx/nginx.conf
-      - /opt/certs:/etc/nginx/certs
-      - /etc/localtime:/etc/localtime:ro  #  Synchronisation de l'heure avec l'hôte
-      - /etc/timezone:/etc/timezone:ro  #  Synchronisation du fuseau horaire avec l'hôte
+      - ./app/nginx/nginx.conf:/etc/nginx/nginx.conf:z
+      - /opt/certs:/etc/nginx/certs:z
+#      - /etc/localtime:/etc/localtime:ro  #  Synchronisation de l'heure avec l'hôte
+#      - /etc/timezone:/etc/timezone:ro  #  Synchronisation du fuseau horaire avec l'hôte
     ports:
-      - "443:443"  #  Port HTTPS
-      - "80:80"
+      - "7443:443"  #  Port HTTPS
+      - "7080:80"
     networks:
       - intranet_net
     restart: always
@@ -59,37 +64,38 @@ services:
     env_file:
       - .env
     volumes:
-      - dbdata:${DB_DOCKER_PATH}
-      - /etc/localtime:/etc/localtime:ro  #  Synchronisation de l'heure avec l'hôte
-      - /etc/timezone:/etc/timezone:ro  #  Synchronisation du fuseau horaire avec l'hôte
+#     - dbdata:${DB_DOCKER_PATH}  #  Persistance des données de la base de données
+      - ${DB_LOCAL_PATH}:${DB_DOCKER_PATH}:U,Z  #  A supprimer lors du merge final.
+#      - /etc/localtime:/etc/localtime:ro  #  Synchronisation de l'heure avec l'hôte
+#      - /etc/timezone:/etc/timezone:ro  #  Synchronisation du fuseau horaire avec l'hôte
     networks:
       - intranet_net
 
-volumes:
-  dbdata:
-    driver: local
-    driver_opts:
-      type: none
-      device: ${DB_LOCAL_PATH}
-      o: bind
-  signature_data:
-    driver: local
-    driver_opts:
-      type: none
-      device: ${SIGNATURE_LOCAL_PATH}
-      o: bind
-  documents_data:
-    driver: local
-    driver_opts:
-      type: none
-      device: ${FILES_LOCAL_PATH}
-      o: bind
-  print_data:
-    driver: local
-    driver_opts:
-      type: none
-      device: ${PRINT_LOCAL_PATH}
-      o: bind
+# volumes:
+#   dbdata:
+#     driver: local
+#     driver_opts:
+#       type: none
+#       device: ${DB_LOCAL_PATH}
+#       o: bind
+#   signature_data:
+#     driver: local
+#     driver_opts:
+#       type: none
+#       device: ${SIGNATURE_LOCAL_PATH}
+#       o: bind
+#   documents_data:
+#     driver: local
+#     driver_opts:
+#       type: none
+#       device: ${FILES_LOCAL_PATH}
+#       o: bind
+#   print_data:
+#     driver: local
+#     driver_opts:
+#       type: none
+#       device: ${PRINT_LOCAL_PATH}
+#       o: bind
 
 networks:
   intranet_net:

@@ -1,7 +1,8 @@
+"""Module de configuration de l'application."""
 import os
-from dotenv import load_dotenv
 from typing import TypedDict
 from datetime import timedelta
+from dotenv import load_dotenv
 
 # Création du chemin absolu du répertoire racine du projet
 env_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '.env'))
@@ -10,6 +11,12 @@ env_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '.env'))
 load_dotenv(env_path, override=True)
 
 class Config:
+    """
+    Classe de configuration de l'application Flask, utilisant les variables d'environnement
+    chargées depuis le fichier .env.
+    Les variables d'environnement sont utilisées pour configurer la base de données,
+    les paramètres SSH, les paramètres d'impression et les paramètres de messagerie.
+    """
     # Gestion base de données
     SECRET_KEY: str = os.getenv('SECRET_KEY', '')
     DB_USER: str = os.getenv('DB_USER', '')
@@ -20,7 +27,7 @@ class Config:
     # Gestion SSH
     UPLOAD_FOLDER: str = os.getenv('FILES_DOCKER_PATH', '')
     UPLOAD_EXTENSIONS = ['.jpg', '.png', '.gif', '.jpeg', '.tif', '.tiff', '.pdf']
-    SSH_PORT: int = int(os.getenv('SSH_PORT', 22))
+    SSH_PORT: int = int(os.getenv('SSH_PORT', '22'))
     SSH_HOST: str = os.getenv('SSH_HOST', 'localhost')
     SSH_USER: str = os.getenv('SSH_USER', 'user')
     SSH_PASSWORD: str = os.getenv('SSH_PASSWORD', '')
@@ -31,10 +38,11 @@ class Config:
     EMAIL_USER: str = os.getenv('EMAIL_USER', '')
     EMAIL_PASSWORD: str = os.getenv('EMAIL_PASSWORD', '')
     EMAIL_SMTP: str = os.getenv('EMAIL_SMTP', '')
-    EMAIL_PORT: int = int(os.getenv('EMAIL_PORT', 587))
+    EMAIL_PORT: int = int(os.getenv('EMAIL_PORT', '587'))
     API_MAIL_TOKEN: str = os.getenv('API_MAIL_TOKEN', '')
 
 class ConfigDict(TypedDict, total=False):
+    """Dictionnaire typé pour la configuration de l'application Flask."""
     SECRET_KEY: str
     DB_USER: str
     DB_PASSWORD: str
@@ -51,3 +59,4 @@ class ConfigDict(TypedDict, total=False):
     EMAIL_PASSWORD: str
     EMAIL_SMTP: str
     EMAIL_PORT: int
+    API_MAIL_TOKEN: str

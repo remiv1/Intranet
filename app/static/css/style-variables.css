@@ -1,0 +1,112 @@
+/**
+ * Design System - Variables CSS Modernes
+ * Palette de couleurs, typographie et espacements
+ */
+
+:root {
+  /* ===== Couleurs Primaires ===== */
+  --color-primary: #1e40af;        /* Bleu professionnel */
+  --color-primary-light: #3b82f6;  /* Bleu clair */
+  --color-primary-dark: #1e3a8a;   /* Bleu foncé */
+  
+  /* ===== Couleurs Secondaires ===== */
+  --color-secondary: #7c3aed;      /* Violet */
+  --color-secondary-light: #a78bfa;
+  --color-accent: #f59e0b;         /* Amber/Orange */
+  
+  /* ===== Couleurs Sémantiques ===== */
+  --color-success: #10b981;        /* Vert */
+  --color-warning: #f59e0b;        /* Amber */
+  --color-danger: #ef4444;         /* Rouge */
+  --color-info: #06b6d4;           /* Cyan */
+  
+  /* ===== Couleurs Neutres ===== */
+  --color-dark: #1f2937;           /* Charcoal */
+  --color-dark-alt: #374151;       /* Gris foncé */
+  --color-gray-600: #4b5563;
+  --color-gray-500: #6b7280;
+  --color-gray-400: #9ca3af;
+  --color-gray-300: #d1d5db;
+  --color-gray-200: #e5e7eb;
+  --color-gray-100: #f3f4f6;
+  --color-light: #f9fafb;
+  --color-white: #ffffff;
+  
+  /* ===== Typographie ===== */
+  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-serif: 'Fenix', Georgia, serif;
+  --font-display: 'Pattaya', cursive;
+  
+  --font-size-xs: 0.75rem;         /* 12px */
+  --font-size-sm: 0.875rem;        /* 14px */
+  --font-size-base: 1rem;          /* 16px */
+  --font-size-lg: 1.125rem;        /* 18px */
+  --font-size-xl: 1.25rem;         /* 20px */
+  --font-size-2xl: 1.5rem;         /* 24px */
+  --font-size-3xl: 1.875rem;       /* 30px */
+  --font-size-4xl: 2.25rem;        /* 36px */
+  
+  --font-weight-light: 300;
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+  
+  /* ===== Espacements ===== */
+  --spacing-0: 0;
+  --spacing-1: 0.25rem;     /* 4px */
+  --spacing-2: 0.5rem;      /* 8px */
+  --spacing-3: 0.75rem;     /* 12px */
+  --spacing-4: 1rem;        /* 16px */
+  --spacing-5: 1.25rem;     /* 20px */
+  --spacing-6: 1.5rem;      /* 24px */
+  --spacing-8: 2rem;        /* 32px */
+  --spacing-10: 2.5rem;     /* 40px */
+  --spacing-12: 3rem;       /* 48px */
+  
+  /* ===== Rayons de bordure ===== */
+  --radius-none: 0;
+  --radius-sm: 0.25rem;
+  --radius-base: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.5rem;
+  --radius-full: 9999px;
+  
+  /* ===== Ombres ===== */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-base: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  
+  /* ===== Transitions ===== */
+  --transition-fast: 150ms ease-in-out;
+  --transition-base: 300ms ease-in-out;
+  --transition-slow: 500ms ease-in-out;
+  
+  /* ===== Z-index ===== */
+  --z-dropdown: 1000;
+  --z-sticky: 1020;
+  --z-fixed: 1030;
+  --z-modal-backdrop: 1040;
+  --z-modal: 1050;
+  --z-popover: 1060;
+  --z-tooltip: 1070;
+}
+
+/* ===== Mode Sombre (si activé) ===== */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-dark: #f9fafb;
+    --color-dark-alt: #e5e7eb;
+    --color-gray-600: #9ca3af;
+    --color-gray-500: #6b7280;
+    --color-gray-400: #4b5563;
+    --color-gray-300: #374151;
+    --color-gray-200: #1f2937;
+    --color-gray-100: #111827;
+    --color-light: #1f2937;
+    --color-white: #111827;
+  }
+}

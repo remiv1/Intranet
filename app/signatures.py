@@ -7,11 +7,18 @@ Fonctions:
 - Enregistrement des ashages des documents signés pour vérification ultérieure.
 """
 # Imports standards
-import hashlib, hmac, json, logging, secrets, shutil, smtplib, cairosvg
+import hashlib
+import hmac
+import json
+import logging
+import secrets
+import shutil
+import smtplib
 from datetime import datetime, timedelta
 from io import BytesIO
 from os import getenv
 from pathlib import Path
+from typing import Any, Dict, List
 
 # Imports liés aus emails
 from email.mime.base import MIMEBase
@@ -19,8 +26,7 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email import encoders
 
-# Imports de typages
-from typing import Any, Dict, List
+import cairosvg
 
 # Imports liés aux cryptages et écritures PDF
 from cryptography.hazmat.primitives import hashes, serialization
@@ -37,8 +43,8 @@ from pypdf import PdfReader, PdfWriter
 from flask import render_template, request, Request, g, session
 
 # Imports liés à l'application (modèles, config)
-from config import Config
-from models import DocToSigne, Invitation, Points, Signatures, User, ViewPoints
+from .config import Config
+from .models import DocToSigne, Invitation, Points, Signatures, User, ViewPoints
 
 # Constantes
 BAD_INVITATION = 'Invitation invalide ou non trouvée.'
@@ -46,6 +52,7 @@ BAD_INVITATION = 'Invitation invalide ou non trouvée.'
 class SignatureDoer:
     """
     Gère le processus de signature d'un document.
+    TODO : Prévoir de créer des dataclass
     Attributes:
         request (Request): L'objet request Flask.
         signatory_id (int | None): L'ID de l'utilisateur signataire.
@@ -73,11 +80,11 @@ class SignatureDoer:
         handle_signature_submission():
             Gère la soumission de la signature.
     """
-    def __init__(self, request: Request):
+    def __init__(self, req: Request):
         """
         Initialise avec l'objet request Flask.
         Args:
-            request (Request): L'objet request Flask.
+            req (Request): L'objet request Flask.
         Attributes:
             request (Request): L'objet request Flask.
             signatory_id (int | None): L'ID de l'utilisateur signataire.
@@ -89,7 +96,33 @@ class SignatureDoer:
             doer = SignatureDoer(request)
             ```
         """
-        self.request = request
+        self.request = req
+        self.token = None
+        self.signatory_id = None
+        self.signatory_name = None
+        self.invitation = None
+        self.document = None
+        self.ip_addresse = None
+        self.otp = None
+        self.signature_hash = None
+        self.user_agent = None
+        self.svg_graph = None
+        self.data_graph = None
+        self.largeur_graph = 0
+        self.hauteur_graph = 0
+        self.datetime_submission = None
+        self.object_points: list[Points] = []
+        self.points: list[dict[str, Any]] = []
+        self.old_name = None
+        self.new_name = None
+        self.type = None
+        self.subtype = None
+        self.priority = None
+        self.signing_deadline = None
+        self.validity = None
+        self.description = None
+        self.doc_to_signe: DocToSigne | None = None
+        self.limite_signature = None
 
     def get_request(self, *, id_document: int, hash_document: str) -> 'SignatureDoer':
         """
@@ -111,13 +144,17 @@ class SignatureDoer:
 
         # Récupération de l'utilisateur courant
         self.signatory_id = int(session.get('id', None))
-        self.signatory_name = f'{session.get('prenom', None)} {session.get('nom', None)}'.strip()
+        self.signatory_name = f'{session.get("prenom", None)} {session.get("nom", None)}'.strip()
 
         # Validation de l'invitation et du document :
         # Le document doit exister et correspondre au hash fourni
-        document = g.db_session.query(DocToSigne).filter_by(id=id_document, hash_fichier=hash_document).first()
-        # L'invitation doit exister pour ce document et cet utilisateur, et le token doit correspondre
-        invitation = g.db_session.query(Invitation).filter_by(id_document=document.id, id_user=self.signatory_id).first()
+        document = g.db_session.query(DocToSigne) \
+                        .filter_by(id=id_document, hash_fichier=hash_document) \
+                        .first()
+        # Existance invitation, utilisateur, token
+        invitation = g.db_session.query(Invitation) \
+                        .filter_by(id_document=document.id, id_user=self.signatory_id) \
+                        .first()
 
         # Si le document ou l'invitation n'est pas trouvé ou invalide, lever une erreur
         if invitation and invitation.token == self.token and document:
@@ -146,12 +183,12 @@ class SignatureDoer:
         self.token = self.request.headers.get('X-Invit-Token', None)
         self.ip_addresse = self.request.environ.get('REMOTE_ADDR') or self.request.remote_addr
         data = self.request.get_json()
-        
+
         # Validation des données reçues
         if not data:
-            raise ValueError("Données de signatures invalides ou manquantes.")        
+            raise ValueError("Données de signatures invalides ou manquantes.")
         self.otp = data.get('otp_code', None)
-        
+
         # Données de signature haute précision
         self.signature_hash = data.get('signature_hash', None)
         self.user_agent = data.get('user_agent', None)
@@ -159,7 +196,7 @@ class SignatureDoer:
         self.data_graph = data.get('data_graph', None)
         self.largeur_graph = data.get('largeur_graph', 0)
         self.hauteur_graph = data.get('hauteur_graph', 0)
-        
+
         # Données temporelles et d'identité
         self.datetime_submission = datetime.now()
         self.signatory_id = session.get('id', None)
@@ -171,7 +208,7 @@ class SignatureDoer:
         self.invitation = g.db_session.query(Invitation) \
             .filter_by(id_document=self.document.id, id_user=self.signatory_id) \
             .first()
-        
+
         return self
 
     def get_signature_points(self) -> 'SignatureDoer':
@@ -194,13 +231,15 @@ class SignatureDoer:
             ```
         """
         # Récupération des points de signature pour l'utilisateur courant
+        if not self.document:
+            raise ValueError("Document non trouvé pour récupérer les points de signature.")
         self.object_points = g.db_session.query(Points) \
                         .filter_by(id_document=self.document.id, id_user=self.signatory_id) \
                         .all()
         self.points: List[Dict[str, Any]] = [point.to_dict() for point in self.object_points]
-        
+
         return self
-    
+
     def handle_signature_submission(self) -> 'SignatureDoer':
         """
         Gère la soumission de la signature.
@@ -219,9 +258,13 @@ class SignatureDoer:
             ```
         """
         # Validation de l'invitation, du document et du code OTP
-        otp_valid = (self.otp == self.invitation.code_otp)
-        
+        if not self.invitation:
+            raise ValueError(BAD_INVITATION)
+        otp_valid = self.otp == self.invitation.code_otp
+
         # Validation des conditions de signature
+        if not self.object_points:
+            raise ValueError("Aucun pt de signature trouvé pour cet utilisateur et ce document.")
         already_signed = all(point.status == 1 for point in self.object_points)
         if already_signed:
             raise ValueError("Vous avez déjà signé ce document.")
@@ -255,7 +298,7 @@ class SignatureDoer:
         # Vérifier si tous les points du document sont maintenant signés
         all_points = g.db_session.query(Points).filter_by(id_document=self.document.id).all()
         all_signed = all(p.status == 1 for p in all_points)
-        
+
         if all_signed:
             # Tous les signataires ont signé, marquer le document comme complètement signé
             self.document.status = 1  # Statut signé
@@ -297,11 +340,11 @@ class SignatureMaker:
         send_invitation():
             Envoie une invitation aux utilisateurs pour signer le document.
     """
-    def __init__(self, request: Request):
+    def __init__(self, req: Request):
         """
         Initialise avec l'objet request Flask.
         Args:
-            request (Request): L'objet request Flask.
+            req (Request): L'objet request Flask.
         Attributes:
             request (Request): L'objet request Flask.
             old_name (str | None): Le nom original du document.
@@ -320,7 +363,7 @@ class SignatureMaker:
             maker = SignatureMaker(request)
             ```
         """
-        self.request = request
+        self.request = req
 
     def post_request(self) -> 'SignatureMaker':
         """
@@ -345,7 +388,7 @@ class SignatureMaker:
         self.description = self.request.form.get('document_description', None)
 
         return self
-    
+
     def get_signature_points(self) -> 'SignatureMaker':
         """
         Récupère les points de signature du formulaire de la requête.
@@ -381,7 +424,7 @@ class SignatureMaker:
             i += 1
 
         return self
-    
+
     def create_document(self) -> 'SignatureMaker':
         """
         Crée un document à signer.
@@ -404,7 +447,8 @@ class SignatureMaker:
             doc_sous_type=self.subtype,
             priorite=int(self.priority) if self.priority and self.priority.isdigit() else 0,
             echeance=self.signing_deadline,
-            duree_archivage=int(self.validity) if self.validity and self.validity.isdigit() else 3660,
+            duree_archivage=int(self.validity) \
+                                if self.validity and self.validity.isdigit() else 3660,
             description=self.description,
             chemin_fichier='temp',  # Sera mis à jour après le renommage
             hash_fichier='temp',    # Sera mis à jour après le renommage
@@ -416,7 +460,7 @@ class SignatureMaker:
         g.db_session.flush()
 
         return self
-    
+
     def create_points(self) -> 'SignatureMaker':
         """
         Crée les points de signature dans la base de données.
@@ -445,9 +489,9 @@ class SignatureMaker:
 
             # Ajout du point à la session
             g.db_session.add(signature_point)
-        
+
         return self
-    
+
     def fix_documents(self) -> 'SignatureMaker':
         """
         Renomme le document dans le dossier temporaire vers le dossier final.
@@ -488,20 +532,20 @@ class SignatureMaker:
                         file_hash = hashlib.sha256(f.read()).hexdigest()
                         self.doc_to_signe.chemin_fichier = file_path
                         self.doc_to_signe.hash_fichier = file_hash
-                    
+
                     return self
-                
+
                 # Gestion des erreurs lors du renommage
-                except Exception:
-                    raise IOError("Erreur lors du renommage du fichier.")
-            
+                except Exception as e:
+                    raise IOError("Erreur lors du renommage du fichier : %s", str(e)) from e
+
             # Gestion des exceptions liées à l'absence du fichier source
             else:
                 raise FileNotFoundError("Le fichier source n'existe pas.")
-        
+
         # Gestion des exceptions liées à l'absence de noms valides
         raise FileNotFoundError("Le fichier source n'existe pas ou les noms sont invalides.")
-    
+
     def send_invitation(self) -> 'SignatureMaker':
         """
         Envoie une invitation aux utilisateurs pour signer le document.
@@ -523,8 +567,10 @@ class SignatureMaker:
         # Récupération de la liste des mails, noms et prénoms des utilisateurs
         user_ids = {point['user_id'] for point in self.points}
         users = g.db_session.query(User).filter(User.id.in_(user_ids)).all()
-        self.limite_signature = datetime.now() + timedelta(days=int(self.doc_to_signe.echeance) if self.doc_to_signe.echeance and str(self.doc_to_signe.echeance).isdigit() else 3)
-        
+        self.limite_signature = datetime.now() + timedelta(days=int(self.doc_to_signe.echeance) \
+                                        if self.doc_to_signe.echeance \
+                                            and str(self.doc_to_signe.echeance).isdigit() else 3)
+
         # Envoi des invitations par email
         for user in users:
             # Vérifier si une invitation existe déjà pour ce document et cet utilisateur
@@ -532,7 +578,7 @@ class SignatureMaker:
                 id_document=self.doc_to_signe.id,
                 id_user=user.id
             ).first()
-            
+
             # Si une invitation existe, la mettre à jour, sinon en créer une nouvelle
             if existing_invitation:
                 # Mettre à jour l'invitation existante
@@ -547,7 +593,7 @@ class SignatureMaker:
                     f"{self.doc_to_signe.id}-{self.doc_to_signe.hash_fichier}-{user.id}-{datetime.now().isoformat()}".encode(),
                     hashlib.sha256
                 ).hexdigest()
-                
+
                 # Création d'une nouvelle invitation
                 invitation = Invitation(
                     id_document=self.doc_to_signe.id,
@@ -559,7 +605,7 @@ class SignatureMaker:
                 )
                 g.db_session.add(invitation)
                 g.db_session.flush()
-            
+
             # Envoyer l'email
             mail_template = render_template(
                 'signatures/signature_mail.html',
@@ -574,7 +620,7 @@ class SignatureMaker:
                 to=user.mail,
                 template=mail_template
             )
-        
+
         return self
 
 class SecureDocumentAccess:
@@ -596,7 +642,7 @@ class SecureDocumentAccess:
     """
     # Constante pour le dossier temporaire
     TEMP_DIR = getenv('TEMP_DOCKER_PATH', '/tmp') + '/signature'
-    
+
     @staticmethod
     def get_user_identifier() -> str:
         """
@@ -614,19 +660,20 @@ class SecureDocumentAccess:
         user_id: str = session.get('identifiant', 'anonymous')
         ip_address: str = request.remote_addr or 'unknown'
         user_agent: str = request.headers.get('User-Agent', 'unknown')[:50]
-        
+
         # Utiliser MD5 pour raccourcir le User-Agent
         ua_hash = hashlib.md5(user_agent.encode()).hexdigest()[:8]
 
         return f"{user_id}-{ip_address}-{ua_hash}"
-    
+
     @staticmethod
     def generate_document_hash(filename: str, user_identifier: str | None = None) -> str:
         """
         Génère un hash sécurisé pour le document avec HMAC.
         Args:
             filename (str): Le nom du fichier.
-            user_identifier (str | None): L'identifiant unique de l'utilisateur. Si None, il sera généré.
+            user_identifier (str | None): L'identifiant unique de l'utilisateur.
+                                          Si None, il sera généré.
         Returns:
             str: Le hash sécurisé du document.
         Exemples:
@@ -637,7 +684,7 @@ class SecureDocumentAccess:
         # Génération de l'identifiant utilisateur si non fourni
         if not user_identifier:
             user_identifier = SecureDocumentAccess.get_user_identifier()
-        
+
         # Génération du hash HMAC avec SHA-256
         secret_key = getenv('SECRET_KEY', 'default-secret-key')
         timestamp = datetime.now().isoformat()[:19]  # YYYY-MM-DDTHH:MM:SS
@@ -647,9 +694,9 @@ class SecureDocumentAccess:
             message.encode(), 
             hashlib.sha256
         ).hexdigest()
-        
+
         return document_hash
-    
+
     @staticmethod
     def create_temp_access_file(filename: str, document_hash: str) -> None:
         """
