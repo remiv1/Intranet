@@ -18,7 +18,7 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from sqlalchemy import and_
 from flask import g, render_template
-from .config import Config
+from .config.config import Config
 from .models import Contract
 
 logger = getLogger(__name__)

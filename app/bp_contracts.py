@@ -101,6 +101,7 @@ def contrats() -> ResponseReturnValue:
     else:
         return redirect(url_for(ACCUEIL_CONTRAT, error_message=NOT_ALLOWED))
 
+
 @contracts_bp.route('/contrat-<int:id_contrat>', methods=['GET', 'POST'])
 @validate_habilitation(GESTIONNAIRE)
 def contrats_by_num(id_contrat: int) -> ResponseReturnValue:
@@ -111,6 +112,7 @@ def contrats_by_num(id_contrat: int) -> ResponseReturnValue:
         id_contrat (int): Le numéro du contrat à afficher/modifier/supprimer.
     Returns:
         Response: La page de détail du contrat ou une redirection vers la page de gestion des
+        contrats avec un message d'erreur ou de succès.
     """
     tab = request.args.get('tab', 'c')
     # Récupération du contrat
@@ -182,6 +184,7 @@ def contrats_by_num(id_contrat: int) -> ResponseReturnValue:
     else:
         return redirect(url_for(ACCUEIL_CONTRAT, error_message=NOT_ALLOWED))
 
+
 @contracts_bp.route('/contrat-<int:id_contrat>/contact', methods=['POST'])
 @validate_habilitation(GESTIONNAIRE)
 def add_contrats_contact(id_contrat: int) -> ResponseReturnValue:
@@ -231,6 +234,7 @@ def add_contrats_contact(id_contrat: int) -> ResponseReturnValue:
             url_for(DETAIL_CONTRAT, id_contrat=id_contrat, error_message=NOT_ALLOWED, tab=tab)
         )
 
+
 @contracts_bp.route('/contrat-<int:id_contrat>/evenement', methods=['POST'])
 @validate_habilitation(GESTIONNAIRE)
 def add_contrats_event(id_contrat: int) -> ResponseReturnValue:
@@ -277,6 +281,7 @@ def add_contrats_event(id_contrat: int) -> ResponseReturnValue:
         return redirect(
             url_for(DETAIL_CONTRAT, id_contrat=id_contrat, error_message=NOT_ALLOWED, tab=tab)
         )
+
 
 @contracts_bp.route('/contrat-<int:id_contrat>/document', methods=['POST'])
 @validate_habilitation(GESTIONNAIRE)
@@ -328,6 +333,7 @@ def add_contrats_document(id_contrat: int) -> ResponseReturnValue:
             url_for(DETAIL_CONTRAT, id_contrat=id_contrat, error_message=NOT_ALLOWED, tab=tab)
         )
 
+
 @contracts_bp.route('/contrat-<int:id_contrat>/facture', methods=['POST'])
 @validate_habilitation(GESTIONNAIRE)
 def add_contrats_bill(id_contrat: int) -> ResponseReturnValue:
@@ -378,6 +384,7 @@ def add_contrats_bill(id_contrat: int) -> ResponseReturnValue:
         return redirect(
             url_for(DETAIL_CONTRAT, id_contrat=id_contrat, error_message=NOT_ALLOWED, tab=tab)
         )
+
 
 @contracts_bp.route('/contrat-<int:id_contrat>/contact-<int:id_contact>', methods=['POST'])
 @validate_habilitation(GESTIONNAIRE)
@@ -446,6 +453,7 @@ def modif_contact_id(id_contact: int, id_contrat: int) -> ResponseReturnValue:
             url_for(DETAIL_CONTRAT, id_contrat = id_contrat, error_message=NOT_ALLOWED, tab=tab)
         )
 
+
 @contracts_bp.route('/contrat-<int:id_contrat>/evenement-<int:id_event>', methods=['POST'])
 @validate_habilitation(GESTIONNAIRE)
 def modif_event_id(id_event: int, id_contrat: int) -> ResponseReturnValue:
@@ -504,6 +512,7 @@ def modif_event_id(id_event: int, id_contrat: int) -> ResponseReturnValue:
         return redirect(
             url_for(DETAIL_CONTRAT, id_contrat = id_contrat, error_message=NOT_ALLOWED, tab=tab)
         )
+
 
 @contracts_bp.route('/contrat-<int:id_contrat>/document-<int:id_document>', methods=['POST'])
 @validate_habilitation(GESTIONNAIRE)
@@ -564,6 +573,7 @@ def modif_document_id(id_document: int, id_contrat: int) -> ResponseReturnValue:
             url_for(DETAIL_CONTRAT, id_contrat = id_contrat, error_message=NOT_ALLOWED, tab=tab)
         )
 
+
 @contracts_bp.route('contrat-<int:id_contrat>/facture-<int:id_bill>', methods=['POST'])
 @validate_habilitation(GESTIONNAIRE)
 def modif_bill_id(id_bill: int, id_contrat: int) -> ResponseReturnValue:
@@ -617,6 +627,7 @@ def modif_bill_id(id_bill: int, id_contrat: int) -> ResponseReturnValue:
             url_for(DETAIL_CONTRAT, id_contrat = id_contrat, error_message=NOT_ALLOWED, tab=tab)
         )
 
+
 @contracts_bp.route(
         '/contrat-<int:id_contrat>/contact-<int:id_contact>/supprimer',
         methods=['POST']
@@ -663,6 +674,7 @@ def delete_contact_id(id_contact: int, id_contrat: int) -> ResponseReturnValue:
         return redirect(
             url_for(DETAIL_CONTRAT, id_contrat = id_contrat, error_message=NOT_ALLOWED, tab=tab)
         )
+
 
 @contracts_bp.route('/download/<name>', methods=['GET'])
 @validate_habilitation(GESTIONNAIRE)

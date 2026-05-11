@@ -27,20 +27,15 @@ Routes disponibles :
 - '/rapport-contrats' [POST] : Rapport des contrats arrivant à échéance entre m-6 et m-3
 """
 # Imports standards
-import logging
-import time
-from typing import List, Dict, Any, cast, Optional, Tuple
+from typing import List, Dict, Any, Optional
 from hashlib import sha256
 from os.path import splitext
 from datetime import datetime
 
 # Imports liés à Flask et SQLAlchemy
-from flask import Flask, jsonify, render_template, Request, request, redirect, url_for, session, g
+from flask import Flask, jsonify, render_template, request, redirect, url_for, session, g
 from flask.wrappers import Response
 from werkzeug import Response as WResponse
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy.engine.url import URL
 from sqlalchemy.exc import SQLAlchemyError
 
 # Imports liés à l'application
@@ -53,223 +48,31 @@ from .habilitations import (
     ELEVES,
     IMPRESSIONS,
     VPN
-    )
+)
 from .bp_contracts import contracts_bp
 from .bp_signature import signatures_bp
-from .config import Config
-from .models import Base, User, DocToSigne, Points, Signatures, Invitation
+from .config.config import ConfigApp
+from .models import User, DocToSigne, Points, Signatures, Invitation
+from app.repositories.user import handle_login_post
 from .docs import print_document, delete_file
 from .rapport_echeances import envoi_contrats_renego
 from .utilities import get_jsoned_datas
-
-
-# Configuration du logger
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s %(levelname)s %(name)s %(message)s',
-    handlers=[
-        logging.FileHandler("application.log"),
-        logging.StreamHandler()
-    ]
-)
-logger = logging.getLogger("peraudiere")
-
+from .config.logger import api_logger
+from app.config.database import SESSION, initialize_database
 # Initialisation de l'application Flask
 peraudiere = Flask(__name__)
 
-# Enregistrement du blueprint pour les contrats
-peraudiere.register_blueprint(contracts_bp)
-peraudiere.register_blueprint(signatures_bp)
+BLUEPRINTS = [contracts_bp, signatures_bp]
+# Enregistrement des blueprints
+for bp in BLUEPRINTS:
+    peraudiere.register_blueprint(bp)
 
-# Charger la configuration depuis config.py
-peraudiere.config.from_object(Config)
-
-# Construction de l'URL de la base de données
-db_user: str = cast(str, peraudiere.config["DB_USER"])
-db_password: str = cast(str, peraudiere.config["DB_PASSWORD"])
-db_host: str = cast(str, peraudiere.config["DB_HOST"])
-db_name: str = cast(str, peraudiere.config["DB_NAME"])
-db_url = URL.create(
-    drivername="mysql+mysqlconnector",
-    username=db_user,
-    password=db_password,
-    host=db_host,
-    port=3306,
-    database=db_name,
-    query={"charset": "utf8mb4"}
-)
-
-# Créer l'engin SQLAlchemy
-engine = create_engine(db_url,
-                        pool_recycle=1800,
-                        pool_timeout=30,
-                        pool_pre_ping=True,
-                        connect_args={'connect_timeout': 10},
-                        echo=False)
-
-# Créer les tables de la base de données (avec retry en cas d'erreur de connexion)
-def initialize_database(max_retries: int = 10, retry_delay: int = 2) -> bool | None:
-    """
-    Fonction pour initialiser la base de données avec retry en cas d'erreur de connexion.
-    Sert aussi de healthcheck pour l'application.
-    Args:
-        max_retries (int): Le nombre maximum de tentatives de connexion.
-        retry_delay (int): Le délai entre chaque tentative de connexion (en secondes).
-    Returns:
-        bool | None: True si la connexion est réussie, None sinon.
-    """
-    # Tenter de créer les tables avec des retries
-    for attempt in range(max_retries):
-        try:
-            Base.metadata.create_all(engine)
-            return True
-        except SQLAlchemyError as e:
-            if attempt < max_retries - 1:
-                time.sleep(retry_delay)
-            else:
-                raise ImportError(
-                    f"Connection impossible à la BdD après {max_retries} tentatives : {e}"
-                ) from e
-
-# Créer une session de base de données sans ouverture de celle-ci
-SESSION = sessionmaker(bind=engine)
+# Charger la configuration depuis la configuration de l'application
+peraudiere.config.from_object(ConfigApp)
 
 # Initialiser la base de données avec retry
 initialize_database()
 
-class UsersMethods:
-    """
-    Classe pour gérer les méthodes liées aux utilisateurs.
-    Méthodes statiques:
-        get_user_from_credentials:
-            Récupère un utilisateur à partir des identifiants fournis dans une requête.
-        valid_authentication:
-            Valide l'authentification d'un utilisateur et initialise la session.
-        generate_nb_false_pwd:
-            Gère le compteur d'essais de mot de passe incorrects et verrouille
-            l'utilisateur si nécessaire.
-        get_user_validation_message:
-            Retourne le message d'erreur approprié selon l'état de l'utilisateur.
-        handle_login_redirect:
-            Gère la redirection après une tentative de connexion.
-    """
-    @staticmethod
-    def get_user_from_credentials(req: Request) -> Tuple[User, str, str]:
-        """
-        Récupère un utilisateur à partir des identifiants fournis dans une requête.
-        Args:
-            req (Request): La requête contenant les identifiants :
-                - 'username' : nom d'utilisateur
-                - 'password' : mot de passe
-        Returns:
-            Tuple[User, str, str]: Un tuple contenant l'utilisateur, le nom d'utilisateur
-                                   et le mot de passe.
-        """
-        # Récupération du credential
-        username = req.form.get('username', '')
-        password = req.form.get('password', '')
-        password = sha256(password.encode()).hexdigest()
-
-        try:
-            # Recherche de l'utilisateur dans la base de données
-            user = g.db_session.query(User).filter(User.identifiant == username).first()
-
-        except SQLAlchemyError:
-            user = User()
-
-        # Retourne les identifiants de l'utilisateur et l'utilisateur
-        return user, username, password
-
-    @staticmethod
-    def valid_authentication(user: User, password: str) -> bool:
-        """
-        Valide l'authentification d'un utilisateur et initialise la session.
-        Args:
-            user (User): L'utilisateur à valider.
-            password (str): Le mot de passe fourni pour la validation.
-        Returns:
-            bool: True si l'authentification est réussie, False sinon.
-        """
-        if user.locked:
-            return False
-        elif user.fin:
-            if user.fin <= datetime.now():
-                return False
-        elif user and user.sha_mdp == password:
-            session['identifiant'] = user.identifiant
-            session['prenom'] = user.prenom
-            session['nom'] = user.nom
-            session['mail'] = user.mail
-            session['habilitation'] = str(user.habilitation)
-            session['id'] = user.id
-            try:
-                # Stocker les informations de l'utilisateur dans la session
-                user.false_test=0
-                g.db_session.commit()
-                return True
-            except SQLAlchemyError:
-                return False
-        return False
-
-    @staticmethod
-    def generate_nb_false_pwd(user: User) -> str:
-        """
-        Gère le compteur d'essais de MdP incorrects et verrouille l'utilisateur si nécessaire.
-        Args:
-            user (User): L'utilisateur pour lequel gérer le compteur d'essais.
-        Returns:
-            str: Un message indiquant le résultat de l'opération.
-        """
-        if user.false_test < 2:
-            user.false_test += 1
-            reste = 3 - user.false_test
-            message = f'Erreur d\'identifiant ou de mot de passe, il vous reste {reste} essais.'
-        else:
-            user.locked = True
-            user.false_test = 3
-            message = f'Utilisateur {user.nom} vérouillé, merci de contacter votre administrateur.'
-        try:
-            g.db_session.commit()
-        except SQLAlchemyError as e:
-            message = f'Erreur lors de la mise à jour du compteur d\'essais : {e}'
-        return message
-
-    @staticmethod
-    def get_user_validation_message(user: User) -> str | None:
-        """
-        Retourne le message d'erreur approprié selon l'état de l'utilisateur.
-        Args:
-            user (User): L'utilisateur à valider.
-        Returns:
-            str | None: Le message d'erreur ou None si l'utilisateur est valide.
-        """
-        if user.locked:
-            return 'Votre compte est verrouillé, veuillez contacter votre administrateur.'
-        elif user.fin and user.fin <= datetime.now():
-            return 'Votre compte a expiré, veuillez contacter votre administrateur.'
-        return None
-
-    @staticmethod
-    def handle_login_redirect(
-            redirect_url: str | None,
-            success: bool = False,
-            error_message: str | None = None
-        ) -> Any:
-        """
-        Gère la redirection après une tentative de connexion.
-        Args:
-            redirect_url (str | None): L'URL de redirection originale.
-            success (bool): True si la connexion a réussi.
-            error_message (str | None): Message d'erreur à afficher.
-        Returns:
-            Response: La redirection appropriée.
-        """
-        if success:
-            if redirect_url and redirect_url != '' and redirect_url != 'None':
-                return redirect(redirect_url)
-            return redirect(url_for('home', success_message='Connexion réussie'))
-
-        return redirect(url_for('login', error_message=error_message, preview_request=redirect_url))
 
 @peraudiere.before_request
 def before_request() -> Any:
@@ -281,13 +84,14 @@ def before_request() -> Any:
     Returns:
         None
     """
+    api_logger.info(f"Requête entrante : {request.method} {request.path}")
     if 'db_session' not in g:
         g.db_session = SESSION()
     # Autoriser l'accès aux fichiers CSS et autres fichiers statiques
     match request.endpoint:
         case 'rapport_contrats':
             api_token = request.headers.get('X-API-TOKEN')
-            if api_token and api_token == peraudiere.config['API_MAIL_TOKEN']:
+            if api_token and api_token == ConfigApp.SECRET_KEY:
                 return None
         case 'static':
             return None
@@ -307,8 +111,9 @@ def before_request() -> Any:
                     preview_request=preview_request
                     ))
 
+
 @peraudiere.teardown_appcontext
-def teardown_request(exception: Optional[BaseException]) -> None:   # pylint: disable=unused-argument
+def teardown_request(exception: Optional[BaseException]) -> None:
     """
     Fonction exécutée après chaque requête.
     Ferme la session de base de données stockée dans l'objet `g` et réalise
@@ -322,6 +127,9 @@ def teardown_request(exception: Optional[BaseException]) -> None:   # pylint: di
     if db_session is not None:
         db_session.rollback()
         db_session.close()
+    if exception:
+        api_logger.error(f"Exception lors de la requête : {exception}")
+
 
 @peraudiere.get('/')
 def home() -> str | Response | WResponse:
@@ -369,6 +177,7 @@ def home() -> str | Response | WResponse:
         error_message = 'Merci de vous connecter pour accéder à cette ressource'
         return redirect(url_for('login', error_message=error_message))
 
+
 @peraudiere.route('/login', methods=['GET', 'POST'])
 def login() -> str | Response:
     """
@@ -387,47 +196,12 @@ def login() -> str | Response:
 
     # === Gestion de la méthode POST (traitement du formulaire de connexion) ===
     if request.method == 'POST':
-        return _handle_login_post()
+        return handle_login_post()
 
     # === Gestion de la méthode GET (affichage de la page de connexion) ===
     return render_template('login.html', message=message, success_message=success_message,
                            error_message=error_message, preview_request=preview_request)
 
-def _handle_login_post() -> Response:
-    """
-    Gère la logique POST de la route login.
-    Returns:
-        Response: La redirection appropriée selon le résultat de l'authentification.
-    """
-    try:
-        # Récupération de l'URL de redirection depuis le formulaire
-        redirect_url = request.form.get('preview_request', None)
-
-        # récupération du contenu du formulaire
-        user, _, password = UsersMethods.get_user_from_credentials(request)
-
-        # Vérifier si l'utilisateur existe et si le mot de passe est correct
-        if UsersMethods.valid_authentication(user, password):
-            return UsersMethods.handle_login_redirect(redirect_url, success=True)
-
-        # Vérifier les conditions de blocage de l'utilisateur
-        validation_message = UsersMethods.get_user_validation_message(user)
-        if validation_message:
-            return UsersMethods.handle_login_redirect(
-                redirect_url,
-                error_message=validation_message
-                )
-
-        # Gestion des erreurs de mots de passe
-        error_message = UsersMethods.generate_nb_false_pwd(user)
-        return UsersMethods.handle_login_redirect(redirect_url, error_message=error_message)
-
-    except (ValueError, KeyError, AttributeError) as e:
-        # Récupération de l'URL de redirection depuis le formulaire en cas d'erreur
-        redirect_url = request.form.get('preview_request', None)
-        # En cas d'erreur, retour sur la page de connexion après rollback
-        error_message = f'Erreur lors de la connexion, veuillez réessayer : {e}'
-        return UsersMethods.handle_login_redirect(redirect_url, error_message=error_message)
 
 @peraudiere.get('/logout')
 def logout() -> Response | WResponse:
@@ -449,6 +223,7 @@ def logout() -> Response | WResponse:
         error_message=error_message
         ))
 
+
 @peraudiere.get('/gestion-droits')
 @validate_habilitation(ADMINISTRATEUR)
 def gestion_droits() -> str | Response:
@@ -466,6 +241,7 @@ def gestion_droits() -> str | Response:
     users = g.db_session.query(User).all()
     return render_template('gestion_droits.html', users=users, message=message,
                            success_message=success_message, error_message=error_message)
+
 
 @peraudiere.get('/gestion-utilisateurs')
 @validate_habilitation(GESTIONNAIRE)
@@ -488,6 +264,7 @@ def gestion_utilisateurs(message: Optional[str] = None, success_message: Optiona
     return render_template('gestion_utilisateurs.html', users=users, message=message,
                            success_message=success_message, error_message=error_message)
 
+
 @peraudiere.get('/erpp')
 @validate_habilitation(PROFESSEURS_PRINCIPAUX)
 def erpp(message: Optional[str] = None, success_message: Optional[str] = None,
@@ -502,6 +279,7 @@ def erpp(message: Optional[str] = None, success_message: Optional[str] = None,
     """
     return render_template('erpp.html', message=message, success_message=success_message,
                            error_message=error_message)
+
 
 @peraudiere.get('/erp')
 @validate_habilitation(PROFESSEURS)
@@ -518,6 +296,7 @@ def erp(message: Optional[str] = None, success_message: Optional[str] = None,
     return render_template('erp.html', message=message, success_message=success_message,
                            error_message=error_message)
 
+
 @peraudiere.get('/ei')
 @validate_habilitation(IMPRESSIONS)
 def ei(message: Optional[str] = None, success_message: Optional[str] = None,
@@ -532,6 +311,7 @@ def ei(message: Optional[str] = None, success_message: Optional[str] = None,
     """
     return render_template('ei.html', message=message, success_message=success_message,
                            error_message=error_message)
+
 
 @peraudiere.get('/ea')
 @validate_habilitation(GESTIONNAIRE)
@@ -558,6 +338,7 @@ def ea(message: Optional[str] = None, success_message: Optional[str] = None,
 
     return render_template('ea.html', message=message, success_message=success_message,
                            error_message=error_message, sections=sections, context=context)
+
 
 @peraudiere.route('/print-doc', methods=['POST'])
 @validate_habilitation(IMPRESSIONS)
@@ -606,6 +387,7 @@ def print_doc() -> Response | WResponse:
             error_message=f'Erreur {e} lors de l\'impression, veuillez réessayer'
             ))
 
+
 @peraudiere.get('/ere')
 @validate_habilitation(ELEVES)
 def ere(message: Optional[str] = None, success_message: Optional[str] = None,
@@ -620,6 +402,7 @@ def ere(message: Optional[str] = None, success_message: Optional[str] = None,
     """
     return render_template('ere.html', message=message, success_message=success_message,
                            error_message=error_message)
+
 
 @peraudiere.post('/ajout-utilisateurs')
 @validate_habilitation(ADMINISTRATEUR)
@@ -666,6 +449,7 @@ def ajout_utilisateurs() -> Response | WResponse:
     except (ValueError, SQLAlchemyError) as e:
         message = f'Erreur lors de l\'ajout de l\'utilisateur : {e}'
         return redirect(url_for('gestion_utilisateurs', error_message=message))
+
 
 @peraudiere.post('/suppr-utilisateurs/<id_user>')
 @validate_habilitation(ADMINISTRATEUR)
@@ -718,6 +502,7 @@ def suppr_utilisateurs(id_user: int) -> Response | WResponse:
     except (ValueError, AttributeError, TypeError) as e:
         message = f'Erreur lors de la suppression de l\'utilisateur {id_user} : {e}'
         return redirect(url_for('gestion_utilisateurs', error_message=message))
+
 
 @peraudiere.post('/modif-utilisateurs')
 @validate_habilitation(ADMINISTRATEUR)
@@ -772,6 +557,7 @@ def modif_utilisateurs() -> Response | WResponse:
         message = f'Erreur lors de la modification de l\'utilisateur {identifiant} : {e}'
         return redirect(url_for('gestion_utilisateurs', error_message=message))
 
+
 @peraudiere.post('/gestion-droits')
 @validate_habilitation([ADMINISTRATEUR, GESTIONNAIRE])
 def gestion_droits_post() -> Response | WResponse:
@@ -814,6 +600,7 @@ def gestion_droits_post() -> Response | WResponse:
         message = f'Erreur lors de la modification des droits de l\'utilisateur {identifiant} : {e}'
         return redirect(url_for('gestion_droits', error_message=message))
 
+
 @peraudiere.get('/vpn')
 @validate_habilitation(VPN)
 def vpn(message: Optional[str] = None, success_message: Optional[str] = None,
@@ -837,6 +624,7 @@ def vpn(message: Optional[str] = None, success_message: Optional[str] = None,
         habilitation=habilitation
         )
 
+
 @peraudiere.get('/vpn/download/<access>')
 @validate_habilitation(VPN)
 def vpn_download(access: str) -> Response | WResponse:
@@ -852,6 +640,7 @@ def vpn_download(access: str) -> Response | WResponse:
     # TODO : appeler l'API interne de la VM WireGuard pour enregistrer le peer
     # TODO : retourner le fichier .conf généré en téléchargement
     return redirect(url_for('vpn', error_message='Téléchargement VPN non encore disponible'))
+
 
 @peraudiere.route('/rapport-contrats', methods=['POST'])
 def rapport_contrats() -> Response:

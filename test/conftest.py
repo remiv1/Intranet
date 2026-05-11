@@ -18,7 +18,7 @@ from flask.testing import FlaskClient
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 from app.models import User, Contract, Document, Event
-from app.config import Config
+from app.config.config import Config
 
 # Import des fixtures supplémentaires
 sys.path.insert(0, os.path.join(os.path.dirname(__file__)))

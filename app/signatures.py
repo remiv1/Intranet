@@ -44,7 +44,7 @@ from pypdf import PdfReader, PdfWriter
 from flask import render_template, request, Request, g, session
 
 # Imports liés à l'application (modèles, config)
-from .config import Config
+from .config.config import Config
 from .models import DocToSigne, Invitation, Points, Signatures, User, ViewPoints
 
 # Constantes

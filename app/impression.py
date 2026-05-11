@@ -7,22 +7,19 @@ le recto/verso, l'orientation et la couleur, tout en assurant une compatibilité
 avec les pilotes d'impression courants.
 """
 
-import subprocess # Pour exécuter la commande lp
+import subprocess
 import os
-from typing import cast
 from logging import getLogger
-from .config import ConfigDict
+from .config.config import ConfigApp
 
 logger = getLogger(__name__)
 
-def get_config() -> ConfigDict:
-    """Import tardif pour éviter l'import circulaire"""
-    from .application import peraudiere # pylint: disable=import-outside-toplevel
-    return cast(ConfigDict, peraudiere.config)
+DEFAULT_PRINTER_NAME = 'Imprimerie_Sharp'
+DEFAULT_PRINTER_IP = '172.17.0.1'  # IP Docker bridge par défaut
 
 def get_watched_dir() -> str:
     """Retourne le chemin du dossier surveillé pour les fichiers à imprimer."""
-    return get_config().get("PRINT_PATH", '/prints')
+    return ConfigApp.PRINT_PATH
 
 def get_cups_server() -> str:
     """Retourne l'IP du serveur CUPS sur l'hôte Docker"""
@@ -38,14 +35,14 @@ def get_cups_server() -> str:
         else:
             # Fallback vers l'IP Docker bridge standard
             logger.warning("Could not determine gateway IP, using default")
-            return '172.17.0.1'
+            return DEFAULT_PRINTER_IP
     except Exception as e:
-        logger.error("Error determining gateway IP: %s, using fallback", e)
-        return '172.17.0.1'
+        logger.exception("Error determining gateway IP: %s, using fallback", e)
+        return DEFAULT_PRINTER_IP
 
 def get_printer_name() -> str:
     """Retourne le nom de l'imprimante configurée."""
-    return get_config().get("PRINTER_NAME", 'Imprimerie_Sharp')
+    return ConfigApp.PRINTER_NAME
 
 def print_file(file_path: str, user_name: str = 'Default', site_name: str = 'Default',
                copies: str = '1', sides: str = 'one-sided', media: str = 'A4',
@@ -135,5 +132,5 @@ def print_file(file_path: str, user_name: str = 'Default', site_name: str = 'Def
         logger.error("lp command not found - cups-client not installed?")
         raise RuntimeError("Commande lp non trouvée. Installer cups-client.") from e
     except Exception as e:
-        logger.error("Print error: %s", e)
+        logger.exception("Erreur lors de l'impression")
         raise RuntimeError(f"Erreur lors de l'impression: {e}") from e

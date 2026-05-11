@@ -253,7 +253,7 @@ def signature_request_otp(id_document: int, hash_document: str) -> Any:
         )
         g.db_session.add(audit_log)
         g.db_session.commit()
-        logging.error("Erreur lors de la création du code OTP : %s", str(e))
+        logging.exception("Erreur lors de la création du code OTP : %s", str(e))
         return jsonify(success=False, message=INTERNAL_SERVER_ERROR), 500
 
 @signatures_bp.route('/liste', methods=['GET'])
@@ -365,7 +365,7 @@ def create_final_signed_document(id_document: int, hash_document: str) -> Any:
 
     except Exception as e:
         # Erreurs système
-        logging.error("Erreur lors de la création du document final signé : %s", str(e))
+        logging.exception("Erreur lors de la création du document final signé : %s", str(e))
         g.db_session.rollback()
         return jsonify(success=False, message=INTERNAL_SERVER_ERROR), 500
 

@@ -9,27 +9,21 @@ et gère les erreurs de manière robuste pour assurer une expérience utilisateu
 import os
 import io
 from os.path import splitext
-from typing import cast
 from logging import getLogger
 from werkzeug.datastructures import FileStorage
 from werkzeug.utils import secure_filename
 from flask import jsonify, send_file
-from .config import ConfigDict
 from .impression import print_file
+from app.config.config import ConfigApp
 
 logger = getLogger(__name__)
 
-def get_config() -> ConfigDict:
-    """Import tardif pour éviter l'import circulaire"""
-    from .application import peraudiere # pylint: disable=import-outside-toplevel
-    return cast(ConfigDict, peraudiere.config)
-
 # Définition des variables de gestion (évaluées lors de la première utilisation)
 def _get_folder() -> str:
-    return get_config().get("UPLOAD_FOLDER", '/uploads')
+    return ConfigApp.UPLOAD_FOLDER
 
 def _get_print_folder() -> str:
-    return get_config().get("PRINT_PATH", '/prints')
+    return ConfigApp.PRINT_PATH
 
 # Validation des chemins (appelée lors du premier accès)
 _folder_initialized = False # pylint: disable=invalid-name
@@ -228,5 +222,5 @@ def print_document(
         return jsonify({'message': 'Document imprimé avec succès'})
 
     except Exception as e:
-        logger.error("Erreur lors de l'impression : %s", e)
+        logger.exception("Erreur lors de l'impression")
         return jsonify({'erreur': f'Erreur lors de l\'impression : {e}'})
