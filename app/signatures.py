@@ -26,6 +26,7 @@ from email.mime.base import MIMEBase
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email import encoders
+from unittest.mock import DEFAULT
 
 import cairosvg
 
@@ -49,6 +50,7 @@ from .models import DocToSigne, Invitation, Points, Signatures, User, ViewPoints
 
 # Constantes
 BAD_INVITATION = 'Invitation invalide ou non trouvée.'
+DEFAULT_TEMP_DIR = '/tmp/'
 
 class SignatureDoer:
     """
@@ -517,7 +519,7 @@ class SignatureMaker:
         if self.old_name and self.new_name:
             # Définition des chemins
             temp_dir = SecureDocumentAccess.TEMP_DIR
-            final_dir = getenv('SIGNATURE_DOCKER_PATH', '/tmp/') + f'/{self.doc_to_signe.id}/'
+            final_dir = getenv('SIGNATURE_DOCKER_PATH', DEFAULT_TEMP_DIR) + f'/{self.doc_to_signe.id}/'
             Path(final_dir).mkdir(parents=True, exist_ok=True)
             old_path = Path(temp_dir) / self.old_name
             new_path = Path(final_dir) / self.new_name
@@ -645,7 +647,7 @@ class SecureDocumentAccess:
             Nettoie les fichiers temporaires expirés.
     """
     # Constante pour le dossier temporaire
-    TEMP_DIR = getenv('TEMP_DOCKER_PATH', '/tmp') + '/signature'
+    TEMP_DIR = getenv('TEMP_DOCKER_PATH', DEFAULT_TEMP_DIR) + '/signature'
 
     @staticmethod
     def get_user_identifier() -> str:
@@ -1618,7 +1620,7 @@ class SignedDocumentCreator:
                     attachments=[str(self.document_path)]
                 )
         except Exception as e:
-            logging.error(f"Erreur lors de l'envoi du document signé par email : {e}")
+            logging.exception(f"Erreur lors de l'envoi du document signé par email : {e}")
             # Ne pas lever d'exception pour ne pas bloquer le processus
         
         return self
@@ -1875,7 +1877,9 @@ def send_email_signed_files(*, to: str, template: str, attachments: List[str]) -
                 part.add_header('Content-Disposition', 'attachment', filename=Path(file_path).name)
                 msg.attach(part)
         except Exception as e:
-            logging.error(f"Erreur lors de la lecture de la pièce jointe {file_path}: {str(e)}")
+            logging.exception(
+                f"Erreur lors de la lecture de la pièce jointe {file_path}: {str(e)}"
+            )
             continue
     # Envoyer l'e-mail
     try:
@@ -1884,7 +1888,9 @@ def send_email_signed_files(*, to: str, template: str, attachments: List[str]) -
             server.login(email_expediteur, mot_de_passe)
             server.send_message(msg)
     except Exception as e:
-        logging.error(f"Erreur lors de l'envoi de l'e-mail avec pièces jointes à {to}: {str(e)}")
+        logging.exception(
+            f"Erreur lors de l'envoi de l'e-mail avec pièces jointes à {to}: {str(e)}"
+        )
 
 def send_email_invitation(*, to: str, template: str) -> None:
     """
@@ -1913,7 +1919,9 @@ def send_email_invitation(*, to: str, template: str) -> None:
             server.login(email_expediteur, mot_de_passe)
             server.send_message(msg)
     except Exception as e:
-        logging.error(f"Erreur lors de l'envoi de l'e-mail d'invitation à {to}: {str(e)}")
+        logging.exception(
+            f"Erreur lors de l'envoi de l'e-mail d'invitation à {to}: {str(e)}"
+        )
 
 def send_otp_email(*, to: str, template: str) -> None:
     """
@@ -1942,4 +1950,6 @@ def send_otp_email(*, to: str, template: str) -> None:
             server.login(email_expediteur, mot_de_passe)
             server.send_message(msg)
     except Exception as e:
-        logging.error(f"Erreur lors de l'envoi de l'e-mail OTP à {to}: {str(e)}")
+        logging.exception(
+            f"Erreur lors de l'envoi de l'e-mail OTP à {to}: {str(e)}"
+        )

@@ -71,7 +71,7 @@ def envoi_contrats_renego(mail: str):
                 server.send_message(msg)
             logger.info("E-mail envoye avec succes a %s", mail)
         except Exception as e:
-            logger.error("Erreur lors de l envoi de l e-mail : %s", e)
+            logger.exception("Erreur lors de l envoi de l e-mail : %s", e)
         finally:
             conn.close()
     else:
