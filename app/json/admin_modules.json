@@ -26,7 +26,7 @@
             {
                 "classe": 2,
                 "titre": "Créer un document à faire signer depuis un modèle",
-                "descriptif": "Permet de créer un document à faire signer en utilisant un modèle prédéfini",
+                "descriptif": "Permet de créer un document à faire signer en utilisant un modèle prédéfini. (En cours de développement)",
                 "buttonid": "create_signature_from_template",
                 "onclick": "signature.create_signature_from_template"
             }

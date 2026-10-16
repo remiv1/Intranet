@@ -132,9 +132,11 @@ class UsersMethods:
         Returns:
             str: Un message indiquant le résultat de l'opération.
         """
+        if not user.false_test:
+            user.false_test = 0
         if user.false_test < 2:
             user.false_test += 1
-            reste = 3 - user.false_test
+            reste = 3 - (user.false_test or 0)
             message = f'Erreur d\'identifiant ou de mot de passe, il vous reste {reste} essais.'
         else:
             user.locked = True

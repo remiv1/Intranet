@@ -4,13 +4,20 @@ chargées depuis le fichier .env. Il utilise SQLAlchemy pour gérer la connexion
 et la création des tables. La fonction `initialize_database` est utilisée pour créer les tables
 de la base de données avec un mécanisme de retry en cas d'erreur de connexion,
 servant également de healthcheck pour l'application.
+
+.. constants::
+    - `engine`: L'objet SQLAlchemy Engine utilisé pour la connexion à la base de données.
+    - `SESSION`: La session SQLAlchemy pour interagir avec la base de données.
+
+.. author:: Rémi Verschuur <rverschuur@audit-io.fr>
+.. version:: 1.0.0
 """
 import time
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import create_engine
 from sqlalchemy.exc import SQLAlchemyError
-from app.models import Base
 from app.config.config import ConfigDB
+from ..models._common import Base
 
 # Créer l'engin SQLAlchemy
 engine = create_engine(
@@ -27,11 +34,12 @@ def initialize_database(max_retries: int = 10, retry_delay: int = 2) -> bool | N
     """
     Fonction pour initialiser la base de données avec retry en cas d'erreur de connexion.
     Sert aussi de healthcheck pour l'application.
-    Args:
-        max_retries (int): Le nombre maximum de tentatives de connexion.
-        retry_delay (int): Le délai entre chaque tentative de connexion (en secondes).
-    Returns:
-        bool | None: True si la connexion est réussie, None sinon.
+    :param max_retries: Le nombre maximum de tentatives de connexion.
+    :type max_retries: int
+    :param retry_delay: Le délai entre chaque tentative de connexion (en secondes).
+    :type retry_delay: int
+    :return: True si la connexion est réussie, None sinon.
+    :rtype: bool | None
     """
     # Tenter de créer les tables avec des retries
     for attempt in range(max_retries):
