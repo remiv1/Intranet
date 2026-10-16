@@ -160,6 +160,14 @@ grep "403\|404\|500" docker-compose logs nginx
 
 ## 🚨 Procédures d'Urgence
 
+### Erreur de récupération MariaDB (`Bad magic header in tc log`)
+
+Après un arrêt brutal, MariaDB peut ne pas démarrer si son journal `tc.log` est
+corrompu. Consultez la [procédure détaillée et le script de récupération
+idempotent](./recovery-mariadb-tc-log.md). Ne supprimez pas les fichiers InnoDB
+et ne choisissez pas `--tc-heuristic-recover=COMMIT` ou `ROLLBACK` sans avoir
+vérifié l'usage des transactions XA.
+
 ### En cas de panne
 
 1. **Diagnostic rapide**
