@@ -26,19 +26,27 @@
 .. version:: 1.2.0
 """
 from ._common import Base
-from .user import User
-from .contract import Contract
+from .bill import Bill
 from .contacts import Contacts
+from .contract import Contract
+from .doc_to_sign import DocToSigne
 from .document import Document
 from .event import Event
-from .bill import Bill
+from .invitation import Invitation
+from .points import Points
+from .signature import Signatures
+from .user import User
 
 __all__ = [
     "Base",
-    "User",
-    "Contract",
+    "Bill",
     "Contacts",
+    "Contract",
+    "DocToSigne",
     "Document",
     "Event",
-    "Bill",
+    "Invitation",
+    "Points",
+    "Signatures",
+    "User",
 ]
