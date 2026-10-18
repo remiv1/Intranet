@@ -26,6 +26,7 @@
 .. version:: 1.2.0
 """
 from ._common import Base
+from .audit_db import AuditLog
 from .bill import Bill
 from .contacts import Contacts
 from .contract import Contract
@@ -36,8 +37,10 @@ from .invitation import Invitation
 from .points import Points
 from .signature import Signatures
 from .user import User
+from .view_point import ViewPoints
 
 __all__ = [
+    "AuditLog",
     "Base",
     "Bill",
     "Contacts",
@@ -49,4 +52,5 @@ __all__ = [
     "Points",
     "Signatures",
     "User",
+    "ViewPoints",
 ]

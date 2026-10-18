@@ -46,11 +46,11 @@ class ConfigDB:
     .. version:: 1.0.0
     """
     # Gestion base de données
-    DB_USER: str = os.getenv('DB_USER', '')
-    DB_PASSWORD: str = os.getenv('DB_PASSWORD', '')
-    DB_HOST: str = os.getenv('DB_HOST', '')
-    DB_NAME: str = os.getenv('DB_NAME', '')
-    DB_URL: URL = URL.create(
+    DB_USER: str = os.getenv('DB_USER', '') # pylint: disable=C0103
+    DB_PASSWORD: str = os.getenv('DB_PASSWORD', '') # pylint: disable=C0103
+    DB_HOST: str = os.getenv('DB_HOST', '') # pylint: disable=C0103
+    DB_NAME: str = os.getenv('DB_NAME', '') # pylint: disable=C0103
+    DB_URL: URL = URL.create(  # pylint: disable=C0103
         drivername="mysql+mysqlconnector",
         username=DB_USER,
         password=DB_PASSWORD,
@@ -59,7 +59,7 @@ class ConfigDB:
         database=DB_NAME,
         query={"charset": "utf8mb4"}
     )
-    PERMANENT_SESSION_LIFETIME: timedelta = timedelta(minutes=30)
+    PERMANENT_SESSION_LIFETIME: timedelta = timedelta(minutes=30) # pylint: disable=C0103
 
 
 @dataclass
@@ -88,20 +88,20 @@ class ConfigApp:
     .. author:: Rémi Verschuur <rverschuur@audit-io.fr>
     .. version:: 1.0.0
     """
-    
+
     # Gestion SSH
-    SECRET_KEY: str = os.getenv('SECRET_KEY', '')
-    UPLOAD_FOLDER: str = os.getenv('FILES_DOCKER_PATH', '')
-    UPLOAD_EXTENSIONS: list[str] = field(
+    SECRET_KEY: str = os.getenv('SECRET_KEY', '') # pylint: disable=C0103
+    UPLOAD_FOLDER: str = os.getenv('FILES_DOCKER_PATH', '') # pylint: disable=C0103
+    UPLOAD_EXTENSIONS: list[str] = field(   # pylint: disable=C0103
         default_factory=lambda: ['.jpg', '.png', '.gif', '.jpeg', '.tif', '.tiff', '.pdf']
         )
-    SSH_PORT: int = int(os.getenv('SSH_PORT', '22'))
-    SSH_HOST: str = os.getenv('SSH_HOST', 'localhost')
-    SSH_USER: str = os.getenv('SSH_USER', 'user')
-    SSH_PASSWORD: str = os.getenv('SSH_PASSWORD', '')
+    SSH_PORT: int = int(os.getenv('SSH_PORT', '22')) # pylint: disable=C0103
+    SSH_HOST: str = os.getenv('SSH_HOST', 'localhost') # pylint: disable=C0103
+    SSH_USER: str = os.getenv('SSH_USER', 'user') # pylint: disable=C0103
+    SSH_PASSWORD: str = os.getenv('SSH_PASSWORD', '') # pylint: disable=C0103
     # Gestion impression
-    PRINTER_NAME: str = os.getenv('PRINTER_NAME', '')
-    PRINT_PATH: str = os.getenv('PRINT_DOCKER_PATH', '')
+    PRINTER_NAME: str = os.getenv('PRINTER_NAME', '') # pylint: disable=C0103
+    PRINT_PATH: str = os.getenv('PRINT_DOCKER_PATH', '') # pylint: disable=C0103
 
 
 @dataclass
@@ -123,8 +123,8 @@ class ConfigMail:
     .. version:: 1.0.0
     """
     # Gestion mail
-    EMAIL_USER: str = os.getenv('EMAIL_USER', '')
-    EMAIL_PASSWORD: str = os.getenv('EMAIL_PASSWORD', '')
-    EMAIL_SMTP: str = os.getenv('EMAIL_SMTP', '')
-    EMAIL_PORT: int = int(os.getenv('EMAIL_PORT', '587'))
-    API_MAIL_TOKEN: str = os.getenv('API_MAIL_TOKEN', '')
+    EMAIL_USER: str = os.getenv('EMAIL_USER', '') # pylint: disable=C0103
+    EMAIL_PASSWORD: str = os.getenv('EMAIL_PASSWORD', '') # pylint: disable=C0103
+    EMAIL_SMTP: str = os.getenv('EMAIL_SMTP', '') # pylint: disable=C0103
+    EMAIL_PORT: int = int(os.getenv('EMAIL_PORT', '587')) # pylint: disable=C0103
+    API_MAIL_TOKEN: str = os.getenv('API_MAIL_TOKEN', '') # pylint: disable=C0103

@@ -27,8 +27,8 @@ from sqlalchemy import or_
 from sqlalchemy.orm import joinedload
 from werkzeug.datastructures import FileStorage
 # Imports locaux
-from .models import User, DocToSigne, Points, Invitation, AuditLog
-from .signatures import (
+from ..models import User, DocToSigne, Points, Invitation, AuditLog
+from ..signatures import (
     SignatureDoer,
     SignatureMaker,
     SecureDocumentAccess,
@@ -56,12 +56,12 @@ def signature_make() -> Any:
         # Récupérer les points de signature
         try:
             document = SignatureMaker(request) \
-                            .post_request() \
-                            .get_signature_points() \
-                            .create_document() \
-                            .create_points() \
-                            .fix_documents() \
-                            .send_invitation()
+                .post_request() \
+                .get_signature_points() \
+                .create_document() \
+                .create_points() \
+                .fix_documents() \
+                .send_invitation()
             audit_log = AuditLog(
                 id_user=session.get('id', None),
                 ip_addresse=request.remote_addr,
@@ -79,7 +79,7 @@ def signature_make() -> Any:
         return redirect(url_for('ea', success_message=message))
 
     # === Affichage du formulaire de dépôt de document ===
-    elif request.method == 'GET':
+    if request.method == 'GET':
         users = g.db_session.query(User).order_by(User.nom).all()
         users = [user.to_dict(with_mdp=False) for user in users]
         return render_template(
@@ -90,8 +90,7 @@ def signature_make() -> Any:
         )
 
     # === Méthodes non autorisée ===
-    else:
-        return render_template(ADMINISTRATION, context=None, error_message="Méthode non autorisée")
+    return render_template(ADMINISTRATION, context=None, error_message="Méthode non autorisée")
 
 @signatures_bp.route('/signer/<int:doc_id>/<hash_document>', methods=['GET', 'POST'])
 def signature_do(doc_id: int, hash_document: str) -> Any:
@@ -105,9 +104,11 @@ def signature_do(doc_id: int, hash_document: str) -> Any:
     if request.method == 'POST':
         try:
             doer = SignatureDoer(request) \
-                        .post_request(id_document=doc_id, hash_document=hash_document) \
-                        .get_signature_points() \
-                        .handle_signature_submission()
+                .post_request(id_document=doc_id, hash_document=hash_document) \
+                .get_signature_points() \
+                .handle_signature_submission()
+            if not doer.document:
+                raise ValueError("Document introuvable")
             audit_log = AuditLog(
                 id_user=doer.signatory_id,
                 ip_addresse=request.remote_addr,
@@ -122,8 +123,8 @@ def signature_do(doc_id: int, hash_document: str) -> Any:
             # Vérifier si tous les signataires ont signé
             total_points = g.db_session.query(Points).filter_by(id_document=doc_id).count()
             signed_points = g.db_session.query(Points) \
-                                .filter_by(id_document=doc_id, status=1) \
-                                .count()
+                .filter_by(id_document=doc_id, status=1) \
+                .count()
             all_signed = total_points == signed_points
 
             message = f"Le document '{doer.document.doc_nom}' a été signé avec succès."
@@ -136,19 +137,21 @@ def signature_do(doc_id: int, hash_document: str) -> Any:
                 document_id=doc_id,
                 hash_document=hash_document
             )
-        except ValueError as e:
+        except ValueError as eve:
             # En cas d'erreur (OTP erroné, etc.), retourner du JSON
-            return jsonify(success=False, message=str(e)), 400
+            return jsonify(success=False, message=str(eve)), 400
 
-        except Exception as e:
+        except OSError as eos:
             # En cas d'erreur système, retourner du JSON
-            return jsonify(success=False, message=INTERNAL_SERVER_ERROR + str(e)), 500
+            return jsonify(success=False, message=INTERNAL_SERVER_ERROR + str(eos)), 500
 
     # === Affichage du formulaire de signature ===
     try:
         doer = SignatureDoer(request) \
-                    .get_request(id_document=doc_id, hash_document=hash_document) \
-                    .get_signature_points()
+            .get_request(id_document=doc_id, hash_document=hash_document) \
+            .get_signature_points()
+        if not doer.document or not doer.invitation:
+            raise ValueError("Document introuvable")
         audit_log = AuditLog(
             id_user=doer.signatory_id,
             ip_addresse=request.remote_addr,
@@ -206,11 +209,11 @@ def signature_request_otp(id_document: int, hash_document: str) -> Any:
     id_user = session.get('id', None)
     user = g.db_session.query(User).filter_by(id=id_user).first()
     invitation = g.db_session.query(Invitation) \
-                        .filter_by(id_document=id_document, id_user=id_user, token=token) \
-                        .first()
+        .filter_by(id_document=id_document, id_user=id_user, token=token) \
+        .first()
     document = g.db_session.query(DocToSigne) \
-                        .filter_by(id=id_document, hash_fichier=hash_document) \
-                        .first()
+        .filter_by(id=id_document, hash_fichier=hash_document) \
+        .first()
     if not invitation or not document:
         audit_log = AuditLog(
             id_user=session.get('id', None),
@@ -223,7 +226,7 @@ def signature_request_otp(id_document: int, hash_document: str) -> Any:
         g.db_session.add(audit_log)
         g.db_session.commit()
         return jsonify(success=False, message=BAD_INVITATION), 400
-    invitation.code_otp = str(random.randint(10000, 999999)).zfill(6)
+    invitation.code_otp = str(random.randint(100, 999999)).zfill(6)
     body_mail = render_template(
         'signatures/signature_otp_mail.html',
         nom_signataire=f'{user.prenom} {user.nom}'.strip(),
@@ -266,18 +269,18 @@ def signature_do_list() -> Any:
     """
     # Récupération des documents
     documents = g.db_session.query(DocToSigne) \
-                    .join(Points) \
-                    .join(Invitation) \
-                    .options(
-                        joinedload(DocToSigne.points),
-                        joinedload(DocToSigne.invitation)
-                        ) \
-                    .filter(
-                        or_(
-                            Points.id_user == session.get('id', None),
-                            DocToSigne.id_user == session.get('id', None)
-                        )
-                    ).all()
+        .join(Points) \
+        .join(Invitation) \
+        .options(
+            joinedload(DocToSigne.points),
+            joinedload(DocToSigne.invitation)
+            ) \
+        .filter(
+            or_(
+                Points.id_user == session.get('id', None),
+                DocToSigne.id_user == session.get('id', None)
+            )
+        ).all()
     documents_to_signe: List[Dict[str, Any]] = [
     {
         'doc': doc,
@@ -322,18 +325,16 @@ def create_final_signed_document(id_document: int, hash_document: str) -> Any:
             return jsonify(success=False, message="Session utilisateur invalide."), 401
 
         # Créer et exécuter le processus de création du document signé
-        creator = SignedDocumentCreator(
-            id_document=id_document
-        )
+        creator = SignedDocumentCreator(id_document=id_document)
 
         # Exécuter toutes les étapes du processus
         creator.load_and_verify_document(hash_document=hash_document) \
-               .load_signatures_and_points() \
-               .verify_all_signatures_completed() \
-               .apply_signatures_to_pdf() \
-               .add_signature_certificates() \
-               .save_final_document() \
-               .send_signed_document_by_email()
+            .load_signatures_and_points() \
+            .verify_all_signatures_completed() \
+            .apply_signatures_to_pdf() \
+            .add_signature_certificates() \
+            .save_final_document() \
+            .send_signed_document_by_email()
 
         # Sauvegarder les modifications en base et logger l'action
         audit_log = AuditLog(
@@ -407,7 +408,7 @@ def upload_document() -> Any:
                 ADMINISTRATION,
                 error_message="Aucun document PDF téléchargé ou nom de fichier invalide."
                 )
-        elif filename.lower().endswith('.pdf'):
+        if filename.lower().endswith('.pdf'):
             # Nettoyer les fichiers expirés avant de créer un nouveau
             SecureDocumentAccess.cleanup_expired_temp_files()
 
@@ -432,12 +433,10 @@ def upload_document() -> Any:
             return render_template(ADMINISTRATION, context='signature_make',
                                    success_message="Document PDF téléchargé avec succès.",
                                    document_name=filename, users=users)
-        else:
-            return render_template(
-                ADMINISTRATION, error_message="Le fichier téléchargé n'est pas un PDF."
-            )
-    else:
-        return render_template(ADMINISTRATION, error_message="Méthode non autorisée.")
+        return render_template(
+            ADMINISTRATION, error_message="Le fichier téléchargé n'est pas un PDF."
+        )
+    return render_template(ADMINISTRATION, error_message="Méthode non autorisée.")
 
 @signatures_bp.get('/download/<filename>')
 def download_pdf(filename: str):
@@ -457,46 +456,45 @@ def download_pdf(filename: str):
         return send_from_directory(folder_path, filename)
 
     # Vérifier l'accès via les points de signature (documents définitifs)
-    else:
-        id_user = session.get('id', None)
-        if not id_user:
-            return "Session utilisateur non valide", 401
+    id_user = session.get('id', None)
+    if not id_user:
+        return "Session utilisateur non valide", 401
 
-        # Rechercher les points de signature pour ce fichier et cet utilisateur
-        points = g.db_session.query(Points).join(DocToSigne, DocToSigne.id == Points.id_document) \
-                    .filter(Points.id_user == id_user) \
-                    .filter(
-                        (DocToSigne.doc_nom == filename) |
-                        (DocToSigne.chemin_fichier.like(f'%/{filename}')) |
-                        (DocToSigne.chemin_fichier.like(f'%\\{filename}')) |
-                        (DocToSigne.chemin_fichier.endswith(filename))
-                    ).all()
+    # Rechercher les points de signature pour ce fichier et cet utilisateur
+    points = g.db_session.query(Points).join(DocToSigne, DocToSigne.id == Points.id_document) \
+                .filter(Points.id_user == id_user) \
+                .filter(
+                    (DocToSigne.doc_nom == filename) |
+                    (DocToSigne.chemin_fichier.like(f'%/{filename}')) |
+                    (DocToSigne.chemin_fichier.like(f'%\\{filename}')) |
+                    (DocToSigne.chemin_fichier.endswith(filename))
+                ).all()
 
-        if not points:
-            return "Accès non autorisé à ce document", 403
+    if not points:
+        return "Accès non autorisé à ce document", 403
 
-        # Récupérer le chemin réel du fichier depuis la base de données
-        document = points[0].document
-        real_file_path = Path(document.chemin_fichier)
+    # Récupérer le chemin réel du fichier depuis la base de données
+    document = points[0].document
+    real_file_path = Path(document.chemin_fichier)
 
-        if not real_file_path.exists():
-            audit_log = AuditLog(
-                id_user=id_user,
-                ip_addresse=request.remote_addr,
-                user_agent=request.user_agent.string,
-                id_document=document.id,
-                action=1,
-                details=f'Fichier non trouvé pour le document {filename}'
-            )
-            g.db_session.add(audit_log)
-            g.db_session.commit()
-            return "Fichier non trouvé", 404
+    if not real_file_path.exists():
+        audit_log = AuditLog(
+            id_user=id_user,
+            ip_addresse=request.remote_addr,
+            user_agent=request.user_agent.string,
+            id_document=document.id,
+            action=1,
+            details=f'Fichier non trouvé pour le document {filename}'
+        )
+        g.db_session.add(audit_log)
+        g.db_session.commit()
+        return "Fichier non trouvé", 404
 
-        # Servir le fichier depuis son emplacement réel
-        folder_path = str(real_file_path.parent)
-        filename_real = real_file_path.name
+    # Servir le fichier depuis son emplacement réel
+    folder_path = str(real_file_path.parent)
+    filename_real = real_file_path.name
 
-        return send_from_directory(folder_path, filename_real)
+    return send_from_directory(folder_path, filename_real)
 
 @signatures_bp.get('/download-signed/<int:doc_id>/<hash_document>')
 def download_signed_doc(doc_id: int, hash_document: str):

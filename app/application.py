@@ -33,10 +33,13 @@ from os.path import splitext
 from datetime import datetime
 
 # Imports liés à Flask et SQLAlchemy
-from flask import Flask, jsonify, render_template, request, redirect, url_for, session, g
+from flask import Flask, render_template, request, redirect, url_for, session, g, jsonify
 from flask.wrappers import Response
 from werkzeug import Response as WResponse
 from sqlalchemy.exc import SQLAlchemyError
+
+from app.repositories.user import handle_login_post
+from app.config.database import SESSION, initialize_database
 
 # Imports liés à l'application
 from .habilitations import (
@@ -47,22 +50,18 @@ from .habilitations import (
     PROFESSEURS,
     ELEVES,
     IMPRESSIONS,
-    VPN
 )
-from .bp_contracts import contracts_bp
-from .bp_signature import signatures_bp
+from .blueprints import contracts_bp, signatures_bp, vpn_bp
 from .config.config import ConfigApp
 from .models import User, DocToSigne, Points, Signatures, Invitation
-from app.repositories.user import handle_login_post
 from .docs import print_document, delete_file
 from .rapport_echeances import envoi_contrats_renego
 from .utilities import get_jsoned_datas
 from .config.logger import api_logger
-from app.config.database import SESSION, initialize_database
 # Initialisation de l'application Flask
-peraudiere = Flask(__name__)
+peraudiere = Flask(__name__)  # TODO: implémenter les protection CSRF et autres mesures de sécurité
 
-BLUEPRINTS = [contracts_bp, signatures_bp]
+BLUEPRINTS = [contracts_bp, signatures_bp, vpn_bp]
 # Enregistrement des blueprints
 for bp in BLUEPRINTS:
     peraudiere.register_blueprint(bp)
@@ -84,7 +83,7 @@ def before_request() -> Any:
     Returns:
         None
     """
-    api_logger.info(f"Requête entrante : {request.method} {request.path}")
+    api_logger.info("Requête entrante : %s %s", request.method, request.path)
     if 'db_session' not in g:
         g.db_session = SESSION()
     # Autoriser l'accès aux fichiers CSS et autres fichiers statiques
@@ -128,7 +127,7 @@ def teardown_request(exception: Optional[BaseException]) -> None:
         db_session.rollback()
         db_session.close()
     if exception:
-        api_logger.error(f"Exception lors de la requête : {exception}")
+        api_logger.error("Exception lors de la requête : %s", exception)
 
 
 @peraudiere.get('/')
@@ -600,48 +599,6 @@ def gestion_droits_post() -> Response | WResponse:
         message = f'Erreur lors de la modification des droits de l\'utilisateur {identifiant} : {e}'
         return redirect(url_for('gestion_droits', error_message=message))
 
-
-@peraudiere.get('/vpn')
-@validate_habilitation(VPN)
-def vpn(message: Optional[str] = None, success_message: Optional[str] = None,
-        error_message: Optional[str] = None) -> str | Response:
-    """
-    Route pour l'accès à la page VPN.
-    Gère l'affichage de la page VPN pour les utilisateurs habilités.
-    Args:
-        message (Optional[str]): Message à afficher.
-        success_message (Optional[str]): Message de succès à afficher.
-        error_message (Optional[str]): Message d'erreur à afficher.
-    Returns:
-        str | Response: Contenu HTML de la page VPN ou redirection en cas d'erreur.
-    """
-    habilitation = str(session.get('habilitation', ''))
-    return render_template(
-        'vpn.html',
-        message=message,
-        success_message=success_message,
-        error_message=error_message,
-        habilitation=habilitation
-        )
-
-
-@peraudiere.get('/vpn/download/<access>')
-@validate_habilitation(VPN)
-def vpn_download(access: str) -> Response | WResponse:
-    """
-    Route pour le téléchargement d'une configuration VPN.
-    Génère et retourne un fichier de configuration WireGuard selon le niveau d'accès.
-    Args:
-        access (str): Niveau d'accès demandé ('global', 'fichiers', 'charlemagne').
-    Returns:
-        Response: Fichier de configuration WireGuard ou redirection en cas d'erreur.
-    """
-    # TODO : implémenter la génération des clés WireGuard éphémères
-    # TODO : appeler l'API interne de la VM WireGuard pour enregistrer le peer
-    # TODO : retourner le fichier .conf généré en téléchargement
-    return redirect(url_for('vpn', error_message='Téléchargement VPN non encore disponible'))
-
-
 @peraudiere.route('/rapport-contrats', methods=['POST'])
 def rapport_contrats() -> Response:
     """
@@ -658,5 +615,5 @@ def rapport_contrats() -> Response:
         envoi_contrats_renego(email)
         return jsonify(f"Rapport envoye a {email}", 200)
     except (ValueError, OSError, SQLAlchemyError) as e:
-        logger.error("Erreur lors de l envoi du rapport a %s : %s", email, e)
+        api_logger.error("Erreur lors de l envoi du rapport a %s : %s", email, e)
         return jsonify(f"Erreur lors de l envoi du rapport a {email} : {e}", 500)
