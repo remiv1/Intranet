@@ -1,14 +1,16 @@
+"""Alembic environment configuration file."""
+
 from logging.config import fileConfig
+import os
 
 from sqlalchemy import engine_from_config
 from sqlalchemy import pool
-import os
 
 from alembic import context
 
 #  this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
-config = context.config
+config = context.config # pylint: disable=E1101
 db_url = os.environ.get("DB_URL")
 if db_url:
     config.set_main_option("sqlalchemy.url", db_url)
@@ -22,7 +24,7 @@ if config.config_file_name is not None:
 # for 'autogenerate' support
 # from myapp import mymodel
 # target_metadata = mymodel.Base.metadata
-from app.models import Base
+from app.models import Base # pylint: disable=C0413
 target_metadata = Base.metadata
 
 # other values from the config, defined by the needs of env.py,
@@ -44,15 +46,15 @@ def run_migrations_offline() -> None:
 
     """
     url = config.get_main_option("sqlalchemy.url")
-    context.configure(
+    context.configure(  # pylint: disable=E1101
         url=url,
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
     )
 
-    with context.begin_transaction():
-        context.run_migrations()
+    with context.begin_transaction():  # pylint: disable=E1101
+        context.run_migrations()  # pylint: disable=E1101
 
 
 def run_migrations_online() -> None:
@@ -69,15 +71,15 @@ def run_migrations_online() -> None:
     )
 
     with connectable.connect() as connection:
-        context.configure(
+        context.configure(  # pylint: disable=E1101
             connection=connection, target_metadata=target_metadata
         )
 
-        with context.begin_transaction():
-            context.run_migrations()
+        with context.begin_transaction():  # pylint: disable=E1101
+            context.run_migrations()  # pylint: disable=E1101
 
 
-if context.is_offline_mode():
+if context.is_offline_mode():  # pylint: disable=E1101
     run_migrations_offline()
 else:
     run_migrations_online()

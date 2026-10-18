@@ -49,10 +49,10 @@ def initialize_database(max_retries: int = 10, retry_delay: int = 2) -> bool | N
         except SQLAlchemyError as e:
             if attempt < max_retries - 1:
                 time.sleep(retry_delay)
-            else:
-                raise ImportError(
-                    f"Connection impossible à la BdD après {max_retries} tentatives : {e}"
-                ) from e
+                continue
+            raise ImportError(
+                f"Connection impossible à la BdD après {max_retries} tentatives : {e}"
+            ) from e
 
 # Créer une session de base de données sans ouverture de celle-ci
 SESSION = sessionmaker(bind=engine)

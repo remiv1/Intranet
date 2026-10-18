@@ -9,6 +9,7 @@
 from __future__ import annotations
 
 from typing import Dict, Any
+from datetime import datetime
 
 from sqlalchemy import Integer, ForeignKey, Numeric, DateTime
 from sqlalchemy.orm import mapped_column, relationship, Mapped
@@ -100,7 +101,7 @@ class Points(Base):
         nullable=True,
         comment="Identifiant de la signature apposée sur ce point (si signée)."
     )
-    signe_at: Mapped[DateTime] = mapped_column(
+    signe_at: Mapped[datetime] = mapped_column(
         DateTime,
         nullable=True,
         comment="Date et heure de la signature (si signée)."

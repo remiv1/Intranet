@@ -10,6 +10,7 @@ from typing import Any, List
 from waitress import serve
 from sqlalchemy import create_engine, text
 from app.application import peraudiere
+from alembic.util import CommandError
 
 
 DB_URL = os.environ.get('DB_URL')
@@ -20,7 +21,9 @@ alembic_head = None
 try:
     result = subprocess.run(['alembic', 'heads'], capture_output=True, text=True, check=True)
     alembic_head = result.stdout.split()[0] if result.returncode == 0 else None
-except Exception:
+except subprocess.SubprocessError:
+    alembic_head = None
+except CommandError:
     alembic_head = None
 
 def get_db_creation_date(conn: Any) -> Any | None:
@@ -77,7 +80,8 @@ def extract_migration_date(filepath: str) -> datetime | None:
                 if line.startswith('Create Date:'):
                     date_str = line.split('Create Date:')[1].strip()
                     return datetime.strptime(date_str, '%Y-%m-%d %H:%M:%S.%f')
-    except Exception:
+                return None
+    except (FileNotFoundError, IOError):
         return None
 
 # Vérifie la version actuelle de la base et applique les migrations récentes
@@ -91,7 +95,7 @@ if DB_URL and alembic_head:
                     f"SELECT version_num FROM {ALEMBIC_VERSION_TABLE}"
                     )
                 ).scalar()
-        except Exception:
+        except (CommandError, CommandError):
             current_version = None  # pylint: disable=invalid-name
 
         if db_creation_date:
