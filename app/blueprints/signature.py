@@ -15,9 +15,11 @@ Chaque route gère les méthodes GET et POST pour afficher les formulaires et tr
 from typing import Any, Dict, List
 from pathlib import Path
 import logging
-import random
 import json
+import secrets
 from datetime import datetime
+from smtplib import SMTPException
+
 # Imports Flask/Werkzeug
 from flask import (
     Blueprint, render_template, request, g, send_from_directory,
@@ -25,8 +27,11 @@ from flask import (
 )
 from sqlalchemy import or_
 from sqlalchemy.orm import joinedload
+from sqlalchemy.exc import SQLAlchemyError
 from werkzeug.datastructures import FileStorage
+
 # Imports locaux
+from ._common import ADMINISTRATION, BAD_INVITATION, INTERNAL_SERVER_ERROR
 from ..models import User, DocToSigne, Points, Invitation, AuditLog
 from ..signatures import (
     SignatureDoer,
@@ -37,10 +42,6 @@ from ..signatures import (
 )
 
 signatures_bp = Blueprint('signature', __name__, url_prefix='/signature')
-
-ADMINISTRATION = 'ea.html'
-BAD_INVITATION = 'Invitation invalide ou non trouvée.'
-INTERNAL_SERVER_ERROR = 'Erreur interne du serveur.'
 
 @signatures_bp.route('/deposer', methods=['GET', 'POST'])
 def signature_make() -> Any:
@@ -226,7 +227,7 @@ def signature_request_otp(id_document: int, hash_document: str) -> Any:
         g.db_session.add(audit_log)
         g.db_session.commit()
         return jsonify(success=False, message=BAD_INVITATION), 400
-    invitation.code_otp = str(random.randint(100, 999999)).zfill(6)
+    invitation.code_otp = str(secrets.randbelow(1000000)).zfill(6)
     body_mail = render_template(
         'signatures/signature_otp_mail.html',
         nom_signataire=f'{user.prenom} {user.nom}'.strip(),
@@ -245,7 +246,7 @@ def signature_request_otp(id_document: int, hash_document: str) -> Any:
         g.db_session.add(audit_log)
         g.db_session.commit()
         return jsonify(success=True)
-    except Exception as e:
+    except (SMTPException, SQLAlchemyError) as e:
         audit_log = AuditLog(
             id_user=session.get('id', None),
             ip_addresse=request.remote_addr,
@@ -294,18 +295,18 @@ def signature_do_list() -> Any:
     for doc in documents if doc.status == 0
     ]
     documents_archived = [doc for doc in documents if doc.status != 0]
+    audit_log = AuditLog(
+        id_user=session.get('id', None),
+        ip_addresse=request.remote_addr,
+        user_agent=request.user_agent.string,
+        id_document=documents[0].id if documents else None,
+        action=1,
+        details='Liste des documents affichée'
+    )
+    g.db_session.add(audit_log)
     try:
-        audit_log = AuditLog(
-            id_user=session.get('id', None),
-            ip_addresse=request.remote_addr,
-            user_agent=request.user_agent.string,
-            id_document=documents[0].id if documents else None,
-            action=1,
-            details='Liste des documents affichée'
-        )
-        g.db_session.add(audit_log)
         g.db_session.commit()
-    except Exception:
+    except SQLAlchemyError:
         pass
     return render_template(ADMINISTRATION, context='signature_list', tab='a',
                            documents_to_signe=documents_to_signe,
@@ -364,7 +365,16 @@ def create_final_signed_document(id_document: int, hash_document: str) -> Any:
         # Erreurs de fichier
         return jsonify(success=False, message=f"Fichier non trouvé : {str(e)}"), 404
 
-    except Exception as e:
+    except SQLAlchemyError as e:
+        # Erreurs liées à la base de données
+        logging.exception("Erreur lors de la création du document final signé : %s", str(e))
+        g.db_session.rollback()
+        return jsonify(
+            success=False,
+            message="Erreur lors de la sauvegarde en base de données.",
+        ), 500
+
+    except Exception as e:  # pylint: disable=W0718
         # Erreurs système
         logging.exception("Erreur lors de la création du document final signé : %s", str(e))
         g.db_session.rollback()

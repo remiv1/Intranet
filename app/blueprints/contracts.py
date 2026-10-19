@@ -19,7 +19,6 @@ from __future__ import annotations
 
 from datetime import datetime
 from typing import Any
-from logging import getLogger
 
 from flask import Blueprint, render_template, request, g, redirect, url_for
 from flask.typing import ResponseReturnValue
@@ -36,8 +35,6 @@ from ..utilities import (
 from ..models import Contract, Contacts, Event, Document, Bill
 from ..habilitations import validate_habilitation, GESTIONNAIRE
 from ..docs import download_file
-
-LOGGER = getLogger(__name__)
 
 contracts_bp = Blueprint(
     'contracts_bp',

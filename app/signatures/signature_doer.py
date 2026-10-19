@@ -13,40 +13,24 @@ from typing import Any, Dict, List
 
 from flask import Request, session, g
 
+from ._common import BAD_INVITATION
 from ..models import DocToSigne, Invitation, Points, Signatures
 
-BAD_INVITATION = 'Invitation invalide ou non trouvée.'
 
 class SignatureDoer:
-    """
-    Gère le processus de signature d'un document.
+    """Gère le processus de signature d'un document.
     TODO : Prévoir de créer des dataclass
-    Attributes:
-        request (Request): L'objet request Flask.
-        signatory_id (int | None): L'ID de l'utilisateur signataire.
-        document (DocToSigne | None): Le document à signer.
-        invitation (Invitation | None): L'invitation associée au document et à l'utilisateur.
-        token (str | None): Le token d'invitation.
-        ip_addresse (str | None): L'adresse IP de l'utilisateur.
-        otp (str | None): Le code OTP soumis par l'utilisateur.
-        signature_hash (str | None): Le hash de la signature soumise.
-        user_agent (str | None): Le User-Agent de l'utilisateur.
-        svg_graph (str | None): Le SVG de la signature graphique.
-        data_graph (str | None): Les données brutes de la signature graphique.
-        largeur_graph (int): La largeur du graphique de signature.
-        hauteur_graph (int): La hauteur du graphique de signature.
-        datetime_submission (datetime | None): La date et l'heure de la soumission de la signature.
-        object_points (List[Points]): Liste des objets Points récupérés depuis la base.
-        points (List[Dict[str, Any]]): Liste des points de signature sous forme de dictionnaires.
-    Methods:
-        get_request(id_document: int, hash_document: str):
-            Récupère les données de la requête.
-        post_request(id_document: int, hash_document: str):
-            Traite la soumission du formulaire de signature.
-        get_signature_points():
-            Récupère les points de signature pour l'utilisateur courant et la signature demandée.
-        handle_signature_submission():
-            Gère la soumission de la signature.
+
+    :param request: L'objet request Flask.
+    :type request: Request
+
+    .. Methods:
+        - `get_request(id_document: int, hash_document: str)`: Récupère les données de la requête.
+        - `post_request(id_document: int, hash_document: str)`: Traite la soumission du formulaire
+        de signature.
+        - `get_signature_points()`: Récupère les points de signature pour l'utilisateur courant et
+        la signature demandée.
+        - `handle_signature_submission()`: Gère la soumission de la signature.
     """
     def __init__(self, req: Request):
         """
