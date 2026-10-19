@@ -70,7 +70,7 @@
                 "titre": "Accès au VPN",
                 "descriptif": "Espace de chargement de la configuration VPN pour les utilisateurs autorisés",
                 "buttonid": "Vpn",
-                "onclick": "vpn"
+                "onclick": "vpn.vpn"
             }
         ]
     }

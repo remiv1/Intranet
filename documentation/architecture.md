@@ -4,11 +4,11 @@
 
 ## Stack technologique
 
-- **Backend** : Flask 3.1.0 (Python 3.12)
+- **Backend** : Flask 3.1.0 (Python 3.14)
 - **Base de données** : MariaDB (MySQL) 12.0.2
 - **ORM** : SQLAlchemy 2.0.38
 - **Migrations** : Alembic 1.16.5
-- **Serveur web** : Waitress + Nginx (reverse proxy)
+- **Serveur web** : Gunicorn + Nginx (reverse proxy)
 - **Conteneurisation** : Docker & Docker Compose
 - **Sécurité** : Hachage SHA-256, sessions Flask, HTTPS
 

@@ -1,8 +1,8 @@
 # Rapport d'Évolution des Branches - Projet Intranet
 
-**Date du rapport :** 5 octobre 2025  
+**Date du rapport :** 5 octobre 2025
 **Projet :** Intranet - Système de gestion des contrats et signatures électroniques  
-**Auteur :** Rémi Verschuur  
+**Auteur :** Rémi Verschuur
 
 ---
 
@@ -28,10 +28,10 @@
 
 ### 2.1 sprint_signature ✅
 
-**Période :** 27 septembre - 5 octobre 2025  
-**Durée d'exécution :** 9 jours  
-**Commits :** 50+ commits majeurs  
-**État :** Mergé dans main le 5 octobre 2025 (tag: version-1.3.0)  
+**Période :** 27 septembre - 5 octobre 2025
+**Durée d'exécution :** 9 jours
+**Commits :** 50+ commits majeurs
+**État :** Mergé dans main le 5 octobre 2025 (tag: version-1.3.0)
 
 #### Travail Réalisé (9 jours - Complet)
 
@@ -141,9 +141,9 @@
 
 ### 2.2 sprint_contacts ✅
 
-**Période :** 27 septembre 2025  
-**Durée d'exécution :** 1 jour  
-**État :** Mergé dans main  
+**Période :** 27 septembre 2025
+**Durée d'exécution :** 1 jour
+**État :** Mergé dans main
 
 #### Travail Réalisé (1 jour)
 
@@ -162,9 +162,9 @@
 
 ### 2.3 sprint_mails ✅
 
-**Période :** 19 septembre 2025  
-**Durée d'exécution :** 1 jour  
-**État :** Mergé dans main  
+**Période :** 19 septembre 2025
+**Durée d'exécution :** 1 jour
+**État :** Mergé dans main
 
 #### Travail Réalisé pendant le sprint (1 jour)
 
@@ -184,9 +184,9 @@
 
 ### 2.4 sprint_bills ✅
 
-**Période :** 15-19 septembre 2025  
-**Durée d'exécution :** 4 jours  
-**État :** Mergé dans main  
+**Période :** 15-19 septembre 2025
+**Durée d'exécution :** 4 jours
+**État :** Mergé dans main
 
 #### Travail Réalisé (4 jours)
 
@@ -214,9 +214,9 @@
 
 ### 2.5 sprint_workflows ✅
 
-**Période :** 20 septembre 2025  
-**Durée d'exécution :** 1 jour intensif  
-**État :** Mergé dans main  
+**Période :** 20 septembre 2025
+**Durée d'exécution :** 1 jour intensif
+**État :** Mergé dans main
 
 #### Travail Réalisé durant le sprint (1 jour)
 
@@ -237,9 +237,9 @@
 
 ### 2.6 sprint_code_cleaner ✅
 
-**Période :** 11-15 septembre 2025  
-**Durée d'exécution :** 4 jours  
-**État :** Mergé dans main  
+**Période :** 11-15 septembre 2025
+**Durée d'exécution :** 4 jours
+**État :** Mergé dans main
 
 #### Travail Réalisé (5 jours)
 
@@ -261,9 +261,9 @@
 
 ### 2.7 monitoring 🔄
 
-**Période :** Juillet - septembre 2025  
-**Durée d'exécution :** 2 mois (développement continu)  
-**État :** En développement  
+**Période :** Juillet - septembre 2025
+**Durée d'exécution :** 2 mois (développement continu)
+**État :** En développement
 
 #### Travail Réalisé (continu)
 
@@ -284,9 +284,9 @@
 
 ### 2.8 secure-app ✅
 
-**Période :** 18 juillet 2025  
-**Durée d'exécution :** 1 jour  
-**État :** Mergé dans main  
+**Période :** 18 juillet 2025
+**Durée d'exécution :** 1 jour
+**État :** Mergé dans main
 
 #### Travail Réalisé sur le sprint (1 jour)
 
@@ -307,14 +307,14 @@
 
 #### depot_devoirs ❌
 
-**Période :** 25 mai 2025  
-**Raison :** Remplacement par une solution partage de documents  
+**Période :** 25 mai 2025
+**Raison :** Remplacement par une solution partage de documents
 **Travail :** Page HTML pour dépôt de devoirs (fonctionnalité éducative)
 
 #### cloud ❌
 
-**Période :** 31 mai 2025  
-**Raison :** Complexité technique vs ROI  
+**Période :** 31 mai 2025
+**Raison :** Complexité technique vs ROI
 **Travail :** Intégration services cloud (stockage, authentification)
 
 ---
@@ -357,7 +357,7 @@ Oct 2025     : ~10000 lignes (+signatures électroniques complètes)
 
 ```txt
 sprint_signature : 9 jours → Module très complexe finalisé (excellent)
-sprint_contacts  : 1 jour → Fonctionnalité complète (excellent)  
+sprint_contacts  : 1 jour → Fonctionnalité complète (excellent)
 sprint_mails     : 1 jour → Amélioration majeure (excellent)
 sprint_bills     : 4 jours → Module complexe (bon)
 sprint_workflows : 1 jour → CI/CD complet (excellent)
@@ -479,6 +479,6 @@ La **qualité du code** et la **discipline de développement** montrent une **ma
 
 ---
 
-**Rapport généré le :** 5 octobre 2025  
-**Version :** 1.6 (sprint signature - finalisé et mergé)  
+**Rapport généré le :** 5 octobre 2025
+**Version :** 1.6 (sprint signature - finalisé et mergé)
 **Prochaine révision :** Fin octobre 2025

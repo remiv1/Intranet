@@ -62,4 +62,4 @@ def vpn_download(access: str) -> Response | WResponse:
     # TODO : implémenter la génération des clés WireGuard éphémères
     # TODO : appeler l'API interne de la VM WireGuard pour enregistrer le peer
     # TODO : retourner le fichier .conf généré en téléchargement
-    return redirect(url_for('vpn', error_message='Téléchargement VPN non encore disponible'))
+    return redirect(url_for('vpn.vpn', error_message='Téléchargement VPN non encore disponible'))

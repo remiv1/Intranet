@@ -112,8 +112,10 @@ diff .env.example .env      # Comparer configurations
 # 6. Reconstruire les images
 docker-compose build --no-cache
 
-# 7. Relancer l'application
-docker-compose up -d
+# 7. Démarrer la base, appliquer les migrations manuellement, puis lancer l'application
+docker compose up -d db
+docker compose run --rm --no-deps --entrypoint sh web app/migrate.sh
+docker compose up -d web
 
 # 8. Vérifier le bon fonctionnement
 docker-compose ps

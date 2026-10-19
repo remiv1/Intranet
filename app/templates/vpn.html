@@ -99,7 +99,7 @@
                         <p class="card-text mb-4">
                             Cet accès vous permet de rejoindre l'ensemble des ressources internes (administration, serveur de fichiers, systèmes de gestion, etc.).
                         </p>
-                        <a href="{{ url_for('vpn_download', access='global') }}" class="btn btn-primary vpn-btn">
+                        <a href="{{ url_for('vpn.vpn_download', access='global') }}" class="btn btn-primary vpn-btn">
                             <i class="bi bi-download me-2"></i> Télécharger Configuration Globale
                         </a>
                     </div>
@@ -118,7 +118,7 @@
                         <p class="card-text mb-4">
                             Accès au serveur de fichiers partagés de l'établissement pour la consultation et le partage de documents.
                         </p>
-                        <a href="{{ url_for('vpn_download', access='fichiers') }}" class="btn btn-success vpn-btn">
+                        <a href="{{ url_for('vpn.vpn_download', access='fichiers') }}" class="btn btn-success vpn-btn">
                             <i class="bi bi-download me-2"></i> Télécharger Configuration Fichiers
                         </a>
                     </div>
@@ -137,7 +137,7 @@
                         <p class="card-text mb-4">
                             Connexion sécurisée au système de gestion Charlemagne pour la consultation des données académiques.
                         </p>
-                        <a href="{{ url_for('vpn_download', access='charlemagne') }}" class="btn btn-warning vpn-btn">
+                        <a href="{{ url_for('vpn.vpn_download', access='charlemagne') }}" class="btn btn-warning vpn-btn">
                             <i class="bi bi-download me-2"></i> Télécharger Configuration Charlemagne
                         </a>
                     </div>

@@ -8,13 +8,14 @@
 """
 
 import logging
+from pathlib import Path
 
 # Configuration du logger
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s %(levelname)s %(name)s %(message)s',
     handlers=[
-        logging.FileHandler("application.log"),
+        logging.FileHandler(Path(__file__).resolve().parents[1] / "application.log"),
         logging.StreamHandler()
     ]
 )

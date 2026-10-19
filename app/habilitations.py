@@ -14,7 +14,7 @@ Les niveaux d'habilitation sont les suivants :
 - VPN (7)
 
 Architecture : Flask + SQLAlchemy + MariaDB + MongoDB (logs)
-Serveur WSGI : Waitress (production-ready)
+Serveur WSGI : Gunicorn (production-ready)
 Authentification : Sessions sécurisées [avec hachage Argon2 à venir]
 
 Auteur : Rémi Verschuur
