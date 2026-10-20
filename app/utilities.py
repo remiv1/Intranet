@@ -2,7 +2,7 @@
 Module des utilitaires pour l'application, incluant des fonctions pour la gestion des données
 JSON et des constantes utilisées dans l'application.
 """
-from typing import List, Dict, Any, Optional, overload, Literal, Union
+from typing import List, Dict, Any, Optional, overload, Literal
 from os.path import dirname, join as join_os
 import json
 
@@ -26,11 +26,11 @@ def get_jsoned_datas(
 @overload
 def get_jsoned_datas(
     file: str, level_one: str, level_two: str, *, dumped: Literal[False] = False
-    ) -> Union[Dict[str, Any], List[Dict[str, Any]]]: ...
+    ) -> Dict[str, Any] | List[Dict[str, Any]]: ...
 
 def get_jsoned_datas(
     file: str, level_one: str, level_two: Optional[str] = None, dumped: bool = False
-    ) -> Union[str, Dict[str, Any], list[Any]]:
+    ) -> str | Dict[str, Any] | list[Any]:
     """
     Récupère les menus depuis le fichier JSON et les convertit en chaîne JSON.
     Args:

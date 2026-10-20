@@ -102,6 +102,14 @@ class ConfigApp:
     # Gestion impression
     PRINTER_NAME: str = getenv('PRINTER_NAME', '') # pylint: disable=C0103
     PRINT_PATH: str = getenv('PRINT_DOCKER_PATH', '') # pylint: disable=C0103
+    # Gestion CSRF
+    CSRF_ENABLED: bool = True # pylint: disable=C0103
+    # Gestion des cookies de session
+    PERMANENT_SESSION_LIFETIME: timedelta = timedelta(minutes=20) # pylint: disable=C0103
+    SESSION_COOKIE_NAME: str = 'session' # pylint: disable=C0103
+    SESSION_COOKIE_SECURE: bool = True # pylint: disable=C0103
+    SESSION_COOKIE_HTTPONLY: bool = True # pylint: disable=C0103
+    SESSION_COOKIE_SAMESITE: str = 'Lax' # pylint: disable=C0103
 
 
 @dataclass

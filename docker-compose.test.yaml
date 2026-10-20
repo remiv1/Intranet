@@ -1,0 +1,51 @@
+name: intranet-test
+
+services:
+  db-test:
+    image: docker.io/library/mariadb:12.0.2
+    environment:
+      MARIADB_ROOT_PASSWORD: test-only-root-password
+      MARIADB_DATABASE: intranet_test
+      MARIADB_USER: intranet_test
+      MARIADB_PASSWORD: test-only-password
+    tmpfs:
+      - /var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+      start_period: 10s
+    networks:
+      - test
+
+  test:
+    build:
+      context: .
+      dockerfile: app/Dockerfile.app
+      target: test
+    depends_on:
+      db-test:
+        condition: service_healthy
+    environment:
+      INTRANET_TESTING: "1"
+      PYTHON_DOTENV_DISABLED: "1"
+      DB_HOST: db-test
+      DB_NAME: intranet_test
+      DB_USER: intranet_test
+      DB_PASSWORD: test-only-password
+      DB_URL: mysql+mysqlconnector://intranet_test:test-only-password@db-test:3306/intranet_test
+      SECRET_KEY: test-only-session-secret
+      API_MAIL_TOKEN: test-only-report-token
+      FILES_DOCKER_PATH: /tmp/intranet-test/documents
+      PRINT_DOCKER_PATH: /tmp/intranet-test/print
+      SIGNATURE_DOCKER_PATH: /tmp/intranet-test/signatures
+      TEMP_DOCKER_PATH: /tmp/intranet-test/temp
+    tmpfs:
+      - /tmp
+    networks:
+      - test
+
+networks:
+  test:
+    internal: true

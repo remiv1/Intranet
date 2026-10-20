@@ -1,208 +1,118 @@
 # Tests pour l'Intranet API'Raudière
 
-Ce dossier contient tous les tests pour l'application Intranet, conçus pour fonctionner dans un environnement CI/CD sans base de données réelle.
+Les tests utilisent Python 3.14, pytest et une vraie MariaDB 12.0.2 dans des
+conteneurs. Aucun serveur MySQL/MariaDB ni paquet Python n'est à installer sur
+l'hôte. Docker Compose ou Podman Compose doit être disponible.
 
-## Structure des tests
+## Lancement
 
-```text
-test/
-├── conftest.py                 # Configuration globale et fixtures principales
-├── fixtures.py                 # Fixtures spécialisées pour les données de test
-├── test_application.py         # Tests des principales fonctionnalités de l'application
-├── test_authentication.py      # Tests liés à l'authentification et aux sessions
-├── pytest.ini                  # Configuration pytest
-└── README.md                   # Cette documentation
-```
-
-## Fixtures disponibles
-
-### Fixtures de base de données mockée
-
-- `mock_db_session` : Session de base de données simulée
-- `clean_mock_db` : Nettoie la base mockée avant chaque test
-
-### Fixtures de données de test
-
-- `sample_user_data` : Données d'utilisateur de test
-- `sample_contract_data` : Données de contrat de test
-- `sample_document_data` : Données de document de test
-- `sample_event_data` : Données d'événement de test
-
-### Fixtures d'objets créés
-
-- `create_test_user` : Crée un utilisateur de test
-- `create_admin_user` : Crée un utilisateur administrateur
-- `create_test_contract` : Crée un contrat de test
-- `create_multiple_users` : Crée plusieurs utilisateurs avec différents niveaux d'habilitation
-- `create_multiple_contracts` : Crée plusieurs contrats avec des échéances différentes
-
-### Fixtures d'application Flask
-
-- `app` : Instance de l'application Flask configurée pour les tests
-
-### Fixtures d'opérations externes
-
-- `mock_file_operations` : Mock des opérations sur les fichiers
-- `mock_ssh_operations` : Mock des opérations SSH
-- `mock_email_operations` : Mock des envois d'emails
-- `mock_print_operations` : Mock des opérations d'impression
-
-## Utilisation des fixtures
-
-### Test simple avec utilisateur
-
-```python
-def test_user_creation(mock_db_session, clean_mock_db, sample_user_data):
-    user = User(**sample_user_data)
-    mock_db_session.add(user)
-    mock_db_session.commit()
-    
-    assert user.id is not None
-    assert user.prenom == "Jean"
-```
-
-### Test avec fixture d'objet créé
-
-```python
-def test_user_authentication(create_admin_user):
-    admin = create_admin_user
-    assert admin.habilitation == 1
-    assert admin.identifiant == "admin"
-```
-
-### Test de route Flask
-
-```python
-def test_login_page(client):
-    response = client.get('/login')
-    assert response.status_code == 200
-```
-
-### Test avec authentification mockée
-
-```python
-def test_authenticated_route(client, mock_authenticated_session):
-    with patch('flask.session', mock_authenticated_session):
-        response = client.get('/dashboard')
-        assert response.status_code == 200
-```
-
-## Lancement des tests
-
-### En local
+Depuis la racine du dépôt :
 
 ```bash
-# Installer les dépendances de test
-pip install pytest pytest-flask pytest-cov pytest-mock
-
-# Lancer tous les tests
-cd test/
-python -m pytest
-
-# Lancer avec couverture de code
-python -m pytest --cov=../app --cov-report=html
-
-# Lancer des tests spécifiques
-python -m pytest test_example.py::TestUserOperations::test_create_user
-
-# Lancer avec marqueurs
-python -m pytest -m "unit and not slow"
+docker compose -f docker-compose.test.yaml up --build --force-recreate --abort-on-container-exit --exit-code-from test
 ```
 
-### Dans GitHub Actions
+Le code de sortie est celui de pytest. Les services s'arrêtent à la fin des
+tests. `--force-recreate` garantit un nouveau démarrage des conteneurs, notamment
+pour éviter la réutilisation d'un ancien état de santé avec Podman Compose.
 
-Les tests sont automatiquement lancés lors des push/pull requests vers les branches `main` et `develop`.
+La base est stockée en mémoire via `tmpfs` : ses données sont perdues à l'arrêt
+du conteneur. Ce Compose autonome n'utilise aucun volume, identifiant, réseau
+ou fichier d'environnement de développement ou de production. Aucun port n'est
+publié. Ne pas le combiner avec les autres fichiers Compose du dépôt.
 
-Le workflow GitHub Actions :
+Pour retirer les conteneurs arrêtés et le réseau de test :
 
-- Teste sur Python 3.12
-- Lance les tests avec couverture de code
-- Effectue un scan de sécurité avec bandit
-- Vérifie les dépendances avec safety
-
-## Marqueurs de tests
-
-Utilisez les marqueurs pour organiser vos tests :
-
-```python
-@pytest.mark.unit
-def test_simple_function():
-    pass
-
-@pytest.mark.integration  
-def test_complex_workflow():
-    pass
-
-@pytest.mark.slow
-def test_heavy_operation():
-    pass
-
-@pytest.mark.auth
-def test_authentication():
-    pass
+```bash
+docker compose -f docker-compose.test.yaml down
 ```
 
-## Bonnes pratiques
+Pour vérifier uniquement la collecte, sans démarrer MariaDB :
 
-### Isolation des tests
-
-Chaque test doit être indépendant :
-
-- Utilisez `clean_mock_db` pour avoir une base vide
-- Ne partagez pas d'état entre les tests
-- Utilisez des fixtures pour les données communes
-
-### Nommage
-
-- Tests : `test_what_it_does`
-- Classes de test : `TestFeatureName`
-- Fichiers de test : `test_feature.py`
-
-### Mocks
-
-Les mocks simulent les dépendances externes :
-
-- Base de données : automatiquement mockée
-- Fichiers : utilisez `mock_file_operations`
-- SSH : utilisez `mock_ssh_operations`
-- Emails : utilisez `mock_email_operations`
-- Impression : utilisez `mock_print_operations`
-
-### Structure d'un test
-
-```python
-def test_feature_name(fixtures):
-    # Arrange (préparer les données)
-    user = User(name="Test")
-    
-    # Act (exécuter l'action)
-    result = some_function(user)
-    
-    # Assert (vérifier le résultat)
-    assert result.success is True
+```bash
+docker compose -f docker-compose.test.yaml build test
+docker compose -f docker-compose.test.yaml run --rm --no-deps test python -m pytest -c test/pytest.ini test --collect-only -q
 ```
 
-## Ajout de nouveaux tests
+## Images
 
-1. Créez un fichier `test_*.py` dans le dossier `test/`
-2. Importez les fixtures nécessaires depuis `conftest.py`
-3. Utilisez les marqueurs appropriés
-4. Documentez les tests complexes
-5. Vérifiez que les tests passent localement avant de commit
+Le Dockerfile commun `app/Dockerfile.app` contient trois étapes :
 
-## Dépendances de test
+- `runtime` : dépendances et code partagés.
+- `test` : pytest, fixtures et tests, sans copie du fichier `.env` réel.
+- `production` : cible par défaut conservant le lancement applicatif existant.
 
-Les dépendances suivantes sont requises pour les tests :
+Les dépendances applicatives restent dans `requirements.txt`, et les dépendances
+supplémentaires de test dans `test/requirements.txt`.
 
-```text
-pytest>=7.0.0
-pytest-flask>=1.2.0
-pytest-cov>=4.0.0
-pytest-mock>=3.10.0
-```
+## Isolation
 
-Ces dépendances sont automatiquement installées dans GitHub Actions.
+- Les fixtures refusent toute configuration ne ciblant pas `db-test/intranet_test`
+    avec l'utilisateur de test. Le chargement dotenv est désactivé avant les imports.
+- Le schéma historique est créé à partir des modèles SQLAlchemy, sans données
+    réelles. La table `98_sessions` est exclue de cette création, puis créée par
+    le véritable `upgrade()` de la révision Alembic `d4f3a20e9b71`.
+- Chaque test dispose d'une transaction externe et de points de sauvegarde.
+    Les appels applicatifs à `commit()` restent isolés ; la transaction externe est
+    annulée à la fin du test.
+- Les sessions des requêtes Flask sont de vraies sessions SQLAlchemy rattachées
+    à cette même transaction. Les méthodes de la base ne sont pas mockées.
+- Les identifiants auto-incrémentés ne sont pas remis à zéro par un rollback ;
+    les tests utilisent les identifiants effectivement attribués.
+- Les fichiers sont écrits dans des répertoires temporaires. Emails, SSH et
+    impressions réels sont bloqués, et le réseau du Compose est interne.
 
-## Exemple complet
+Cette isolation couvre les écritures de données, pas les opérations DDL, qui
+peuvent provoquer des commits implicites dans MariaDB. La migration de sessions
+est exécutée et son schéma vérifié ; les autres migrations historiques et le
+downgrade ne sont pas validés par cette suite.
 
-Voir `test_example.py` pour des exemples concrets d'utilisation de toutes les fixtures disponibles.
+## Fixtures
+
+- `database_engine` : moteur connecté à MariaDB temporaire.
+- `db_session` : session réelle isolée pour chaque test.
+- `app`, `client` : application réelle et client Flask sans serveur HTTP externe.
+- `sample_*_data` : dictionnaires de données valides.
+- `create_test_*`, `create_admin_user`, `create_multiple_*` : objets persistants.
+- `create_contract_with_documents_and_events` : contrat avec ses relations.
+- `authenticated_session_data` : session de navigateur rattachée au compte de test.
+
+Les fixtures sont chargées automatiquement ; les tests ne doivent pas les
+importer directement. Pour respecter les cookies `Secure`, utiliser
+`base_url="https://localhost"` avec le client Flask.
+
+## Périmètre
+
+`test_application.py` vérifie la persistance des modèles, les filtres SQL, les
+relations et les routes d'accueil et de connexion existantes. `test_database.py`
+remplace les anciens tests de MockSession par des vérifications des transactions,
+des identifiants et des contraintes de clé étrangère MariaDB.
+
+`test_rapport_contrats.py` couvre le jeton dedie, les statuts HTTP, l'exemption
+CSRF ciblee, les pannes SMTP et le refus de demarrage avec alerte simulee.
+`test_report_scheduler.py` verifie le crontab avec le vrai Supercronic, la requete
+JSON sans secret dans les arguments et l'arret des processus supervises.
+
+`test_login_redirects.py` couvre les destinations locales, leurs parametres et
+fragments, les URL externes et les contournements encodes. Les connexions reelles
+utilisent MariaDB avec CSRF actif et un Referer HTTPS. Une destination invalide
+renvoie a l'accueil apres connexion reussie ; apres un echec, seule une
+destination locale valide est conservee pour la prochaine tentative.
+
+`test_password_migration.py` verifie la transition SHA-256 vers Argon2id a la
+connexion, les comptes verrouilles ou expires, le renouvellement des parametres
+et les formulaires de creation/modification. La panne de commit est declenchee
+par un evenement SQLAlchemy sur les vraies sessions MariaDB : le test controle
+le rollback, l'acces autorise, la conservation de l'ancien hash et les logs
+`MIGR-AUTH` sans secrets. Les identifiants des fixtures restent volontairement
+en SHA-256 afin de couvrir durablement la compatibilite historique.
+
+Les emails de test ne sont jamais envoyes. Les autres tests de securite et les
+corrections metier seront ajoutes chantier par chantier apres validation.
+
+`test_auth_sessions.py` couvre le schema migre, les jetons haches, l'expiration
+par inactivite, la rotation, la deconnexion et la revocation de tous les
+navigateurs apres changement sensible. Des evenements SQLAlchemy declenchent
+les pannes de lecture/ecriture sur les vraies sessions MariaDB pour verifier
+les refus d'acces et les rollbacks. Les fixtures authentifiees possedent une
+veritable ligne de session ; de simples champs d'identite ne suffisent plus.

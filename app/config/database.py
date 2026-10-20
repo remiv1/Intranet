@@ -14,7 +14,7 @@ servant également de healthcheck pour l'application.
 """
 import time
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, inspect
 from sqlalchemy.exc import SQLAlchemyError
 from app.config.config import ConfigDB
 from ..models._common import Base
@@ -44,7 +44,13 @@ def initialize_database(max_retries: int = 10, retry_delay: int = 2) -> bool | N
     # Tenter de créer les tables avec des retries
     for attempt in range(max_retries):
         try:
-            Base.metadata.create_all(engine)
+            Base.metadata.create_all(engine, tables=[
+                table for table in Base.metadata.sorted_tables if table.name != '98_sessions'
+            ])
+            if not inspect(engine).has_table('98_sessions'):
+                raise RuntimeError(
+                    "Appliquer la migration Alembic des sessions avant le démarrage."
+                )
             return True
         except SQLAlchemyError as e:
             if attempt < max_retries - 1:

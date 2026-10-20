@@ -9,7 +9,7 @@
     - `Base`: Classe de base pour les modèles SQLAlchemy.
 """
 
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import declarative_base
 
 Base = declarative_base()
 PK_CONTRACT = '01_contrats.id'

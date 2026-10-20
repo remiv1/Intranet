@@ -173,20 +173,20 @@
 
             <!-- Formulaire -->
             <form method="post" action="{{ url_for('login') }}">
-                <input type="hidden" name="preview_request" value="{{ preview_request or '' }}">
+                {{ form.hidden_tag() }}
 
                 <div class="form-group">
                     <label for="username">
                         <i class="bi bi-person me-1"></i> Identifiant
                     </label>
-                    <input type="text" id="username" name="username" placeholder="Votre identifiant" required autocomplete="username">
+                    <input type="text" id="username" name="{{ form.username.name }}" value="{{ form.username.data or '' }}" placeholder="Votre identifiant" required autocomplete="username">
                 </div>
 
                 <div class="form-group">
                     <label for="password">
                         <i class="bi bi-key me-1"></i> Mot de passe
                     </label>
-                    <input type="password" id="password" name="password" placeholder="Votre mot de passe" required autocomplete="current-password">
+                    <input type="password" id="password" name="{{ form.password.name }}" placeholder="Votre mot de passe" required autocomplete="current-password">
                 </div>
 
                 <button type="submit" class="btn-login">

@@ -1,168 +1,139 @@
-"""
-Tests d'exemple pour démontrer l'utilisation des fixtures.
+"""Tests des modèles et des routes existantes sur MariaDB."""
 
-Ces tests montrent comment utiliser les fixtures mockées pour tester
-les fonctionnalités de l'application sans base de données réelle.
-"""
-
-from flask.testing import FlaskClient
 from datetime import date, timedelta
-from unittest.mock import patch, MagicMock, Mock
-from app.models import User, Contract, Document, Event
-from typing import Any, Dict
+from typing import Any
+from urllib.parse import urlsplit
+
+import pytest
+from flask.testing import FlaskClient
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
+from app.models import Contract, Document, Event, User
 
 
 class TestUserOperations:
     """Tests pour les opérations sur les utilisateurs."""
 
-    def test_create_user(self, mock_db_session: Mock, clean_mock_db: Mock, sample_user_data: Dict[str, Any]):
-        """Test de création d'un utilisateur."""
-        # Créer un utilisateur
+    def test_create_user(self, db_session: Session, sample_user_data: dict[str, Any]) -> None:
+        """Vérifie la sauvegarde puis la relecture d'un utilisateur."""
         user = User(**sample_user_data)
-        mock_db_session.add(user)
-        mock_db_session.commit()
-        
-        # Vérifier que l'utilisateur a été ajouté
-        assert user.id is not None
-        assert user.prenom == "Jean"
-        assert user.nom == "Dupont"
-        assert user.mail == "jean.dupont@test.com"
-        
-        # Vérifier que les méthodes de session ont été appelées
-        mock_db_session.add.assert_called_with(user)
-        mock_db_session.commit.assert_called()
-    
-    def test_query_users(self, mock_db_session: Mock, create_multiple_users: list[User]):
-        """Test de requête sur les utilisateurs."""
-        _ = create_multiple_users
-        
-        # Tester la requête pour récupérer tous les utilisateurs
-        all_users = mock_db_session.query(User).all()
-        assert len(all_users) == 4
-        
-        # Tester la requête pour récupérer un utilisateur par ID
-        user = mock_db_session.query(User).get(1)
-        assert user is not None
-        assert user.prenom == "Jean"
+        db_session.add(user)
+        db_session.commit()
+        db_session.expire_all()
 
-    def test_user_authentication(self, mock_db_session: Mock, create_admin_user: User):
-        """Test de simulation d'authentification utilisateur."""
-        _ = create_admin_user
-        
-        # Simuler une recherche d'utilisateur par identifiant
-        query_result = mock_db_session.query(User).filter_by(identifiant="admin").first()
-        
-        # Dans un vrai test, on vérifierait le mot de passe haché
-        assert query_result is not None
-        assert query_result.identifiant == "admin"
-        assert query_result.habilitation == 1  # Administrateur
+        stored_user = db_session.get(User, user.id)
+        assert stored_user is not None
+        assert stored_user.prenom == "Jean"
+        assert stored_user.nom == "Dupont"
+        assert stored_user.mail == "jean.dupont@test.invalid"
+
+    def test_query_users(self, db_session: Session, create_multiple_users: list[User]) -> None:
+        """Vérifie la liste et les identifiants générés par MariaDB."""
+        users = db_session.scalars(select(User).order_by(User.id)).all()
+
+        assert len(users) == 4
+        assert [user.id for user in users] == [user.id for user in create_multiple_users]
+        assert db_session.get(User, create_multiple_users[0].id) == create_multiple_users[0]
+
+    def test_admin_lookup(self, db_session: Session, create_admin_user: User) -> None:
+        """Vérifie la recherche du compte, sans simuler une authentification."""
+        user = db_session.scalar(select(User).where(User.identifiant == "admin"))
+        assert user is not None
+
+        assert user is create_admin_user
+        assert user.habilitation == 1
 
 
 class TestContractOperations:
     """Tests pour les opérations sur les contrats."""
 
-    def test_create_contract(self, mock_db_session: Mock, clean_mock_db: Mock, sample_contract_data: Dict[str, Any]):
-        """Test de création d'un contrat."""
+    def test_create_contract(
+            self, db_session: Session,
+            sample_contract_data: dict[str, Any],
+        ) -> None:
+        """Vérifie la persistance des informations d'un contrat."""
         contract = Contract(**sample_contract_data)
-        mock_db_session.add(contract)
-        mock_db_session.commit()
-        
-        assert contract.id is not None
-        assert contract.entreprise == "TechCorp"
-        assert contract.type_contrat == "Maintenance"
+        db_session.add(contract)
+        db_session.commit()
+        db_session.expire_all()
 
-    def test_expiring_contracts(self, mock_db_session: Mock, create_multiple_contracts: list[Contract]):
-        """Test de récupération des contrats arrivant à échéance."""
-        _ = create_multiple_contracts
-        
-        # Simuler une requête pour les contrats arrivant à échéance dans les 90 jours
-        today = date.today()
-        _ = today + timedelta(days=90)
-        
-        # Dans un vrai test, on filtrerait par date_fin_preavis
-        expiring_contracts = mock_db_session.query(Contract).all()
-        
-        # Vérifier qu'on a bien nos contrats de test
-        assert len(expiring_contracts) == 4
+        stored_contract = db_session.get(Contract, contract.id)
+        assert stored_contract is not None
+        assert stored_contract.entreprise == "TechCorp"
+        assert stored_contract.type_contrat == "Maintenance"
 
-    def test_contract_with_relations(self, mock_db_session: Mock, create_contract_with_documents_and_events: Contract):
-        """Test d'un contrat avec ses documents et événements."""
+    def test_expiring_contracts(
+        self, db_session: Session, create_multiple_contracts: list[Contract]
+    ) -> None:
+        """Vérifie un filtre SQL entre aujourd'hui et quatre-vingt-dix jours."""
+        contracts = db_session.scalars(select(Contract).where(
+            Contract.date_fin_preavis.between(date.today(), date.today() + timedelta(days=90))
+        )).all()
+
+        assert contracts == [create_multiple_contracts[0]]
+
+    def test_contract_with_relations(
+        self, db_session: Session, create_contract_with_documents_and_events: Contract
+    ) -> None:
+        """Vérifie les clés étrangères et le chargement des relations."""
         contract = create_contract_with_documents_and_events
-        
-        # Vérifier que le contrat existe
-        assert contract.id is not None
-        
-        # Dans un vrai test, on vérifierait les relations
-        # Ici on simule juste la récupération des documents liés
-        documents = mock_db_session.query(Document).filter_by(id_contrat=contract.id).all()
-        events = mock_db_session.query(Event).filter_by(id_contrat=contract.id).all()
-        
-        # Le mock retournera tous les documents/événements ajoutés
-        assert len(documents) > 0 or len(documents) == 0  # Depends on mock implementation
-        assert len(events) > 0 or len(events) == 0      # Depends on mock implementation
+        db_session.expire_all()
+        stmt_doc = select(Document).where(Document.id_contrat == contract.id)
+        documents = db_session.scalars(stmt_doc).all()
+        stmt_event = select(Event).where(Event.id_contrat == contract.id)
+        events = db_session.scalars(stmt_event).all()
+
+        assert len(documents) == 2
+        assert len(events) == 2
+        assert {
+            document.id for document in contract.documents
+        } == {
+            document.id for document in documents
+        }
+        assert {event.id for event in contract.evenements} == {event.id for event in events}
 
 
 class TestFlaskRoutes:
     """Tests pour les routes Flask."""
-    
-    def test_login_page(self, client: FlaskClient):
-        """Test de la page de connexion."""
-        response = client.get('/login')
-        assert response.status_code == 200
 
-    def test_index_redirect_when_not_authenticated(self, client: FlaskClient):
-        """Test de redirection vers login quand non authentifié."""
-        with patch('flask.session', {}):
-            response = client.get('/')
-            # Should redirect to login when not authenticated
-            assert response.status_code in [302, 401]  # Redirect or Unauthorized
-    
-    def test_authenticated_access(self, client: FlaskClient, mock_authenticated_session: Dict[str, Any]):
-        """Test d'accès authentifié à la page d'accueil."""
-        
-        with patch('application.Session') as mock_db_session_class:
-            mock_db_session_class.return_value = MagicMock()
-            
-            # Utiliser le contexte de session Flask pour simuler l'authentification
-            with client.session_transaction() as sess:
-                for key, value in mock_authenticated_session.items():
-                    sess[key] = value
-            
-            response = client.get('/')
-            
-            # Should allow access when authenticated
-            assert response.status_code == 200
+    def test_login_page(self, client: FlaskClient) -> None:
+        """Test de la page de connexion."""
+        response = client.get('/login', base_url="https://localhost")
+        assert response.status_code == 200
+        assert 'name="csrf_token"' in response.get_data(as_text=True)
+
+    def test_index_redirect_when_not_authenticated(self, client: FlaskClient) -> None:
+        """Verifie la redirection effective d'un client sans session."""
+        response = client.get('/', base_url="https://localhost")
+
+        assert response.status_code == 302
+        assert urlsplit(response.headers["Location"]).path == "/login"
+
+    def test_authenticated_access(
+        self, client: FlaskClient, authenticated_session_data: dict[str, Any]
+    ) -> None:
+        """Verifie l'accueil avec une session rattachee au compte de test."""
+        with client.session_transaction(base_url="https://localhost") as user_session:
+            user_session.update(authenticated_session_data)
+
+        response = client.get('/', base_url="https://localhost")
+
+        assert response.status_code == 200
 
 
 class TestDataIntegrity:
     """Tests pour l'intégrité des données."""
-    
-    def test_clean_db_fixture(self, mock_db_session: Mock):
-        """Test que clean_mock_db nettoie correctement la base."""
-        # Ajouter quelques données
-        user = User(prenom="Test", nom="User", mail="test@test.com", 
-                   identifiant="test", sha_mdp="hash", habilitation=1)
-        mock_db_session.add(user)
-        mock_db_session.commit()
-        
-        # Vérifier que les données sont là
-        users = mock_db_session.query(User).all()
-        assert len(users) > 0 or len(users) == 0  # Depends on mock implementation
-        
-        # clean_mock_db devrait avoir nettoyé au début du test
-        # donc la base devrait être vide initialement
 
-    def test_mock_session_isolation(self, mock_db_session: Mock):
-        """Test que chaque test a une session isolée."""
-        # Ce test vérifie que les données d'un test n'affectent pas l'autre
-        initial_count = mock_db_session.query(User).count()
-        
-        # Ajouter un utilisateur
-        user = User(prenom="Isolated", nom="Test", mail="isolated@test.com",
-                   identifiant="isolated", sha_mdp="hash", habilitation=1)
-        mock_db_session.add(user)
-        mock_db_session.commit()
-        
-        # Vérifier que l'utilisateur a été ajouté
-        new_count = mock_db_session.query(User).count()
-        assert new_count >= initial_count
+    @pytest.mark.parametrize("execution", (1, 2))
+    def test_database_isolation(
+        self, db_session: Session, sample_user_data: dict[str, Any], execution: int
+    ) -> None:
+        """Verifie qu'un commit du cas precedent ne laisse aucune ligne."""
+        assert db_session.scalars(select(User)).all() == []
+
+        user = User(**(sample_user_data | {"identifiant": f"isolated-{execution}"}))
+        db_session.add(user)
+        db_session.commit()
+
+        assert db_session.scalars(select(User)).all() == [user]

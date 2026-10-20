@@ -16,6 +16,7 @@ des rapports, avec des logs détaillés pour faciliter le dépannage en cas de p
 
 from datetime import datetime, timedelta
 import smtplib
+from email.message import EmailMessage
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
@@ -27,6 +28,33 @@ from .config.logger import api_logger
 from .models import Contract
 
 logger = api_logger
+
+def validate_report_configuration() -> None:
+    """Refuse le demarrage sans jeton et tente une alerte par email.
+
+    Raises:
+        RuntimeError: Le jeton dedie au rapport n'est pas configure.
+    """
+    if ConfigMail.API_MAIL_TOKEN.strip():
+        return
+
+    message = EmailMessage()
+    message['From'] = ConfigMail.EMAIL_USER
+    message['To'] = 'rverschuur@audit-io.fr'
+    message['Subject'] = 'Intranet - Rapport des contrats indisponible'
+    message.set_content(
+        "Le rapport des contrats n'a pas pu etre genere : "
+        "API_MAIL_TOKEN n'est pas configure. Le demarrage de l'application est refuse."
+    )
+    try:
+        with smtplib.SMTP(ConfigMail.EMAIL_SMTP, ConfigMail.EMAIL_PORT, timeout=10) as server:
+            server.starttls()
+            server.login(ConfigMail.EMAIL_USER, ConfigMail.EMAIL_PASSWORD)
+            server.send_message(message)
+    except (smtplib.SMTPException, OSError, ValueError):
+        logger.error("Impossible d'envoyer l'alerte de configuration du rapport.")
+    raise RuntimeError("API_MAIL_TOKEN doit etre configure avant le demarrage.")
+
 
 def envoi_contrats_renego(mail: str) -> None:
     """
@@ -70,7 +98,7 @@ def envoi_contrats_renego(mail: str) -> None:
 
         # Envoyer l'e-mail
         try:
-            with smtplib.SMTP(ConfigMail.EMAIL_SMTP, ConfigMail.EMAIL_PORT) as server:
+            with smtplib.SMTP(ConfigMail.EMAIL_SMTP, ConfigMail.EMAIL_PORT, timeout=10) as server:
                 server.starttls()
                 server.login(email_expediteur, mot_de_passe)
                 server.send_message(msg)
@@ -78,10 +106,7 @@ def envoi_contrats_renego(mail: str) -> None:
             return
         except smtplib.SMTPException as e:
             logger.exception("Erreur lors de l envoi de l e-mail : %s", e)
-            return
-        finally:
-            conn.close()
-    conn.close()
+            raise
     logger.info(
         "Aucun contrat à renégocier trouvé entre %s et %s", date_4_mois, date_6_mois
     )

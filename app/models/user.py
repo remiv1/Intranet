@@ -104,7 +104,7 @@ class User(Base):
     debut: Mapped[Optional[date]] = mapped_column(
         Date,
         nullable=True,
-        default=func.current_date(),
+        default=func.current_date(),    # pylint: disable=E1102
         comment="Date de début de validité de l'utilisateur"
     )
     fin: Mapped[Optional[date]] = mapped_column(
