@@ -105,14 +105,14 @@
                 <div class="modal-dialog modal-dialog-centered">
                     <form method="POST" action="{{ url_for('signature.upload_document') }}" enctype="multipart/form-data">
                         <div class="modal-content">
-                            <input type="hidden" name="temp_dir" value="True">
+                            {{ signature_upload_form.hidden_tag() }}
                             <div class="modal-header">
                                 <h5 class="modal-title" id="uploadModalLabel">Televerser un document PDF</h5>
                                 <button type="button" class="btn-close" data-bs-dismiss="modal" title="Fermer"></button>
                             </div>
                             <div class="modal-body">
                                 <label for="pdf" class="form-label">Fichier PDF</label>
-                                <input id="pdf" class="form-control" type="file" name="pdf" accept="application/pdf" title="Choisir un fichier PDF" required>
+                                {{ signature_upload_form.pdf(id="pdf", class_="form-control", accept="application/pdf", title="Choisir un fichier PDF", required=True) }}
                             </div>
                             <div class="modal-footer">
                                 <button type="button" class="btn btn-outline" data-bs-dismiss="modal">Annuler</button>

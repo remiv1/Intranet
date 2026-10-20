@@ -59,7 +59,15 @@ from .habilitations import (
 )
 from .blueprints import contracts_bp, signatures_bp, vpn_bp
 from .config.config import ConfigApp, ConfigMail
-from .forms import LoginForm
+from .forms import (
+    LoginForm,
+    PrintDocumentForm,
+    SignatureUploadForm,
+    UserCreateForm,
+    UserDeleteForm,
+    UserRightsForm,
+    UserUpdateForm,
+)
 from .models import User, DocToSigne, Points, Signatures, Invitation
 from .docs import print_document, delete_file
 from .rapport_echeances import envoi_contrats_renego, validate_report_configuration
@@ -160,10 +168,16 @@ def teardown_request(exception: Optional[BaseException]) -> None:
 
 
 @peraudiere.errorhandler(CSRFError)
-def handle_csrf_error(error: CSRFError) -> Response | tuple[str, int]:
+def handle_csrf_error(error: CSRFError) -> Response | tuple[Response | str, int]: # pylint: disable=W0613
     """Réaffiche le formulaire de connexion en cas d'échec de validation CSRF."""
     if request.endpoint != 'login':
-        abort(400, description=error.description)
+        message = (
+            'La vérification de sécurité a échoué. '
+            'Veuillez recharger la page et réessayer.'
+        )
+        if request.is_json:
+            return jsonify(success=False, message=message), 400
+        abort(400, description=message)
 
     form = LoginForm()
     form.preview_request.data = get_local_redirect_url(
@@ -306,8 +320,20 @@ def gestion_droits() -> str | Response:
     success_message = request.args.get('success_message', None)
     error_message = request.args.get('error_message', None)
     users = g.db_session.query(User).all()
+    rights_forms = {
+        user.id: UserRightsForm(data={
+            'identifiant': user.identifiant,
+            'mdp': '',
+            **{
+                f'habil{level}': str(level) in str(user.habilitation)
+                for level in range(1, 7)
+            },
+        })
+        for user in users
+    }
     return render_template('gestion_droits.html', users=users, message=message,
-                           success_message=success_message, error_message=error_message)
+                           success_message=success_message, error_message=error_message,
+                           rights_forms=rights_forms)
 
 
 @peraudiere.get('/gestion-utilisateurs')
@@ -328,8 +354,27 @@ def gestion_utilisateurs(message: Optional[str] = None, success_message: Optiona
     error_message = request.args.get('error_message', error_message)
     users: list[User] = g.db_session.query(User).all()
     users.sort(key=lambda x: (x.nom, x.prenom))
+    update_forms = {
+        user.id: UserUpdateForm(data={
+            'prenom': user.prenom,
+            'nom': user.nom,
+            'mail': user.mail,
+            'identifiant': user.identifiant,
+            **{
+                f'habil{level}': str(level) in str(user.habilitation)
+                for level in range(1, 7)
+            },
+        })
+        for user in users
+    }
+    delete_forms = {
+        user.id: UserDeleteForm(data={'identifiant': user.identifiant})
+        for user in users
+    }
     return render_template('gestion_utilisateurs.html', users=users, message=message,
-                           success_message=success_message, error_message=error_message)
+                           success_message=success_message, error_message=error_message,
+                           create_user_form=UserCreateForm(), update_forms=update_forms,
+                           delete_forms=delete_forms)
 
 
 @peraudiere.get('/erpp')
@@ -377,7 +422,7 @@ def ei(message: Optional[str] = None, success_message: Optional[str] = None,
         Response: La page de l'espace réservé aux impressions.
     """
     return render_template('ei.html', message=message, success_message=success_message,
-                           error_message=error_message)
+                           error_message=error_message, print_form=PrintDocumentForm())
 
 
 @peraudiere.get('/ea')
@@ -410,6 +455,7 @@ def ea(message: Optional[str] = None, success_message: Optional[str] = None,
         error_message=error_message,
         sections=sections,
         context=context,
+        signature_upload_form=SignatureUploadForm(),
     )
 
 
@@ -426,7 +472,10 @@ def print_doc() -> Response | WerkzeugResponse:
                   impressions avec un message de succès.
     """
     try:
-        binary_document: Any = request.files['document']
+        form = PrintDocumentForm()
+        binary_document: Any = form.document.data
+        if binary_document is None:
+            raise KeyError('document')
         document = str(binary_document.filename)
         extension: str = str(splitext(document))[1]
         docname = document.split('.', maxsplit=1)[0]

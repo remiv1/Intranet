@@ -135,44 +135,45 @@
                     <div class="modal-body">
                         <!-- Formulaire d'ajout -->
                         <form action="{{ url_for('ajout_utilisateurs') }}" method="post">
+                            {{ create_user_form.hidden_tag() }}
                             <!-- Ajout du prénom -->
                             <div class="mb-3">
                                 <label for="prenom" class="form-label">Prénom</label>
-                                <input type="text" class="form-control" id="prenom" name="prenom">
+                                {{ create_user_form.prenom(class_="form-control", id="prenom") }}
                             </div>
                             <!-- Ajout du nom -->
                             <div class="mb-3">
                                 <label for="nom" class="form-label">Nom</label>
-                                <input type="text" class="form-control" id="nom" name="nom">
+                                {{ create_user_form.nom(class_="form-control", id="nom") }}
                             </div>
                             <!-- Ajout du mail -->
                             <div class="mb-3">
                                 <label for="mail" class="form-label">Mail</label>
-                                <input type="email" class="form-control" id="mail" name="mail">
+                                {{ create_user_form.mail(class_="form-control", id="mail") }}
                             </div>
                             <!-- Ajout d'identifiant -->
                             <div class="mb3">
                                 <label for="identifiant" class="form-label">Identifiant (pnnnnnnnnnnn)</label>
-                                <input type="text" class="form-control" id="identifiant" name="identifiant">
+                                {{ create_user_form.identifiant(class_="form-control", id="identifiant") }}
                             </div>
                             <!-- Ajout du mot de passe -->
                             <div class="mb-3">
                                 <label for="mdp" class="form-label">Mot de passe</label>
-                                <input type="password" class="form-control" id="mdp" name="mdp">
+                                {{ create_user_form.mdp(class_="form-control", id="mdp") }}
                             </div>
                             <!-- Ajout des habilitations -->
                             <div class="mb-3">
-                                <input type="checkbox" name="habil1" id="administration" value="1">
+                                {{ create_user_form.habil1(id="administration") }}
                                 <label for="administration" class="form-label">Administrateur</label><br>
-                                <input type="checkbox" name="habil2" id="administratif" value="2">
+                                {{ create_user_form.habil2(id="administratif") }}
                                 <label for="administratif" class="form-label">Administratif</label><br>
-                                <input type="checkbox" name="habil3" id="pprofesseur" value="3">
+                                {{ create_user_form.habil3(id="pprofesseur") }}
                                 <label for="pprofesseur" class="form-label">Professeur principal</label><br>
-                                <input type="checkbox" name="habil4" id="professeur" value="4">
+                                {{ create_user_form.habil4(id="professeur") }}
                                 <label for="professeur" class="form-label">Professeur</label><br>
-                                <input type="checkbox" name="habil5" id="eleve" value="5">
+                                {{ create_user_form.habil5(id="eleve") }}
                                 <label for="eleve" class="form-label">Elève</label><br>
-                                <input type="checkbox" name="habil6" id="impression" value="6">
+                                {{ create_user_form.habil6(id="impression") }}
                                 <label for="impression" class="form-label">Impression</label>
                             </div>
                             <!-- Bouton d'envoi du formulaire -->
@@ -194,50 +195,52 @@
                         </div>
                         <!-- Corps du modal de modification -->
                         <div class="modal-body">
+                            {% set current_update_form = update_forms[user['id']] %}
                             <form action="{{ url_for('modif_utilisateurs') }}" method="post">
+                                {{ current_update_form.hidden_tag() }}
                                 <!-- Modification de prénom -->
                                 <div class="mb-3">
                                     <label for="prenom" class="form-label">Prénom</label>
-                                    <input type="text" class="form-control" id="prenom{{ user['id'] }}" name="prenom" value="{{ user['prenom'] }}">
+                                    {{ current_update_form.prenom(class_="form-control", id="prenom" ~ user['id']) }}
                                 </div>
                                 <!-- Modification du nom -->
                                 <div class="mb-3">
                                     <label for="nom" class="form-label">Nom</label>
-                                    <input type="text" class="form-control" id="nom{{ user['id'] }}" name="nom" value="{{ user['nom'] }}">
+                                    {{ current_update_form.nom(class_="form-control", id="nom" ~ user['id']) }}
                                 </div>
                                 <!-- Modification du mail -->
                                 <div class="mb-3">
                                     <label for="mail" class="form-label">Mail</label>
-                                    <input type="email" class="form-control" id="mail{{ user['id'] }}" name="mail" value="{{ user['mail'] }}">
+                                    {{ current_update_form.mail(class_="form-control", id="mail" ~ user['id']) }}
                                 </div>
                                 <!-- Modification de l'identifiant -->
                                 <div class="mb3">
                                     <label for="identifiant" class="form-label">Identifiant (pnnnnnnnnnnn)</label>
-                                    <input type="text" class="form-control" id="identifiant{{ user['id'] }}" name="identifiant" value="{{ user['identifiant'] }}">
+                                    {{ current_update_form.identifiant(class_="form-control", id="identifiant" ~ user['id']) }}
                                 </div>
                                 <!-- Modification du mot de passe-->
                                 <div class="mb-3">
                                     <label for="mdp" class="form-label">Mot de passe</label>
-                                    <input type="password" class="form-control" id="mdp{{ user['id'] }}" name="mdp">
+                                    {{ current_update_form.mdp(class_="form-control", id="mdp" ~ user['id']) }}
                                 </div>
                                 <!-- Modification des habilitations -->
                                 <div class="mb-3 d-none">
-                                    <input type="checkbox" name="habil1" id="administration{{ user['id'] }}" value="1" {% if '1' in user.habilitation|string %}checked{% endif %}>
+                                    {{ current_update_form.habil1(id="administration" ~ user['id']) }}
                                     <label for="administration{{ user['id'] }}" class="form-label">Administrateur</label><br>
-                                    <input type="checkbox" name="habil2" id="administratif{{ user['id'] }}" value="2" {% if '2' in user.habilitation|string %}checked{% endif %}>
+                                    {{ current_update_form.habil2(id="administratif" ~ user['id']) }}
                                     <label for="administratif{{ user['id'] }}" class="form-label">Administratif</label><br>
-                                    <input type="checkbox" name="habil3" id="pprofesseur{{ user['id'] }}" value="3" {% if '3' in user.habilitation|string %}checked{% endif %}>
+                                    {{ current_update_form.habil3(id="pprofesseur" ~ user['id']) }}
                                     <label for="pprofesseur{{ user['id'] }}" class="form-label">Professeur principal</label><br>
-                                    <input type="checkbox" name="habil4" id="professeur{{ user['id'] }}" value="4" {% if '4' in user.habilitation|string %}checked{% endif %}>
+                                    {{ current_update_form.habil4(id="professeur" ~ user['id']) }}
                                     <label for="professeur{{ user['id'] }}" class="form-label">Professeur</label><br>
-                                    <input type="checkbox" name="habil5" id="eleve{{ user['id'] }}" value="5" {% if '5' in user.habilitation|string %}checked{% endif %}>
+                                    {{ current_update_form.habil5(id="eleve" ~ user['id']) }}
                                     <label for="eleve{{ user['id'] }}" class="form-label">Elève</label><br>
-                                    <input type="checkbox" name="habil6" id="impression{{ user['id'] }}" value="6" {% if '6' in user.habilitation|string %}checked{% endif %}>
+                                    {{ current_update_form.habil6(id="impression" ~ user['id']) }}
                                     <label for="impression{{ user['id'] }}" class="form-label">Impression</label>
                                 </div>
                                 <!-- Déverrouillage de l'utilisateur -->
                                 <div class="mb-3">
-                                    <input type="checkbox" name="unlock" id="unlock{{ user['id'] }}" value="1">
+                                    {{ current_update_form.unlock(id="unlock" ~ user['id']) }}
                                     <label for="unlock{{ user['id'] }}" class="form-label">Déverrouiller</label>
                                 </div>
                                 <!-- Bouton d'envoi du formulaire -->
@@ -255,10 +258,12 @@
                             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                         </div>
                         <div class="modal-body">
+                            {% set current_delete_form = delete_forms[user['id']] %}
                             <form action="{{ url_for('suppr_utilisateurs', id_user=user['identifiant']) }}" method="post">
+                                {{ current_delete_form.hidden_tag() }}
                                 <div class="mb-3">
                                     <label for="identifiant" class="form-label">Identifiant</label>
-                                    <input type="text" class="form-control" id="identifiant{{ user['identifiant'] }}" name="identifiant" value="{{ user['identifiant'] }}">
+                                    {{ current_delete_form.identifiant(class_="form-control", id="identifiant" ~ user['identifiant']) }}
                                 </div>
                                 <button type="submit" class="btn btn-primary" onclick="confirm('Êtes-vous sûr de vouloir supprimer cet élève ?')">Supprimer</button>
                             </form>

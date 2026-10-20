@@ -165,7 +165,7 @@
                                                 <i class="bi bi-pencil-square"></i>
                                             </button>
                                             <form class="d-inline" action="{{ url_for('contracts_bp.delete_contact_id', id_contrat=contact['id_contrat'], id_contact=contact['id'], tab='c') }}" method="post">
-                                                <input type="hidden" name="_method" value="DELETE">
+                                                {{ contact_delete_forms[contact['id']].hidden_tag() }}
                                                 <button type="submit" class="button" title="Supprimer le contact {{ contact['nom'] }}" onclick="return confirm('Êtes-vous sûr de vouloir supprimer ce contact ?');">
                                                     <i class="bi bi-trash-fill"></i>
                                                 </button>
@@ -357,48 +357,45 @@
                     </div>
                     <div class="modal-body">
                         <form action="{{ url_for('contracts_bp.add_contrats_contact', id_contrat=contract['id'], tab='e') }}" method="post">
-                            <!-- id Contrat -->
-                            <div class="mb-3 d-none">
-                                <input type="text" name="idContratC" id="idContratC" value="{{ contract['id'] }}">
-                            </div>
+                            {{ contact_form.hidden_tag() }}
                             <!-- Nom du contact -->
                             <div class="mb-3">
                                 <label for="nomC" class="form-label">Nom du contact *</label>
-                                <input type="text" name="nomC" id="nomC" class="form-control" required>
+                                {{ contact_form.nomC(id="nomC", class_="form-control", required=True) }}
                             </div>
                             <!-- Fonction du contact -->
                             <div class="mb-3">
                                 <label for="fonctionC" class="form-label">Fonction</label>
-                                <input type="text" name="fonctionC" id="fonctionC" class="form-control">
+                                {{ contact_form.fonctionC(id="fonctionC", class_="form-control") }}
                             </div>
                             <!-- Mail du contact -->
                             <div class="mb-3">
                                 <label for="mailC" class="form-label">Mail *</label>
-                                <input type="email" name="mailC" id="mailC" class="form-control" required>
+                                {{ contact_form.mailC(id="mailC", class_="form-control", required=True) }}
                             </div>
                             <!-- Téléphone fixe du contact -->
                             <div class="mb-3">
                                 <label for="telFixeC" class="form-label">Téléphone fixe</label>
-                                <input type="tel" name="telFixeC" id="telFixeC" class="form-control">
+                                {{ contact_form.telFixeC(id="telFixeC", class_="form-control") }}
                             </div>
                             <!-- Téléphone portable du contact -->
                             <div class="mb-3">
                                 <label for="telPortableC" class="form-label">Téléphone portable</label>
-                                <input type="tel" name="telPortableC" id="telPortableC" class="form-control">
+                                {{ contact_form.telPortableC(id="telPortableC", class_="form-control") }}
                             </div>
                             <!-- Adresse du contact -->
                             <div class="mb-3">
                                 <label for="adresseC" class="form-label">Adresse</label>
-                                <input type="text" name="adresseC" id="adresseC" class="form-control">
+                                {{ contact_form.adresseC(id="adresseC", class_="form-control") }}
                             </div>
                             <!-- Code postal et ville du contact -->
                             <div class="mb-3">
                                 <label for="codePostalC" class="form-label">Code Postal</label>
-                                <input type="number" name="codePostalC" id="codePostalC" class="form-control">
+                                {{ contact_form.codePostalC(id="codePostalC", class_="form-control", type="number") }}
                             </div>
                             <div class="mb-3">
                                 <label for="villeC" class="form-label">Ville</label>
-                                <input type="text" name="villeC" id="villeC" class="form-control">
+                                {{ contact_form.villeC(id="villeC", class_="form-control") }}
                             </div>
                             <button type="submit" class="btn btn-primary">Ajouter</button>
                         </form>
@@ -416,34 +413,26 @@
                     </div>
                     <div class="modal-body">
                         <form action="{{ url_for('contracts_bp.add_contrats_event', id_contrat=contract['id'], tab='e') }}" method="post">
-                            <!-- id Contrat -->
-                            <div class="mb-3 d-none">
-                                <input type="text" name="idContratE" id="idContrat" value="{{ contract['id'] }}">
-                            </div>
+                            {{ event_form.hidden_tag() }}
                             <!-- Date de l'évènement -->
                             <div class="mb-3">
                                 <label for="dateEvenementE" class="form-label">Date *</label>
-                                <input type="date" class="form-control" name="dateEvenementE" id="dateEvenementE">
+                                {{ event_form.dateEvenementE(class_="form-control", id="dateEvenementE") }}
                             </div>
                             <!-- Type de l'évènement -->
                             <div class="mb-3">
                                 <label for="TypeE0" class="form-label">Type *</label>
-                                <select name="TypeE0" class="form-control" id="TypeE0" data-event-id="0" onchange="updateSousMenuEvent(this, menusEvents)"
-                                        data-contract-id="0" required>
-                                    <!-- Mise à jour dynamique par JavaScript des options du menu déroulant -->
-                                </select>
+                                {{ event_form.TypeE0(class_="form-control", id="TypeE0", onchange="updateSousMenuEvent(this, menusEvents)", required=True) }}
                             </div>
                             <!-- Sous-Type de l'évènement -->
                             <div class="mb-3">
                                 <label for="STypeE0" class="form-label">Sous-Type *</label>
-                                <select name="STypeE0" class="form-control" id="STypeE0" required>
-                                    <option value=""></option>
-                                </select>
+                                {{ event_form.STypeE0(class_="form-control", id="STypeE0", required=True) }}
                             </div>
                             <!-- Descriptif de l'évènement -->
                             <div class="mb-3">
                                 <label for="descriptifE" class="form-label">Descriptif *</label>
-                                <textarea name="descriptifE" rows="4" id="descriptifE" class="form-control" data-stype-event-value="" required></textarea>
+                                {{ event_form.descriptifE(rows=4, id="descriptifE", class_="form-control", required=True) }}
                             </div>
                             <button type="submit" class="btn btn-primary">Ajouter</button>
                         </form>
@@ -461,44 +450,36 @@
                     </div>
                     <div class="modal-body">
                         <form action="{{ url_for('contracts_bp.add_contrats_document', id_contrat=contract['id'], tab='d') }}" method="post" enctype="multipart/form-data">
-                            <!-- id Contrat -->
-                            <div class="mb-3 d-none">
-                                <input type="text" name="idContratD" id="idContratD" value="{{ contract['id'] }}">
-                            </div>
+                            {{ document_form.hidden_tag() }}
                             <!-- date du document -->
                             <div class="mb-3">
                                 <label for="dateDocumentD" class="form-label">Date *</label>
-                                <input type="date" class="form-control" name="dateDocumentD" id="dateDocumentD">
+                                {{ document_form.dateDocumentD(class_="form-control", id="dateDocumentD") }}
                             </div>
                             <!-- Type du document -->
                             <div class="mb-3">
                                 <label for="TypeD0" class="form-label">Type *</label>
-                                <select name="TypeD0" class="form-control" id="TypeD0" data-document-id="0" onchange="updateSousMenuDocument(this, menusDocuments)"
-                                        data-contract-id="0" required>
-                                    <!--  Mise à jour dynamique par JavaScript des options du menu déroulant -->
-                                </select>
+                                {{ document_form.TypeD0(class_="form-control", id="TypeD0", onchange="updateSousMenuDocument(this, menusDocuments)", required=True) }}
                             </div>
                             <!-- Sous-Type du document -->
                             <div class="mb-3">
                                 <label for="STypeD0" class="form-label">Sous-Type *</label>
-                                <select name="STypeD0" class="form-control" id="STypeD0" data-stype-document-value="" required>
-                                    <option value=""></option>
-                                </select>
+                                {{ document_form.STypeD0(class_="form-control", id="STypeD0", required=True) }}
                             </div>
                             <!-- Descriptif du document -->
                             <div class="mb-3">
                                 <label for="descriptifD" class="form-label">Descriptif *</label>
-                                <textarea name="descriptifD" id="descriptifD" rows="4" class="form-control" required></textarea>
+                                {{ document_form.descriptifD(id="descriptifD", rows=4, class_="form-control", required=True) }}
                             </div>
                             <!-- Lien du document -->
                             <div class="mb-3 d-none">
                                 <label for="LienDocumentD" class="form-label">Lien</label>
-                                <input type="text" class="form-control" name="LienDocumentD" id="LienDocumentD">
+                                {{ document_form.LienDocumentD(class_="form-control", id="LienDocumentD") }}
                             </div>
                             <!-- Document -->
                             <div class="mb-3">
                                 <label for="documentD" class="form-label">Document</label>
-                                <input type="file" class="form-control" name="documentD" id="documentD" required>
+                                {{ document_form.documentD(class_="form-control", id="documentD", required=True) }}
                             </div>
                             <button type="submit" class="btn btn-primary">Ajouter</button>
                         </form>
@@ -516,30 +497,26 @@
                     </div>
                     <div class="modal-body">
                         <form action="{{ url_for('contracts_bp.add_contrats_bill', id_contrat=contract['id'], tab='f') }}" method="post" enctype="multipart/form-data">
-                            <!-- id Contrat -->
-                            <div class="mb-3 d-none">
-                                <input type="text" name="idContratF0" id="idContratF0" value="{{ contract['id'] }}">
-                            </div>
+                            {{ bill_form.hidden_tag() }}
                             <!-- Date de la facture -->
                             <div class="mb-3">
                                 <label for="dateFactureF0" class="form-label">Date *</label>
-                                <input type="date" class="form-control" name="dateFactureF0" id="dateFactureF0" required>
+                                {{ bill_form.dateFactureF0(class_="form-control", id="dateFactureF0", required=True) }}
                             </div>
                             <!-- Titre de la facture -->
                             <div class="mb-3">
                                 <label for="titreFactureF0" class="form-label">Titre *</label>
-                                <input type="text" class="form-control" name="titreFactureF0" id="titreFactureF0" required>
+                                {{ bill_form.titreFactureF0(class_="form-control", id="titreFactureF0", required=True) }}
                             </div>
                             <!-- Montant de la facture -->
                             <div class="mb-3">
                                 <label for="montantFactureF0" class="form-label">Montant *</label>
-                                <input type="number" step="0.01" class="form-control" name="montantFactureF0"
-                                       id="montantFactureF0" onchange="replaceCommaByDot(this)" required>
+                                    {{ bill_form.montantFactureF0(class_="form-control", id="montantFactureF0", onchange="replaceCommaByDot(this)", required=True) }}
                             </div>
                             <!-- Upload du fichier de la facture -->
                             <div class="mb-3">
                                 <label for="documentF0" class="form-label">Document *</label>
-                                <input type="file" class="form-control" name="documentF0" id="documentF0" required>
+                                {{ bill_form.documentF0(class_="form-control", id="documentF0", required=True) }}
                             </div>
                             <button type="submit" class="btn btn-primary">Ajouter</button>
                         </form>
@@ -557,50 +534,47 @@
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div class="modal-body">
+                        {% set current_contact_form = contact_forms[contact['id']] %}
                         <form action="{{ url_for('contracts_bp.modif_contact_id', id_contrat=contact['id_contrat'], id_contact=contact['id'], tab='c') }}" method="post">
-                            <input type="hidden" name="_method" value="PUT">
-                            <!-- id Contrat -->
-                            <div class="mb-3 d-none">
-                                <input type="text" name="idContratC{{ contact['id'] }}" id="idContratC{{ contact['id'] }}" value="{{ contact['id_contrat'] }}">
-                            </div>
+                            {{ current_contact_form.hidden_tag() }}
                             <!-- Nom du contact -->
                             <div class="mb-3">
                                 <label for="nomC{{ contact['id'] }}" class="form-label">Nom du contact *</label>
-                                <input type="text" name="nomC{{ contact['id'] }}" id="nomC{{ contact['id'] }}" class="form-control" value="{{ contact['nom'] }}" required>
+                                {{ current_contact_form.nomC(id="nomC" ~ contact['id'], class_="form-control", required=True) }}
                             </div>
                             <!-- Fonction du contact -->
                             <div class="mb-3">
                                 <label for="fonctionC{{ contact['id'] }}" class="form-label">Fonction</label>
-                                <input type="text" name="fonctionC{{ contact['id'] }}" id="fonctionC{{ contact['id'] }}" class="form-control" value="{{ contact['fonction'] }}">
+                                {{ current_contact_form.fonctionC(id="fonctionC" ~ contact['id'], class_="form-control") }}
                             </div>
                             <!-- Mail du contact -->
                             <div class="mb-3">
                                 <label for="mailC{{ contact['id'] }}" class="form-label">Mail *</label>
-                                <input type="email" name="mailC{{ contact['id'] }}" id="mailC{{ contact['id'] }}" class="form-control" value="{{ contact['mail'] }}" required>
+                                {{ current_contact_form.mailC(id="mailC" ~ contact['id'], class_="form-control", required=True) }}
                             </div>
                             <!-- Téléphone fixe du contact -->
                             <div class="mb-3">
                                 <label for="telFixeC{{ contact['id'] }}" class="form-label">Téléphone fixe</label>
-                                <input type="tel" name="telFixeC{{ contact['id'] }}" id="telFixeC{{ contact['id'] }}" class="form-control" value="{{ contact['tel_fixe'] }}">
+                                {{ current_contact_form.telFixeC(id="telFixeC" ~ contact['id'], class_="form-control") }}
                             </div>
                             <!-- Téléphone portable du contact -->
                             <div class="mb-3">
                                 <label for="telPortableC{{ contact['id'] }}" class="form-label">Téléphone portable</label>
-                                <input type="tel" name="telPortableC{{ contact['id'] }}" id="telPortableC{{ contact['id'] }}" class="form-control" value="{{ contact['tel_portable'] }}">
+                                {{ current_contact_form.telPortableC(id="telPortableC" ~ contact['id'], class_="form-control") }}
                             </div>
                             <!-- Adresse du contact -->
                             <div class="mb-3">
                                 <label for="adresseC{{ contact['id'] }}" class="form-label">Adresse</label>
-                                <input type="text" name="adresseC{{ contact['id'] }}" id="adresseC{{ contact['id'] }}" class="form-control" value="{{ contact['adresse'] }}">
+                                {{ current_contact_form.adresseC(id="adresseC" ~ contact['id'], class_="form-control") }}
                             </div>
                             <!-- Code postal et ville du contact -->
                             <div class="mb-3">
                                 <label for="codePostalC{{ contact['id'] }}" class="form-label">Code postal</label>
-                                <input type="text" name="codePostalC{{ contact['id'] }}" id="codePostalC{{ contact['id'] }}" class="form-control" value="{{ contact['code_postal'] }}">
+                                {{ current_contact_form.codePostalC(id="codePostalC" ~ contact['id'], class_="form-control", type="text") }}
                             </div>
                             <div class="mb-3">
                                 <label for="villeC{{ contact['id'] }}" class="form-label">Ville</label>
-                                <input type="text" name="villeC{{ contact['id'] }}" id="villeC{{ contact['id'] }}" class="form-control" value="{{ contact['ville'] }}">
+                                {{ current_contact_form.villeC(id="villeC" ~ contact['id'], class_="form-control") }}
                             </div>
                             <button type="submit" class="btn btn-primary">Modifier</button>
                         </form>
@@ -619,39 +593,28 @@
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div class="modal-body">
+                        {% set current_event_form = event_forms[event['id']] %}
                         <form action="{{ url_for('contracts_bp.modif_event_id', id_contrat=event['id_contrat'], id_event=event['id'], tab='e') }}" method="post">
-                            <input type="hidden" name="_method" value="PUT">
-                            <!-- id Contrat -->
-                            <div class="mb-3 d-none">
-                                <input type="text" name="idContratE{{ event['id'] }}" id="idContratE{{ event['id'] }}" value="{{ event['id_contrat'] }}">
-                            </div>
+                            {{ current_event_form.hidden_tag() }}
                             <!-- Date d'évènement -->
                             <div class="mb-3">
                                 <label for="dateEvenementE{{ event['id'] }}" class="form-label">Date *</label>
-                                <input type="date" class="form-control" name="dateEvenementE{{ event['id'] }}" id="dateEvenementE{{ event['id'] }}" value="{{ event['date_evenement'] }}">
+                                {{ current_event_form.dateEvenementE(class_="form-control", id="dateEvenementE" ~ event['id']) }}
                             </div>
                             <!-- Type d'évènement -->
                             <div class="mb-3">
                                 <label for="TypeE{{ event['id'] }}" class="form-label">Type *</label>
-                                <select name="TypeE{{ event['id'] }}" class="form-control" id="TypeE{{ event['id'] }}" data-event-id="{{ event['id'] }}"
-                                        data-event-type-value="{{ event['type_evenement'] }}" onchange="updateSousMenuEvent(this, menusEvents)"
-                                        data-contract-id="{{ event['id_contrat'] }}" required>
-                                    <!-- Mise à jour dynamique par JavaScript des options du menu déroulant -->
-                                </select>
+                                {{ current_event_form.TypeE0(class_="form-control", id="TypeE" ~ event['id'], onchange="updateSousMenuEvent(this, menusEvents)", required=True) }}
                             </div>
                             <!-- Sous-Type d'évènement -->
                             <div class="mb-3">
                                 <label for="STypeE{{ event['id'] }}" class="form-label">Sous-Type *</label>
-                                <select name="STypeE{{ event['id'] }}" class="form-control" id="STypeE{{ event['id'] }}" onfocus="updateSousMenuEvent(this, menusEvents)"
-                                        data-event-id="{{ event['id'] }}" data-stype-event-value="{{ event['sous_type_evenement'] }}"
-                                        data-contract-id="{{ event['id_contrat'] }}" required>
-                                    <option value="{{ event['sous_type_evenement'] }}" selected>{{ event['sous_type_evenement'] }}</option>
-                                </select>
+                                {{ current_event_form.STypeE0(class_="form-control", id="STypeE" ~ event['id'], onfocus="updateSousMenuEvent(this, menusEvents)", required=True) }}
                             </div>
                             <!-- Descriptif de l'évènement -->
                             <div class="mb-3">
                                 <label for="descriptifE{{ event['id'] }}" class="form-label">Descriptif *</label>
-                                <textarea name="descriptifE{{ event['id'] }}" id="descriptifE{{ event['id'] }}" rows="10" id="descriptifE{{ event['id'] }}" class="form-control" required>{{ event['descriptif'] }}</textarea>
+                                {{ current_event_form.descriptifE(id="descriptifE" ~ event['id'], rows=10, class_="form-control", required=True) }}
                             </div>
                             <button type="submit" class="btn btn-primary">Modifier</button>
                         </form>
@@ -672,49 +635,38 @@
                     </div>
                     <!-- Contenu du modal -->
                     <div class="modal-body">
+                        {% set current_document_form = document_forms[document['id']] %}
                         <form action="{{ url_for('contracts_bp.modif_document_id', id_contrat=document['id_contrat'], id_document=document['id'], tab='d') }}" method="post" enctype="multipart/form-data">
-                            <input type="hidden" name="_method" value="PUT">
-                            <!-- Identifiant du contrat -->
-                            <div class="mb-3 d-none">
-                                <input type="text" name="idContratD{{ document['id'] }}" id="idContratD{{ document['id'] }}" value="{{ document['id_contrat'] }}">
-                            </div>
+                            {{ current_document_form.hidden_tag() }}
                             <!-- Date du document -->
                             <div class="mb-3">
                                 <label for="dateDocumentD{{ document['id'] }}" class="form-label">Date *</label>
-                                <input type="date" class="form-control" name="dateDocumentD{{ document['id'] }}" id="dateDocumentD{{ document['id'] }}" value="{{ document['date_document'] }}">
+                                {{ current_document_form.dateDocumentD(class_="form-control", id="dateDocumentD" ~ document['id']) }}
                             </div>
                             <!-- Type du document -->
                             <div class="mb-3">
                                 <label for="TypeD{{ document['id'] }}" class="form-label">Type *</label>
-                                <select name="TypeD{{ document['id'] }}" class="form-control" id="TypeD{{ document['id'] }}" data-document-id="{{ document['id'] }}"
-                                        data-document-type-value="{{ document['type_document'] }}" onfocus="updateSousMenuDocument(this, menusDocuments)"
-                                        data-contract-id="{{ document['id_contrat'] }}" required>
-                                    <!-- Mise à jour des options dynamique au chargement de la page par JavaScript -->
-                                </select>
+                                {{ current_document_form.TypeD0(class_="form-control", id="TypeD" ~ document['id'], onfocus="updateSousMenuDocument(this, menusDocuments)", required=True) }}
                             </div>
                             <!-- Sous-Type du document -->
                             <div class="mb-3">
                                 <label for="STypeD{{ document['id'] }}" class="form-label">Sous-Type *</label>
-                                <select name="STypeD{{ document['id'] }}" class="form-control" id="STypeD{{ document['id'] }}"
-                                        data-stype-document-value="{{ document['sous_type_document'] }}" data-document-id="{{ document['id'] }}"
-                                        onfocus="updateSousMenuDocument(this, menusDocuments)" required>
-                                    <option value="{{ document['sous_type_document'] }}" selected>{{ document['sous_type_document'] }}</option>
-                                </select>
+                                {{ current_document_form.STypeD0(class_="form-control", id="STypeD" ~ document['id'], onfocus="updateSousMenuDocument(this, menusDocuments)", required=True) }}
                             </div>
                             <!-- Descriptif du document -->
                             <div class="mb-3">
                                 <label for="descriptifD{{ document['id'] }}" class="form-label">Descriptif *</label>
-                                <textarea name="descriptifD{{ document['id'] }}" id="descriptifD{{ document['id'] }}" rows="4" class="form-control" required>{{ document['descriptif'] }}</textarea>
+                                {{ current_document_form.descriptifD(id="descriptifD" ~ document['id'], rows=4, class_="form-control", required=True) }}
                             </div>
                             <!-- Document -->
                             <div class="mb-3">
                                 <label for="documentD{{ document['id'] }}" class="form-label">Document</label>
-                                <input type="file" class="form-control" name="documentD{{ document['id'] }}" id="documentD{{ document['id'] }}">
+                                {{ current_document_form.documentD(class_="form-control", id="documentD" ~ document['id']) }}
                             </div>
                             <!-- Lien du document -->
                             <div class="mb-3 d-none">
                                 <label for="strLienD{{ document['id'] }}" class="form-label">Lien *</label>
-                                <input type="text" class="form-control" name="strLienD{{ document['id'] }}" id="strLienD{{ document['id'] }}" value="{{ document['str_lien'] }}">
+                                {{ current_document_form.strLienD(id="strLienD" ~ document['id']) }}
                             </div>
                             <button type="submit" class="btn btn-primary">Modifier</button>
                         </form>
@@ -735,32 +687,28 @@
                     </div>
                     <!-- Contenu du modal -->
                     <div class="modal-body">
+                        {% set current_bill_form = bill_forms[bill['id']] %}
                         <form action="{{ url_for('contracts_bp.modif_bill_id', id_contrat=bill['id_contrat'], id_bill=bill['id'], tab='f') }}" method="post" enctype="multipart/form-data">
-                            <input type="hidden" name="_method" value="PUT">
-                            <!-- Identifiant du contrat -->
-                            <div class="mb-3 d-none">
-                                <input type="text" name="idContratF{{ bill['id'] }}" id="idContratF{{ bill['id'] }}" value="{{ bill['id_contrat'] }}">
-                            </div>
+                            {{ current_bill_form.hidden_tag() }}
                             <!-- Date de la facture -->
                             <div class="mb-3">
                                 <label for="dateFactureF{{ bill['id'] }}" class="form-label">Date *</label>
-                                <input type="date" class="form-control" name="dateFactureF{{ bill['id'] }}" id="dateFactureF{{ bill['id'] }}" value="{{ bill['date_facture'] }}" required>
+                                {{ current_bill_form.dateFactureF0(class_="form-control", id="dateFactureF" ~ bill['id'], required=True) }}
                             </div>
                             <!-- Titre de la facture -->
                             <div class="mb-3">
                                 <label for="titreFactureF{{ bill['id'] }}" class="form-label">Titre *</label>
-                                <input type="text" class="form-control" name="titreFactureF{{ bill['id'] }}" id="titreFactureF{{ bill['id'] }}" value="{{ bill['titre_facture'] }}" required>
+                                {{ current_bill_form.titreFactureF0(class_="form-control", id="titreFactureF" ~ bill['id'], required=True) }}
                             </div>
                             <!-- Montant de la facture -->
                             <div class="mb-3">
                                 <label for="montantFactureF{{ bill['id'] }}" class="form-label">Montant *</label>
-                                <input type="number" step="0.01" class="form-control" name="montantFactureF{{ bill['id'] }}"
-                                       id="montantFactureF{{ bill['id'] }}" value="{{ bill['montant'] }}" onchange="replaceCommaByDot(this)" required>
+                                    {{ current_bill_form.montantFactureF0(class_="form-control", id="montantFactureF" ~ bill['id'], onchange="replaceCommaByDot(this)", required=True) }}
                             </div>
                             <!-- Upload du fichier de la facture -->
                             <div class="mb-3">
                                 <label for="fileFactureF{{ bill['id'] }}" class="form-label">Document</label>
-                                <input type="file" class="form-control" name="fileFactureF{{ bill['id'] }}" id="fileFactureF{{ bill['id'] }}">
+                                {{ current_bill_form.documentF0(class_="form-control", id="fileFactureF" ~ bill['id']) }}
                             </div>
                             <button type="submit" class="btn btn-primary">Modifier</button>
                         </form>

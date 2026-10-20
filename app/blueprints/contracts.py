@@ -35,6 +35,14 @@ from ..utilities import (
 from ..models import Contract, Contacts, Event, Document, Bill
 from ..habilitations import validate_habilitation, GESTIONNAIRE
 from ..docs import download_file
+from ..forms import (
+    BillForm,
+    ContactForm,
+    ContractForm,
+    DeleteContactForm,
+    DocumentForm,
+    EventForm,
+)
 
 contracts_bp = Blueprint(
     'contracts_bp',
@@ -60,6 +68,31 @@ def contrats() -> ResponseReturnValue:
 
         # Récupération de la liste des contrats
         contracts = g.db_session.query(Contract).all()
+        add_contract_form = ContractForm()
+        add_contract_form.Type0.render_kw = {'data-contract-id': '0'}
+        contract_forms = {
+            contract.id: ContractForm(data={
+                'Type0': contract.type_contrat,
+                'SType0': contract.sous_type_contrat,
+                'Entreprise': contract.entreprise,
+                'numContratExterne': contract.id_externe_contrat,
+                'Intitule': contract.intitule,
+                'dateDebut': contract.date_debut,
+                'dateFinPreavis': contract.date_fin_preavis,
+                'dateFin': contract.date_fin,
+            })
+            for contract in contracts
+        }
+        for contract in contracts:
+            contract_form = contract_forms[contract.id]
+            contract_form.Type0.render_kw = {
+                'data-contract-id': str(contract.id),
+                'data-contract-value': contract.type_contrat,
+            }
+            contract_form.SType0.render_kw = {
+                'data-contract-id': str(contract.id),
+                'data-s-type-value': contract.sous_type_contrat,
+            }
 
         # Récupération des menus depuis le fichier JSON
         menus: str = get_jsoned_datas(
@@ -77,6 +110,8 @@ def contrats() -> ResponseReturnValue:
             success_message=success_message,
             error_message=error_message,
             menus_data=menus,
+            add_contract_form=add_contract_form,
+            contract_forms=contract_forms,
         )
 
     # === Gestion de la méthode POST (ajout d'un nouveau contrat) ===
@@ -143,6 +178,79 @@ def contrats_by_num(id_contrat: int) -> ResponseReturnValue:
         documents = list(g.db_session.query(Document).filter(Document.id_contrat == id_contrat))
         bills = list(g.db_session.query(Bill).filter(Bill.id_contrat == id_contrat))
         contacts = list(g.db_session.query(Contacts).filter(Contacts.id_contrat == id_contrat))
+        contact_forms = {
+            contact.id: ContactForm(data={
+                'nomC': contact.nom,
+                'fonctionC': contact.fonction,
+                'mailC': contact.mail,
+                'telFixeC': contact.tel_fixe,
+                'telPortableC': contact.tel_portable,
+                'adresseC': contact.adresse,
+                'codePostalC': contact.code_postal,
+                'villeC': contact.ville,
+            })
+            for contact in contacts
+        }
+        contact_delete_forms = {
+            contact.id: DeleteContactForm(data={'contact_id': contact.id})
+            for contact in contacts
+        }
+        event_forms = {
+            event.id: EventForm(data={
+                'dateEvenementE': event.date_evenement,
+                'TypeE0': event.type_evenement,
+                'STypeE0': event.sous_type_evenement,
+                'descriptifE': event.descriptif,
+            })
+            for event in events
+        }
+        event_form = EventForm()
+        event_form.TypeE0.render_kw = {'data-event-id': '0', 'data-contract-id': '0'}
+        event_form.descriptifE.render_kw = {'data-stype-event-value': ''}
+        for event in events:
+            current_form = event_forms[event.id]
+            current_form.TypeE0.render_kw = {
+                'data-event-id': str(event.id),
+                'data-event-type-value': event.type_evenement,
+                'data-contract-id': str(event.id_contrat),
+            }
+            current_form.STypeE0.render_kw = {
+                'data-event-id': str(event.id),
+                'data-stype-event-value': event.sous_type_evenement,
+                'data-contract-id': str(event.id_contrat),
+            }
+        document_forms = {
+            document.id: DocumentForm(data={
+                'dateDocumentD': document.date_document,
+                'TypeD0': document.type_document,
+                'STypeD0': document.sous_type_document,
+                'descriptifD': document.descriptif,
+                'strLienD': document.str_lien,
+            })
+            for document in documents
+        }
+        document_form = DocumentForm()
+        document_form.TypeD0.render_kw = {'data-document-id': '0', 'data-contract-id': '0'}
+        document_form.STypeD0.render_kw = {'data-stype-document-value': ''}
+        for document in documents:
+            current_form = document_forms[document.id]
+            current_form.TypeD0.render_kw = {
+                'data-document-id': str(document.id),
+                'data-document-type-value': document.type_document,
+                'data-contract-id': str(document.id_contrat),
+            }
+            current_form.STypeD0.render_kw = {
+                'data-stype-document-value': document.sous_type_document,
+                'data-document-id': str(document.id),
+            }
+        bill_forms = {
+            bill.id: BillForm(data={
+                'dateFactureF0': bill.date_facture,
+                'titreFactureF0': bill.titre_facture,
+                'montantFactureF0': bill.montant,
+            })
+            for bill in bills
+        }
 
         # Récupération des filtres depuis le fichier JSON
         document_typing = get_jsoned_datas(
@@ -171,20 +279,29 @@ def contrats_by_num(id_contrat: int) -> ResponseReturnValue:
             error_message=error_message,
             document_typing=document_typing,
             event_typing=event_typing,
-            tab=tab
+            tab=tab,
+            contact_form=ContactForm(),
+            contact_forms=contact_forms,
+            event_form=event_form,
+            event_forms=event_forms,
+            document_form=document_form,
+            document_forms=document_forms,
+            bill_form=BillForm(),
+            bill_forms=bill_forms,
+            contact_delete_forms=contact_delete_forms,
         )
 
     # === Gestion de la méthode POST (modification du contrat) ===
-    if request.method == 'POST' and request.form.get('_method') == 'PUT':
+    if request.method == 'POST':
         # Récupération des données du formulaire
-        type_contrat = request.form.get(f'Type{id_contrat}', '')
-        sous_type_contrat = request.form.get(f'SType{id_contrat}', '')
-        entreprise = request.form.get(f'Entreprise{id_contrat}', '')
-        id_contrat_externe = request.form.get(f'numContratExterne{id_contrat}', '')
-        intitule = request.form.get(f'Intitule{id_contrat}', '')
-        date_debut = request.form.get(f'dateDebut{id_contrat}', '')
-        date_fin_preavis = request.form.get(f'dateFinPreavis{id_contrat}', '')
-        date_fin = request.form.get(f'dateFin{id_contrat}', None)
+        type_contrat = request.form.get('Type0', '')
+        sous_type_contrat = request.form.get('SType0', '')
+        entreprise = request.form.get('Entreprise', '')
+        id_contrat_externe = request.form.get('numContratExterne', '')
+        intitule = request.form.get('Intitule', '')
+        date_debut = request.form.get('dateDebut', '')
+        date_fin_preavis = request.form.get('dateFinPreavis', '')
+        date_fin = request.form.get('dateFin', None)
 
         try:
             if contract:
@@ -444,16 +561,16 @@ def modif_contact_id(id_contact: int, id_contrat: int) -> ResponseReturnValue:
     """
     tab = 'c'
     # === Gestion de la méthode POST (modification d'un contact) ===
-    if request.method == 'POST' and request.form.get('_method') == 'PUT':
+    if request.method == 'POST':
         # Récupération du formulaire
-        nom = request.form.get(f'nomC{id_contact}')
-        fonction = request.form.get(f'fonctionC{id_contact}')
-        mail = request.form.get(f'mailC{id_contact}')
-        tel_fixe = request.form.get(f'telFixeC{id_contact}')
-        tel_portable = request.form.get(f'telPortableC{id_contact}')
-        adresse = request.form.get(f'adresseC{id_contact}')
-        code_postal = request.form.get(f'codePostalC{id_contact}')
-        ville = request.form.get(f'villeC{id_contact}')
+        nom = request.form.get('nomC')
+        fonction = request.form.get('fonctionC')
+        mail = request.form.get('mailC')
+        tel_fixe = request.form.get('telFixeC')
+        tel_portable = request.form.get('telPortableC')
+        adresse = request.form.get('adresseC')
+        code_postal = request.form.get('codePostalC')
+        ville = request.form.get('villeC')
 
         try:
             # Récupération du contact
@@ -509,12 +626,12 @@ def modif_event_id(id_event: int, id_contrat: int) -> ResponseReturnValue:
     """
     tab = 'e'
     # === Gestion de la méthode POST (modification d'un évènement) ===
-    if request.method == 'POST' and request.form.get('_method') == 'PUT':
+    if request.method == 'POST':
         # Récupération du formulaire
-        date_evenement = request.form.get(f'dateEvenementE{id_event}')
-        type_evenement = request.form.get(f'TypeE{id_event}')
-        sous_type_evenement = request.form.get(f'STypeE{id_event}')
-        descriptif = request.form.get(f'descriptifE{id_event}')
+        date_evenement = request.form.get('dateEvenementE')
+        type_evenement = request.form.get('TypeE0')
+        sous_type_evenement = request.form.get('STypeE0')
+        descriptif = request.form.get('descriptifE')
 
         try:
             # Récupération de l'évènement
@@ -567,10 +684,10 @@ def modif_document_id(id_document: int, id_contrat: int) -> ResponseReturnValue:
     :rtype: ResponseReturnValue
     """
     tab = 'd'
-    new_binary_file: Any = request.files.get(f'documentD{id_document}', None)
+    new_binary_file: Any = request.files.get('documentD', None)
 
     # === Gestion de la méthode POST (modification d'un document) ===
-    if request.method == 'POST' and request.form.get('_method') == 'PUT':
+    if request.method == 'POST':
         try:
             # Récupération du document
             document: Document = g.db_session.query(Document) \
@@ -582,12 +699,12 @@ def modif_document_id(id_document: int, id_contrat: int) -> ResponseReturnValue:
 
             # Mise à jour des valeurs du document
             document.date_document = datetime.strptime(
-                request.form.get(f'dateDocumentD{id_document}', ''),
+                request.form.get('dateDocumentD', ''),
                 '%Y-%m-%d'
             )
-            document.type_document = request.form.get(f'TypeD{id_document}', '')
-            document.sous_type_document = request.form.get(f'STypeD{id_document}', '')
-            document.descriptif = request.form.get(f'descriptifD{id_document}', '')
+            document.type_document = request.form.get('TypeD0', '')
+            document.sous_type_document = request.form.get('STypeD0', '')
+            document.descriptif = request.form.get('descriptifD', '')
             binary_changes = True if new_binary_file and new_binary_file.filename != '' else False
             if binary_changes:
                 document.switch(file_to_switch=new_binary_file, old_file_name=old_str_lien)
@@ -638,10 +755,10 @@ def modif_bill_id(id_bill: int, id_contrat: int) -> ResponseReturnValue:
     :rtype: ResponseReturnValue
     """
     tab = 'f'
-    new_binary_file: Any = request.files.get(f'fileFactureF{id_bill}', None)
+    new_binary_file: Any = request.files.get('documentF0', None)
 
     # === Gestion de la méthode POST (modification d'une facture) ===
-    if request.method == 'POST' and request.form.get('_method') == 'PUT':
+    if request.method == 'POST':
 
         try:
             # Récupération de la facture
@@ -652,11 +769,11 @@ def modif_bill_id(id_bill: int, id_contrat: int) -> ResponseReturnValue:
 
             # Mise à jour des valeurs de la facture
             bill.date_facture = datetime.strptime(
-                request.form.get(f'dateFactureF{id_bill}', ''),
+                request.form.get('dateFactureF0', ''),
                 '%Y-%m-%d',
             )
-            bill.titre_facture = request.form.get(f'titreFactureF{id_bill}', '')
-            bill.montant = int(request.form.get(f'montantFactureF{id_bill}', ''))
+            bill.titre_facture = request.form.get('titreFactureF0', '')
+            bill.montant = int(request.form.get('montantFactureF0', ''))
             binary_changes = True if new_binary_file and new_binary_file.filename != '' else False
             if binary_changes:
                 bill.switch(file_to_switch=new_binary_file, old_file_name=old_str_lien)

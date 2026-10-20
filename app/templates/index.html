@@ -96,18 +96,6 @@
                     {% endif %}
                 {% endfor %}
 
-                <!-- VPN Access -->
-                {% if '7' in session.get('habilitation', '') %}
-                <div class="card card-environment" style="background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);">
-                    <i class="bi bi-shield-lock mb-3" style="font-size: 2.5rem;"></i>
-                    <h2 class="mb-2">Accès VPN</h2>
-                    <p class="mb-4" style="font-size: var(--font-size-sm);">Téléchargez votre configuration VPN</p>
-                    <a href="{{ url_for('vpn.vpn') }}" class="btn btn-lg">
-                        <i class="bi bi-arrow-right me-2"></i> Accéder
-                    </a>
-                </div>
-                {% endif %}
-
                 <!-- Déconnexion -->
                 <div class="card card-environment" style="background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%);">
                     <i class="bi bi-box-arrow-right mb-3" style="font-size: 2.5rem;"></i>

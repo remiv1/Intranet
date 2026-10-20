@@ -33,6 +33,7 @@ from werkzeug.datastructures import FileStorage
 # Imports locaux
 from ._common import ADMINISTRATION, BAD_INVITATION, INTERNAL_SERVER_ERROR
 from ..models import User, DocToSigne, Points, Invitation, AuditLog
+from ..forms import SignatureMakeForm, SignatureUploadForm
 from ..signatures import (
     SignatureDoer,
     SignatureMaker,
@@ -75,7 +76,11 @@ def signature_make() -> Any:
             g.db_session.commit()
         except (IOError, FileNotFoundError, ValueError) as e:
             message = f"Erreur lors du traitement du document : {str(e)}"
-            return render_template(ADMINISTRATION, error_message=message)
+            return render_template(
+                ADMINISTRATION,
+                error_message=message,
+                signature_upload_form=SignatureUploadForm(),
+            )
         message = f"Document '{document.doc_to_signe.doc_nom}' créé, invitations envoyées."
         return redirect(url_for('ea', success_message=message))
 
@@ -87,11 +92,17 @@ def signature_make() -> Any:
             ADMINISTRATION,
             context='signature_make',
             users=users,
-            document_name=None
+            document_name=None,
+            signature_form=SignatureMakeForm(),
         )
 
     # === Méthodes non autorisée ===
-    return render_template(ADMINISTRATION, context=None, error_message="Méthode non autorisée")
+    return render_template(
+        ADMINISTRATION,
+        context=None,
+        error_message="Méthode non autorisée",
+        signature_upload_form=SignatureUploadForm(),
+    )
 
 @signatures_bp.route('/signer/<int:doc_id>/<hash_document>', methods=['GET', 'POST'])
 def signature_do(doc_id: int, hash_document: str) -> Any:
@@ -196,7 +207,11 @@ def signature_do(doc_id: int, hash_document: str) -> Any:
         )
         g.db_session.add(audit_log)
         g.db_session.commit()
-        return render_template(ADMINISTRATION, error_message=BAD_INVITATION)
+        return render_template(
+            ADMINISTRATION,
+            error_message=BAD_INVITATION,
+            signature_upload_form=SignatureUploadForm(),
+        )
 
 @signatures_bp.route('/<int:id_document>/otp/<hash_document>', methods=['POST'])
 def signature_request_otp(id_document: int, hash_document: str) -> Any:
@@ -391,7 +406,11 @@ def create_signature_from_template() -> Any:
     if request.method == 'POST':
         # Logique pour créer un document à signer depuis un modèle
         pass
-    return render_template(ADMINISTRATION, context='signature_create_from_template')
+    return render_template(
+        ADMINISTRATION,
+        context='signature_create_from_template',
+        signature_upload_form=SignatureUploadForm(),
+    )
 
 @signatures_bp.route('/upload', methods=['POST'])
 def upload_document() -> Any:
@@ -401,7 +420,8 @@ def upload_document() -> Any:
     POST : Traite le chargement du document PDF.
     """
     if request.method == 'POST':
-        pdf_document: FileStorage | None = request.files.get('pdf', None)
+        form = SignatureUploadForm()
+        pdf_document: FileStorage | None = form.pdf.data
         filename = getattr(pdf_document, "filename", None)
         if not pdf_document or not filename:
             audit_log = AuditLog(
@@ -416,7 +436,8 @@ def upload_document() -> Any:
             g.db_session.commit()
             return render_template(
                 ADMINISTRATION,
-                error_message="Aucun document PDF téléchargé ou nom de fichier invalide."
+                error_message="Aucun document PDF téléchargé ou nom de fichier invalide.",
+                signature_upload_form=form,
                 )
         if filename.lower().endswith('.pdf'):
             # Nettoyer les fichiers expirés avant de créer un nouveau
@@ -442,11 +463,18 @@ def upload_document() -> Any:
             users = [user.to_dict(with_mdp=False) for user in users]
             return render_template(ADMINISTRATION, context='signature_make',
                                    success_message="Document PDF téléchargé avec succès.",
-                                   document_name=filename, users=users)
+                                   document_name=filename, users=users,
+                                   signature_form=SignatureMakeForm(data={'doc_id': filename}))
         return render_template(
-            ADMINISTRATION, error_message="Le fichier téléchargé n'est pas un PDF."
+            ADMINISTRATION,
+            error_message="Le fichier téléchargé n'est pas un PDF.",
+            signature_upload_form=form,
         )
-    return render_template(ADMINISTRATION, error_message="Méthode non autorisée.")
+    return render_template(
+        ADMINISTRATION,
+        error_message="Méthode non autorisée.",
+        signature_upload_form=SignatureUploadForm(),
+    )
 
 @signatures_bp.get('/download/<filename>')
 def download_pdf(filename: str):

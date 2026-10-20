@@ -86,43 +86,30 @@
                 </div>
                 <div class="card-body">
                     <form id="form-impression" class="row g-4" action="{{ url_for('print_doc') }}" method="post" enctype="multipart/form-data">
+                        {{ print_form.hidden_tag() }}
                         <div class="col-md-4">
                             <label for="format" class="form-label">Format papier</label>
-                            <select name="format" class="form-control" id="format" title="Format du papier">
-                                <option value="A5">A5</option>
-                                <option value="A4" selected>A4</option>
-                                <option value="A3">A3</option>
-                            </select>
+                            {{ print_form.format(class_="form-control", id="format", title="Format du papier") }}
                         </div>
                         <div class="col-md-4">
                             <label for="recto_verso" class="form-label">Recto/verso</label>
-                            <select name="recto_verso" class="form-control" id="recto_verso" title="Impression recto verso">
-                                <option value="one-sided">Recto seulement</option>
-                                <option value="two-sided-short-edge">Recto-verso / Cote court</option>
-                                <option value="two-sided-long-edge" selected>Recto-verso / Cote long</option>
-                            </select>
+                            {{ print_form.recto_verso(class_="form-control", id="recto_verso", title="Impression recto verso") }}
                         </div>
                         <div class="col-md-4">
                             <label for="orientation" class="form-label">Orientation</label>
-                            <select name="orientation" class="form-control" id="orientation" title="Orientation de la page">
-                                <option value="3">Portrait</option>
-                                <option value="4">Paysage</option>
-                            </select>
+                            {{ print_form.orientation(class_="form-control", id="orientation", title="Orientation de la page") }}
                         </div>
                         <div class="col-md-4">
                             <label for="couleur" class="form-label">Couleur</label>
-                            <select name="couleur" class="form-control" id="couleur" title="Couleur d'impression">
-                                <option value="monochrome">Noir et blanc</option>
-                                <option value="color">Couleur</option>
-                            </select>
+                            {{ print_form.couleur(class_="form-control", id="couleur", title="Couleur d'impression") }}
                         </div>
                         <div class="col-md-4">
                             <label for="copies" class="form-label">Nombre de copies</label>
-                            <input type="number" name="copies" class="form-control" id="copies" value="1" min="1" max="100" title="Nombre de copies">
+                            {{ print_form.copies(class_="form-control", id="copies", title="Nombre de copies") }}
                         </div>
                         <div class="col-md-4">
                             <label for="document" class="form-label">Document PDF</label>
-                            <input class="form-control" type="file" name="document" id="document" accept="application/pdf" title="Selectionner un fichier PDF" required>
+                            {{ print_form.document(class_="form-control", id="document", accept="application/pdf", title="Selectionner un fichier PDF", required=True) }}
                         </div>
                         <div class="col-12 d-flex justify-content-end">
                             <button type="submit" class="btn btn-primary">

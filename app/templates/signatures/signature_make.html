@@ -25,7 +25,7 @@
                 </div>
                 
                 <form id="signature-form" method="POST" action="{{ url_for('signature.signature_make') }}">
-                    <input type="hidden" id="doc_id" name="doc_id" value="{{ document_name }}">
+                    {{ signature_form.hidden_tag() }}
                     <div id="signer-form">
                         <!-- Les champs cachés pour les points de signature seront générés ici -->
                     </div>

@@ -82,7 +82,7 @@
             </div>
 
             <!-- Cartes d'Accès -->
-            <div class="cards-grid-fit mb-8">
+            <div class="cards-grid-fit vpn-access-grid mb-8">
                 {% set has_global   = ('1' in habilitation) or ('2' in habilitation) %}
                 {% set has_fichiers = '5' in habilitation %}
                 {% set has_charlem  = '3' in habilitation %}
@@ -108,8 +108,8 @@
 
                 <!-- Accès Serveur de Fichiers -->
                 {% if has_fichiers %}
-                <div class="card vpn-card">
-                    <div class="card-header" style="background-color: var(--color-success);">
+                <div class="card vpn-card vpn-card--files">
+                    <div class="card-header">
                         <h5 class="mb-0">
                             <i class="bi bi-folder-fill me-2"></i> Serveur de Fichiers
                         </h5>
@@ -127,9 +127,9 @@
 
                 <!-- Accès Charlemagne -->
                 {% if has_charlem %}
-                <div class="card vpn-card">
-                    <div class="card-header" style="background-color: var(--color-warning);">
-                        <h5 class="mb-0" style="color: var(--color-dark);">
+                <div class="card vpn-card vpn-card--charlemagne">
+                    <div class="card-header">
+                        <h5 class="mb-0">
                             <i class="bi bi-pc-display me-2"></i> Charlemagne
                         </h5>
                     </div>
