@@ -1,6 +1,12 @@
 name: Docker Workflow
 
-on: [push, pull_request]
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
 
 jobs:
   build:
@@ -40,11 +46,23 @@ jobs:
       - name: Configuration de Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.12'
+          python-version: '3.14'
       - name: Installation des dépendances système
         run: |
           sudo apt-get update
-          sudo apt-get install -y libcups2-dev
+          sudo apt-get install -y libcups2-dev \
+            build-essential \
+            ca-certificates \
+            curl \
+            cups-client \
+            libcairo2 \
+            libcups2-dev \
+            libffi-dev \
+            libssl-dev \
+            netcat-openbsd \
+            pkg-config \
+            tzdata
+          rm -rf /var/lib/apt/lists/*
       - name: Cache des packages Python
         uses: actions/cache@v3
         with:

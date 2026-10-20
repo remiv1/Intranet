@@ -1,24 +1,50 @@
 # 🎓 Intranet - Application de Gestion d'Établissement
 
-[![Version](https://img.shields.io/badge/Version-1.3.0-brightgreen.svg)](https://github.com/remiv1/Intranet/releases/tag/version-1.3.0)
-[![Flask](https://img.shields.io/badge/Flask-3.1.0-green.svg)](https://flask.palletsprojects.com/)
-[![SQLAlchemy](https://img.shields.io/badge/SQLAlchemy-2.0.38-green.svg)](https://www.sqlalchemy.org/)
-[![Alembic](https://img.shields.io/badge/Alembic-1.11.1-green.svg)](https://alembic.sqlalchemy.org/)
-[![Python](https://img.shields.io/badge/Python-3.12-blue.svg)](https://www.python.org/)
-[![MariaDB](https://img.shields.io/badge/MariaDB-latest-blue.svg)](https://mariadb.org/)
-[![Docker](https://img.shields.io/badge/Docker-compose-blue.svg)](https://www.docker.com/)
-[![CSS](https://img.shields.io/badge/CSS-3-blue.svg)](https://developer.mozilla.org/fr/docs/Web/CSS)
-[![HTML5](https://img.shields.io/badge/HTML5-orange.svg)](https://developer.mozilla.org/fr/docs/Web/HTML)
-[![JavaScript](https://img.shields.io/badge/JavaScript-yellow.svg)](https://developer.mozilla.org/fr/docs/Web/JavaScript)
+[![Version](https://img.shields.io/badge/Version-2.0.0-brightgreen.svg)](https://github.com/remiv1/Intranet/releases/tag/version-2.0.0)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![PDF.js](https://img.shields.io/badge/PDF.js-3.11.174-blue.svg)](https://mozilla.github.io/pdf.js/)
-[![jQuery](https://img.shields.io/badge/jQuery-3.7.1-blue.svg)](https://jquery.com/)
+
+[![Flask](https://img.shields.io/badge/Flask-3.1.3-green.svg)](https://flask.palletsprojects.com/)
+[![SQLAlchemy](https://img.shields.io/badge/SQLAlchemy-2.1.5-green.svg)](https://www.sqlalchemy.org/)
+[![Alembic](https://img.shields.io/badge/Alembic-1.20.0-green.svg)](https://alembic.sqlalchemy.org/)
+
+[![Python](https://img.shields.io/badge/Python-3.14-blue.svg)](https://www.python.org/)
+[![MariaDB](https://img.shields.io/badge/MariaDB-12.0.2-blue.svg)](https://mariadb.org/)
+[![Docker-Compose](https://img.shields.io/badge/DockerCompose-5.6.0-blue.svg)](https://www.docker.com/)
+[![Podman-Compose](https://img.shields.io/badge/PodmanCompose-1.6.0-blue.svg)](https://podman.io/)
+
+[![Style&Affichage](https://img.shields.io/badge/Style%26Affichage-purple.svg)](https://developer.mozilla.org/fr/docs/Web/CSS)
+[![CSS](https://img.shields.io/badge/CSS-3-purple.svg)](https://developer.mozilla.org/fr/docs/Web/CSS)
+[![HTML5](https://img.shields.io/badge/HTML-5-purple.svg)](https://developer.mozilla.org/fr/docs/Web/HTML)
 [![Bootstrap](https://img.shields.io/badge/Bootstrap-5.3.3-purple.svg)](https://getbootstrap.com/)
-[![SignaturePad](https://img.shields.io/badge/SignaturePad-4.1.7-blue.svg)](https://github.com/szimek/signature_pad)
+
+[![JavaScript](https://img.shields.io/badge/JavaScript-yellow.svg)](https://developer.mozilla.org/fr/docs/Web/JavaScript)
+[![PDF.js](https://img.shields.io/badge/PDF.js-3.11.174-yellow.svg)](https://mozilla.github.io/pdf.js/)
+[![jQuery](https://img.shields.io/badge/jQuery-3.7.1-yellow.svg)](https://jquery.com/)
+[![SignaturePad](https://img.shields.io/badge/SignaturePad-4.1.7-yellow.svg)](https://github.com/szimek/signature_pad)
+
+[![GitHub Actions](https://img.shields.io/badge/GitHub%20Actions-Tests-red.svg)](https://github.com/remiv1/Intranet/actions)
+[![Coverage 44%](https://img.shields.io/badge/Coverage-44%25-red.svg)](https://github.com/remiv1/Intranet/actions)
 
 ## 🛠️ Évolutions et Roadmap
 
-### ✅ Évolutions Récentes (Septembre-Octobre 2025)
+### ✅ Évolutions Récentes (Octobre 2026)
+
+### Version 2.0.0 (Octobre 2026) - Nouvelle Architecture et Améliorations Globales
+
+- **🏗️ Nouvelle Architecture** : Refactorisation complète avec séparation des modules et amélioration des performances
+- **🔒 Sécurité Renforcée** : Mise en place de nouvelles pratiques de sécurité pour les données sensibles
+- **⚡ Améliorations de Performance** : Optimisation des requêtes SQL et du rendu côté client
+- **🧪 Tests Automatisés** : Intégration complète des tests unitaires et d'intégration avec GitHub Actions
+- **📦 Gestion des Dépendances** : Mise à jour des bibliothèques et outils pour garantir la compatibilité et la stabilité
+- **🛡️ Installation d'un module de gestion VPN** : Mise en place d'un système de génération et de gestion des accès VPN avec contrôle d'accès par rôle
+  - Création d'un blueprint spécifique pour la création de la configuration à passer au VPN Wireguard
+  - Gestion des clés et des certificats pour chaque utilisateur VPN
+  - Mise en place d'un système de révocation des accès VPN
+  - Suivi et audit des connexions VPN pour chaque utilisateur
+  - Intégration avec le système d'authentification existant pour un contrôle d'accès centralisé
+  - Documentation complète pour l'installation et la configuration du module VPN
+
+### ✅ Évolutions Intermédiaires (Septembre-Octobre 2025)
 
 #### Version 1.3.0 (5 octobre 2025) - Module Signature Électronique ✨
 

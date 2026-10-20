@@ -4,10 +4,11 @@
 
 ## 🔐 Authentification et Sécurité
 
-- [x] **Connexion sécurisée** avec hachage SHA-256 (modifications à venir Argon2)
+- [x] **Connexion sécurisée** avec Argon2
 - [x] **Système anti-brute force** : limitation à 3 tentatives
 - [x] **Verrouillage automatique** des comptes après échecs
 - [x] **Gestion des sessions** Flask sécurisées
+- [x] **Enregistrement session en base de données** avec persistance des sessions Flask
 - [x] **HTTPS** avec certificats SSL/TLS
 - [x] **Validation des entrées** côté serveur
 
@@ -90,5 +91,11 @@
 - [ ] **Recherche globale** dans tous les modules
 - [ ] **Raccourcis clavier** pour actions fréquentes
 - [x] **Notifications toast** pour feedback utilisateur
+
+## VPN
+
+- [x] **Génération des configurations VPN** avec clés et certificats sécurisés
+- [x] **Gestion des utilisateurs VPN** avec attribution de droits et suivi des connexions
+- [x] **Envoi au VPN des configurations générées** pour mise à jour automatique
 
 [<- Retour à la page d'accueil](../README.md)

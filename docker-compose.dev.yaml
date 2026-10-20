@@ -6,7 +6,7 @@ services:
       args:
         APP_UID: ${APP_UID:-10001}
         APP_GID: ${APP_GID:-10001}
-    container_name: intranet_app
+    container_name: intranet_app_dev
     depends_on:
       - db
     volumes:
@@ -24,13 +24,13 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     networks:
-      intranet_net:
-      cups_network:
+      intranet_net_dev:
+      cups_network_dev:
         ipv4_address: 192.168.100.10
 
   nginx:
     image: nginx:latest
-    container_name: intranet_proxy
+    container_name: intranet_proxy_dev
     depends_on:
       - web
     volumes:
@@ -40,7 +40,7 @@ services:
       - "7443:443"
       - "7080:80"
     networks:
-      - intranet_net
+      - intranet_net_dev
     restart: always
 
   db:
@@ -48,7 +48,7 @@ services:
       context: ./database
       dockerfile: Dockerfile.mariadb
     image: intranet_mariadb:12.0.2
-    container_name: intranet_db
+    container_name: intranet_db_dev
     restart: always
     environment:
       MYSQL_ROOT_PASSWORD: ${ROOT_PASSWORD}
@@ -60,16 +60,16 @@ services:
     volumes:
       - ${DB_LOCAL_PATH}:${DB_DOCKER_PATH}:U,Z
     networks:
-      - intranet_net
+      - intranet_net_dev
 
 networks:
-  intranet_net:
+  intranet_net_dev:
     driver: bridge
     ipam:
       config:
         - subnet: 172.20.0.0/16
           gateway: 172.20.0.1
-  cups_network:
+  cups_network_dev:
     driver: bridge
     ipam:
       config:

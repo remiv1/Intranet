@@ -30,6 +30,7 @@ services:
     environment:
       INTRANET_TESTING: "1"
       PYTHON_DOTENV_DISABLED: "1"
+      COVERAGE_FILE: /tmp/.coverage
       DB_HOST: db-test
       DB_NAME: intranet_test
       DB_USER: intranet_test
@@ -41,8 +42,16 @@ services:
       PRINT_DOCKER_PATH: /tmp/intranet-test/print
       SIGNATURE_DOCKER_PATH: /tmp/intranet-test/signatures
       TEMP_DOCKER_PATH: /tmp/intranet-test/temp
-    tmpfs:
-      - /tmp
+    command:
+      - python
+      - -m
+      - pytest
+      - -c
+      - test/pytest.ini
+      - test
+      - --cov=app
+      - --cov-report=xml:/tmp/coverage.xml
+      - --cov-report=term
     networks:
       - test
 

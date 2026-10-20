@@ -1,0 +1,35 @@
+name: Tests des branches de développement
+
+on:
+  push:
+    branches-ignore:
+      - main
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Récupération du code
+        uses: actions/checkout@v4
+
+      - name: Exécution des tests avec MariaDB
+        run: >-
+          docker compose -f docker-compose.test.yaml up --build --force-recreate
+          --abort-on-container-exit --exit-code-from test
+
+      - name: Récupération du rapport de couverture
+        if: always()
+        run: >-
+          docker compose -f docker-compose.test.yaml cp
+          test:/tmp/coverage.xml "$RUNNER_TEMP/coverage.xml"
+
+      - name: Publication de la couverture
+        if: ${{ always() && github.actor != 'nektos/act' }}
+        uses: codecov/codecov-action@v3
+        with:
+          file: ${{ runner.temp }}/coverage.xml
+          fail_ci_if_error: false
+
+      - name: Nettoyage des conteneurs de test
+        if: always()
+        run: docker compose -f docker-compose.test.yaml down --remove-orphans
