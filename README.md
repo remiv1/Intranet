@@ -147,28 +147,29 @@ docker-compose restart nginx
 
 #### Canaux de support
 
-- [x] **GitHub Issues** : Bugs et demandes de fonctionnalités
-- [x] **Documentation** : Wiki du projet
-- [x] **Email** : [contact](remiv1@gmail.com)
+**GitHub Issues** : Bugs et demandes de fonctionnalités
+**Documentation** : Wiki du projet
+**Email** : [contact](remiv1@gmail.com)
 
 #### Contribution au projet
 
 Fork et contribution :
 
-- [ ] Fork du projet sur GitHub
-- [ ] git checkout -b nouvelle-fonctionnalite
-- [ ] # Développement et tests
-- [ ] git commit -m "feat: ajout nouvelle fonctionnalité"
-- [ ] git push origin nouvelle-fonctionnalite
-- [ ] # Créer une Pull Request
+```bash
+git checkout -b nouvelle-fonctionnalite
+# Développement et tests
+git commit -m "feat: ajout nouvelle fonctionnalité"
+git push origin nouvelle-fonctionnalite
+# Créer une Pull Request
+```
 
 #### Standards de code
 
-- [ ] **PEP 8** : Style de code Python
-- [ ] **Type hints** : Documentation des types
-- [ ] **Docstrings** : Documentation des fonctions
-- [ ] **Tests** : Couverture minimum 80%
-- [ ] **Security** : Validation des entrées utilisateur
+**PEP 8** : Style de code Python
+**Type hints** : Documentation des types
+**Docstrings** : Documentation des fonctions
+**Tests** : Couverture minimum 40% → Cible : 60%
+**Security** : Validation des entrées utilisateur
 
 ---
 

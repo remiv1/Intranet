@@ -82,6 +82,8 @@ class SignatureMaker:
         self.points = []
         self.limite_signature = None
         self.doc_to_signe: DocToSigne = DocToSigne()
+        self.source_path: Path | None = None
+        self.final_path: Path | None = None
 
     def post_request(self) -> 'SignatureMaker':
         """Récupère les données du formulaire de la requête POST.
@@ -233,6 +235,8 @@ class SignatureMaker:
             Path(final_dir).mkdir(parents=True, exist_ok=True)
             old_path = Path(temp_dir) / self.old_name
             new_path = Path(final_dir) / self.new_name
+            self.source_path = old_path
+            self.final_path = new_path
 
             # Vérification de l'existence du fichier source
             if old_path.exists():
@@ -258,6 +262,26 @@ class SignatureMaker:
 
         # Gestion des exceptions liées à l'absence de noms valides
         raise FileNotFoundError("Le fichier source n'existe pas ou les noms sont invalides.")
+
+    def restore_document(self) -> None:
+        """Restaure le fichier temporaire si son déplacement doit être annulé.
+
+        Raises:
+            OSError: Si le fichier ne peut pas être déplacé vers son emplacement temporaire.
+        """
+        if (
+            self.source_path is None
+            or self.final_path is None
+            or not self.final_path.exists()
+        ):
+            return
+
+        self.source_path.parent.mkdir(parents=True, exist_ok=True)
+        shutil.move(str(self.final_path), str(self.source_path))
+        try:
+            self.final_path.parent.rmdir()
+        except OSError:
+            pass
 
     def send_invitation(self) -> 'SignatureMaker':
         """Envoie une invitation aux utilisateurs pour signer le document.

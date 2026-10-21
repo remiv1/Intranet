@@ -8,13 +8,19 @@ et gère les erreurs de manière robuste pour assurer une expérience utilisateu
 
 import os
 import io
+import shutil
+import tempfile
+from contextlib import contextmanager
 from os.path import splitext
 from logging import getLogger
+from collections.abc import Generator
+from pathlib import Path
+
 from werkzeug.datastructures import FileStorage
 from werkzeug.utils import secure_filename
 from flask import jsonify, send_file
-from .impression import print_file
 from app.config.config import ConfigApp
+from .impression import print_file
 
 logger = getLogger(__name__)
 
@@ -37,6 +43,51 @@ def _ensure_folder_exists():
             os.makedirs(folder)
         _folder_initialized = True
 
+
+@contextmanager
+def preserve_files_on_error(
+    *file_names: str,
+    directory: str | Path | None = None,
+) -> Generator[None, None, None]:
+    """Restaure les fichiers concernés si une opération échoue.
+
+    Args:
+        file_names: Noms sécurisés des fichiers à protéger dans le dossier de dépôt.
+
+    Yields:
+        None: Le contexte de modification des fichiers.
+    """
+    folder = Path(directory) if directory is not None else Path(_get_folder())
+    folder.mkdir(parents=True, exist_ok=True)
+    snapshots: dict[Path, Path | None] = {}
+
+    try:
+        for file_name in dict.fromkeys(name for name in file_names if name):
+            path = folder / secure_filename(file_name)
+            if path.exists():
+                descriptor, backup_name = tempfile.mkstemp(
+                    prefix=".intranet-backup-", dir=folder
+                )
+                os.close(descriptor)
+                backup = Path(backup_name)
+                snapshots[path] = backup
+                shutil.copy2(path, backup)
+            else:
+                snapshots[path] = None
+
+        try:
+            yield
+        except BaseException:
+            for path, backup in snapshots.items():
+                path.unlink(missing_ok=True)
+                if backup is not None:
+                    os.replace(backup, path)
+            raise
+    finally:
+        for backup in snapshots.values():
+            if backup is not None:
+                backup.unlink(missing_ok=True)
+
 # Téléchargement du fichier vers le serveur
 def upload_file(file_to_upload: FileStorage, *, file_name: str):
     """Télécharge un fichier vers le serveur en utilisant un nom de fichier sécurisé.
@@ -58,9 +109,15 @@ def upload_file(file_to_upload: FileStorage, *, file_name: str):
     file_name = secure_filename(splitext(file_name)[0]) + extension
     file_path = os.path.join(_get_folder(), file_name)
 
-    # Enregistrement du fichier sur le serveur
-    with open(file_path, 'wb') as f:
-        f.write(file_to_upload.read())
+    # Ecrire d'abord dans le même dossier pour installer le fichier atomiquement.
+    descriptor, temporary_name = tempfile.mkstemp(dir=_get_folder(), prefix=".intranet-upload-")
+    try:
+        with os.fdopen(descriptor, 'wb') as temporary_file:
+            shutil.copyfileobj(file_to_upload.stream, temporary_file)
+        os.replace(temporary_name, file_path)
+    except BaseException:
+        Path(temporary_name).unlink(missing_ok=True)
+        raise
 
 # Transfert de deux fichiers (exchange files)
 def exchange_files(old_file_name: str, new_file: FileStorage, new_file_name: str):
@@ -74,23 +131,42 @@ def exchange_files(old_file_name: str, new_file: FileStorage, new_file_name: str
     """
     _ensure_folder_exists()  # S'assurer que le dossier existe
 
+    folder = Path(_get_folder())
+    old_path = folder / secure_filename(old_file_name)
+    new_path = folder / secure_filename(new_file_name)
+    descriptor, temporary_name = tempfile.mkstemp(dir=folder, prefix=".intranet-upload-")
+    temporary_path = Path(temporary_name)
+    backup_path: Path | None = None
+
     try:
-        # Suppression de l'ancien fichier
-        old_file_path = os.path.join(_get_folder(), secure_filename(old_file_name))
-        if os.path.exists(old_file_path):
-            os.remove(old_file_path)
+        with os.fdopen(descriptor, 'wb') as temporary_file:
+            shutil.copyfileobj(new_file.stream, temporary_file)
 
-        # Création du chemin du nouveau fichier sur le serveur
-        new_file_path = os.path.join(_get_folder(), secure_filename(new_file_name))
+        if old_path != new_path and old_path.exists():
+            backup_descriptor, backup_name = tempfile.mkstemp(
+                dir=folder, prefix=".intranet-backup-"
+            )
+            os.close(backup_descriptor)
+            backup_path = Path(backup_name)
+            os.replace(old_path, backup_path)
 
-        # Enregistrement du nouveau fichier sur le serveur
-        with open(new_file_path, 'wb') as f:
-            f.write(new_file.read())
+        try:
+            os.replace(temporary_path, new_path)
+        except BaseException:
+            if backup_path is not None:
+                os.replace(backup_path, old_path)
+                backup_path = None
+            raise
 
+        if backup_path is not None:
+            backup_path.unlink(missing_ok=True)
+            backup_path = None
         return True
-
-    except Exception:
-        return False
+    except BaseException:
+        temporary_path.unlink(missing_ok=True)
+        if backup_path is not None:
+            os.replace(backup_path, old_path)
+        raise
 
 
 def rename_file(old_file_name: str, new_file_name: str):
@@ -103,20 +179,12 @@ def rename_file(old_file_name: str, new_file_name: str):
     """
     _ensure_folder_exists()  # S'assurer que le dossier existe
 
-    try:
-        # Création des chemins des fichiers sur le serveur
-        old_file_path = os.path.join(_get_folder(), secure_filename(old_file_name))
-        new_file_path = os.path.join(_get_folder(), secure_filename(new_file_name))
-
-        # Renommage du fichier sur le serveur
-        if os.path.exists(old_file_path):
-            os.rename(old_file_path, new_file_path)
-            return True
-        else:
-            return False
-
-    except Exception:
-        return False
+    old_file_path = Path(_get_folder()) / secure_filename(old_file_name)
+    new_file_path = Path(_get_folder()) / secure_filename(new_file_name)
+    if not old_file_path.exists():
+        raise FileNotFoundError(f"Fichier source introuvable : {old_file_name}")
+    os.replace(old_file_path, new_file_path)
+    return True
 
 def download_file(file_name_with_ext: str):
     """Télécharge un fichier depuis le serveur vers le client.
@@ -148,7 +216,7 @@ def download_file(file_name_with_ext: str):
 
     except FileNotFoundError:
         return jsonify({'erreur': f'Erreur de fichier introuvable : {file_name_with_ext}'}), 404
-    except Exception as e:
+    except (OSError, RuntimeError) as e:
         return jsonify({'erreur': f'Erreur inconnue lors du téléchargement : {e}'})
 
 def delete_file(file_name: str, extension: str):
@@ -173,7 +241,7 @@ def delete_file(file_name: str, extension: str):
         else:
             return jsonify({'erreur': 'Erreur lors de la suppression : dossier inexistant'})
 
-    except Exception as e:
+    except OSError as e:
         return jsonify({'erreur': f'Erreur inconnue : {e}'})
 
 # Impression du fichier vers le serveur d'impression
@@ -202,6 +270,7 @@ def print_document(
     Retourne:
         Response: Un objet de réponse Flask indiquant le résultat de l'impression.
     """
+    file_path: str | None = None
     try:
         # Création du chemin du fichier sur le serveur
         file_name = secure_filename(file_name) + '.' + extension
@@ -216,11 +285,16 @@ def print_document(
         # Impression du fichier
         print_file(file_path, username, 'Intranet' , copies, sides, media, orientation, color)
         logger.info("Print command sent for file: %s", file_path)
-        os.remove(file_path)
-        logger.info("File %s removed from print directory after printing", file_path)
 
         return jsonify({'message': 'Document imprimé avec succès'})
 
-    except Exception as e:
+    except (OSError, RuntimeError) as e:
         logger.exception("Erreur lors de l'impression")
         return jsonify({'erreur': f'Erreur lors de l\'impression : {e}'})
+    finally:
+        if file_path and os.path.exists(file_path):
+            try:
+                os.remove(file_path)
+                logger.info("File %s removed from print directory", file_path)
+            except OSError:
+                logger.exception("Impossible de supprimer le fichier de spool %s", file_path)

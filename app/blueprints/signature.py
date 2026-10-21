@@ -56,8 +56,11 @@ def signature_make() -> Any:
     if request.method == 'POST':
         # Récupération du formulaire
         # Récupérer les points de signature
+        maker: SignatureMaker | None = None
+        committed = False
         try:
-            document = SignatureMaker(request) \
+            maker = SignatureMaker(request)
+            document = maker \
                 .post_request() \
                 .get_signature_points() \
                 .create_document() \
@@ -74,13 +77,15 @@ def signature_make() -> Any:
             )
             g.db_session.add(audit_log)
             g.db_session.commit()
-        except (IOError, FileNotFoundError, ValueError) as e:
-            message = f"Erreur lors du traitement du document : {str(e)}"
-            return render_template(
-                ADMINISTRATION,
-                error_message=message,
-                signature_upload_form=SignatureUploadForm(),
-            )
+            committed = True
+        finally:
+            if not committed:
+                g.db_session.rollback()
+                if maker is not None:
+                    try:
+                        maker.restore_document()
+                    except OSError:
+                        logging.exception("Impossible de restaurer le PDF temporaire")
         message = f"Document '{document.doc_to_signe.doc_nom}' créé, invitations envoyées."
         return redirect(url_for('ea', success_message=message))
 

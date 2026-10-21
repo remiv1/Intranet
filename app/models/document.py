@@ -187,14 +187,11 @@ class Document(Base):
             .. code-block:: python
                 document.upload(file_to_upload=binary_file)
         """
-        try:
-            from ..docs import upload_file  # pylint: disable=C0415
-            if self.str_lien:
-                upload_file(file_to_upload, file_name=self.str_lien)
-                return True
-            return False
-        except OSError:
-            return False
+        from ..docs import upload_file  # pylint: disable=C0415
+        if not self.str_lien:
+            raise OSError("Le document ne possède pas de nom de fichier.")
+        upload_file(file_to_upload, file_name=self.str_lien)
+        return True
 
     def rename_file(self) -> bool:
         """Fonction pour changer le nom du fichier du document. Utilise la fonction `rename_file`
@@ -207,16 +204,12 @@ class Document(Base):
             .. code-block:: python
                 document.create_name().rename_file()
         """
-        try:
-            if self.str_lien:
-                from ..docs import rename_file  # pylint: disable=C0415
-                old_name = self.str_lien
-                self.create_name()
-                rename_file(old_file_name=old_name, new_file_name=self.str_lien)
-                return True
-            return False
-        except OSError:
-            return False
+        from ..docs import rename_file  # pylint: disable=C0415
+        if not self.str_lien:
+            raise OSError("Le document ne possède pas de fichier à renommer.")
+        old_name = self.str_lien
+        self.create_name()
+        return rename_file(old_file_name=old_name, new_file_name=self.str_lien)
 
     def download(self):
         """
@@ -252,15 +245,13 @@ class Document(Base):
             document.switch(file_to_switch=binary_file, old_file_name='ancien_nom.pdf')
             ```
         """
-        try:
-            if self.str_lien:
-                from ..docs import exchange_files   # pylint: disable=C0415
-                self.create_name(binary_file=file_to_switch)
-                return exchange_files(
-                    old_file_name=old_file_name,
-                    new_file=file_to_switch,
-                    new_file_name=self.str_lien,
-                )
-            return False
-        except OSError:
-            return False
+        from ..docs import exchange_files, upload_file   # pylint: disable=C0415
+        self.create_name(binary_file=file_to_switch)
+        if not old_file_name:
+            upload_file(file_to_switch, file_name=self.str_lien or "")
+            return True
+        return exchange_files(
+            old_file_name=old_file_name,
+            new_file=file_to_switch,
+            new_file_name=self.str_lien or "",
+        )

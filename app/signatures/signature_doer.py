@@ -103,6 +103,9 @@ class SignatureDoer:
         document = g.db_session.query(DocToSigne) \
                         .filter_by(id=id_document, hash_fichier=hash_document) \
                         .first()
+        if not document:
+            raise ValueError(BAD_INVITATION)
+
         # Existance invitation, utilisateur, token
         invitation = g.db_session.query(Invitation) \
                         .filter_by(id_document=document.id, id_user=self.signatory_id) \
@@ -157,9 +160,14 @@ class SignatureDoer:
         self.document = g.db_session.query(DocToSigne) \
             .filter_by(id=id_document, hash_fichier=hash_document) \
             .first()
+        if not self.document:
+            raise ValueError(BAD_INVITATION)
+
         self.invitation = g.db_session.query(Invitation) \
             .filter_by(id_document=self.document.id, id_user=self.signatory_id) \
             .first()
+        if not self.invitation or self.token != self.invitation.token:
+            raise ValueError(BAD_INVITATION)
 
         return self
 

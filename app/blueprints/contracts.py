@@ -34,7 +34,7 @@ from ..utilities import (
     )
 from ..models import Contract, Contacts, Event, Document, Bill
 from ..habilitations import validate_habilitation, GESTIONNAIRE
-from ..docs import download_file
+from ..docs import download_file, preserve_files_on_error
 from ..forms import (
     BillForm,
     ContactForm,
@@ -472,22 +472,22 @@ def add_contrats_document(id_contrat: int) -> ResponseReturnValue:
             )
             g.db_session.add(document)
             g.db_session.flush()  # Pour obtenir l'ID avant le commit
-            document.create_name(binary_file=binary_file)
-            document.upload(file_to_upload=binary_file)
-
-            # Ajout et Fermeture de la session
-            g.db_session.commit()
+            if binary_file and binary_file.filename:
+                document.create_name(binary_file=binary_file)
+                with preserve_files_on_error(document.str_lien or ''):
+                    document.upload(file_to_upload=binary_file)
+                    g.db_session.commit()
+            else:
+                g.db_session.commit()
 
             # Retour du formulaire
             message = f'Document {document.str_lien} ajouté avec succès'
             return redirect(
                 url_for(DETAIL_CONTRAT, id_contrat=id_contrat, success_message=message, tab=tab)
             )
-        except SQLAlchemyError as e:
-            message = f'Erreur lors de l\'ajout du document {descriptif} : {e}'
-            return redirect(
-                url_for(DETAIL_CONTRAT, id_contrat=id_contrat, error_message=message, tab=tab)
-            )
+        except (OSError, SQLAlchemyError):
+            g.db_session.rollback()
+            raise
     return redirect(
         url_for(DETAIL_CONTRAT, id_contrat=id_contrat, error_message=NOT_ALLOWED, tab=tab)
     )
@@ -523,24 +523,22 @@ def add_contrats_bill(id_contrat: int) -> ResponseReturnValue:
             )
             g.db_session.add(bill)
             g.db_session.flush()  # Pour obtenir l'ID avant le commit
-            bill.create_name(binary_file=binary_file)
-
-            # Ajout et Fermeture de la session
-            g.db_session.commit()
-
-            # Enregistrement du fichier sur le serveur
-            bill.upload(file_to_upload=binary_file)
+            if binary_file and binary_file.filename:
+                bill.create_name(binary_file=binary_file)
+                with preserve_files_on_error(bill.str_lien or ''):
+                    bill.upload(file_to_upload=binary_file)
+                    g.db_session.commit()
+            else:
+                g.db_session.commit()
 
             # Retour du formulaire
             message = f'Facture {bill.titre_facture} ajoutée avec succès'
             return redirect(
                 url_for(DETAIL_CONTRAT, id_contrat=id_contrat, success_message=message, tab=tab)
             )
-        except SQLAlchemyError as e:
-            message = f'Erreur lors de l\'ajout de la facture {titre_facture} : {e}'
-            return redirect(
-                url_for(DETAIL_CONTRAT, id_contrat=id_contrat, error_message=message, tab=tab)
-            )
+        except (OSError, SQLAlchemyError):
+            g.db_session.rollback()
+            raise
     return redirect(
         url_for(DETAIL_CONTRAT, id_contrat=id_contrat, error_message=NOT_ALLOWED, tab=tab)
     )
@@ -707,12 +705,16 @@ def modif_document_id(id_document: int, id_contrat: int) -> ResponseReturnValue:
             document.descriptif = request.form.get('descriptifD', '')
             binary_changes = True if new_binary_file and new_binary_file.filename != '' else False
             if binary_changes:
-                document.switch(file_to_switch=new_binary_file, old_file_name=old_str_lien)
-            else:
-                document.rename_file()
-
-            # Enregistrement en base de données
-            g.db_session.commit()
+                document.create_name(binary_file=new_binary_file)
+            elif old_str_lien:
+                document.create_name()
+            new_str_lien = document.str_lien or ''
+            with preserve_files_on_error(old_str_lien, new_str_lien):
+                if binary_changes:
+                    document.switch(file_to_switch=new_binary_file, old_file_name=old_str_lien)
+                elif old_str_lien:
+                    document.rename_file()
+                g.db_session.commit()
 
             # Message de succès et redirection
             message = f'Document {document.str_lien} modifié avec succès'
@@ -722,18 +724,16 @@ def modif_document_id(id_document: int, id_contrat: int) -> ResponseReturnValue:
                 )
             )
         except ValueError as e:
+            g.db_session.rollback()
             # Message d'erreur et redirection en cas de problème de conversion de date
             message = f'Erreur liée à la date. Modification document {id_document} impossible : {e}'
             return redirect(
                 url_for(DETAIL_CONTRAT, id_contrat = id_contrat, error_message=message, tab=tab)
             )
 
-        except SQLAlchemyError as e:
-            # Message d'erreur et redirection
-            message = f'Erreur lors de la modification du document {id_document} : {e}'
-            return redirect(
-                url_for(DETAIL_CONTRAT, id_contrat = id_contrat, error_message=message, tab=tab)
-            )
+        except (OSError, SQLAlchemyError):
+            g.db_session.rollback()
+            raise
     else:
         return redirect(
             url_for(DETAIL_CONTRAT, id_contrat = id_contrat, error_message=NOT_ALLOWED, tab=tab)
@@ -776,12 +776,16 @@ def modif_bill_id(id_bill: int, id_contrat: int) -> ResponseReturnValue:
             bill.montant = int(request.form.get('montantFactureF0', ''))
             binary_changes = True if new_binary_file and new_binary_file.filename != '' else False
             if binary_changes:
-                bill.switch(file_to_switch=new_binary_file, old_file_name=old_str_lien)
-            else:
-                bill.rename_file()
-
-            # Enregistrement en base de données
-            g.db_session.commit()
+                bill.create_name(binary_file=new_binary_file)
+            elif old_str_lien:
+                bill.create_name()
+            new_str_lien = bill.str_lien or ''
+            with preserve_files_on_error(old_str_lien, new_str_lien):
+                if binary_changes:
+                    bill.switch(file_to_switch=new_binary_file, old_file_name=old_str_lien)
+                elif old_str_lien:
+                    bill.rename_file()
+                g.db_session.commit()
 
             # Message de succès et redirection
             message = f'Facture {bill.titre_facture} modifiée avec succès'
@@ -790,15 +794,14 @@ def modif_bill_id(id_bill: int, id_contrat: int) -> ResponseReturnValue:
             )
 
         except ValueError as e:
+            g.db_session.rollback()
             message = f'Erreur lors de la modification de la facture {id_bill} : {e}'
             return redirect(
                 url_for(DETAIL_CONTRAT, id_contrat = id_contrat, error_message=message, tab=tab)
             )
-        except SQLAlchemyError as e:
-            message = f'Erreur lors de la modification de la facture {id_bill} : {e}'
-            return redirect(
-                url_for(DETAIL_CONTRAT, id_contrat = id_contrat, error_message=message, tab=tab)
-            )
+        except (OSError, SQLAlchemyError):
+            g.db_session.rollback()
+            raise
     return redirect(
         url_for(DETAIL_CONTRAT, id_contrat = id_contrat, error_message=NOT_ALLOWED, tab=tab)
     )
