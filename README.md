@@ -23,7 +23,7 @@
 [![SignaturePad](https://img.shields.io/badge/SignaturePad-4.1.7-yellow.svg)](https://github.com/szimek/signature_pad)
 
 [![GitHub Actions](https://img.shields.io/badge/GitHub%20Actions-Tests-red.svg)](https://github.com/remiv1/Intranet/actions)
-[![Coverage 44%](https://img.shields.io/badge/Coverage-44%25-red.svg)](https://github.com/remiv1/Intranet/actions)
+[![Coverage 67%](https://img.shields.io/badge/Coverage-67%25-red.svg)](https://github.com/remiv1/Intranet/actions)
 
 ## 🛠️ Évolutions et Roadmap
 
