@@ -12,6 +12,12 @@ import json
 from datetime import datetime
 from typing import Any, cast
 
+from cryptography.exceptions import (
+    InternalError,
+    InvalidKey,
+    InvalidSignature,
+    UnsupportedAlgorithm,
+)
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import rsa, padding
 from cryptography.hazmat.primitives.serialization import Encoding
@@ -210,7 +216,13 @@ class SecureCertificateManager:
 
             return secure_cert
 
-        except Exception as e:
+        except (
+            TypeError,
+            ValueError,
+            InvalidKey,
+            UnsupportedAlgorithm,
+            InternalError,
+        ) as e:
             raise ValueError(f"Erreur lors de la création du certificat sécurisé : {e}") from e
 
     @staticmethod
@@ -276,5 +288,13 @@ class SecureCertificateManager:
 
             return True
 
-        except Exception as e:
+        except (
+            KeyError,
+            TypeError,
+            ValueError,
+            InvalidKey,
+            InvalidSignature,
+            UnsupportedAlgorithm,
+            InternalError,
+        ) as e:
             raise ValueError(f"Échec de la vérification du certificat : {e}") from e

@@ -13,10 +13,16 @@ from pathlib import Path
 from io import BytesIO
 from datetime import datetime
 from smtplib import SMTPException
+from xml.etree import ElementTree
 
+from cairocffi import CairoError    # type: ignore
+from cairosvg.helpers import PointError
+from cryptography.exceptions import InternalError, InvalidKey, UnsupportedAlgorithm
 from flask import session, g, render_template
 from pypdf import PdfReader, PdfWriter
+from pypdf.errors import PyPdfError
 from reportlab.lib.utils import ImageReader
+from reportlab.pdfbase.pdfdoc import PDFError
 from reportlab.pdfgen.canvas import Canvas
 from reportlab.pdfgen import canvas
 from PIL import Image as PILImage
@@ -270,7 +276,7 @@ class SignedDocumentCreator:
             return self
 
         # En cas d'erreur, créer une copie simple du fichier
-        except Exception as e:
+        except (OSError, ValueError, PyPdfError, PDFError) as e:
             self._create_fallback_copy()
             raise ValueError(f"Erreur lors de l'application des signatures : {e}") from e
 
@@ -423,7 +429,7 @@ class SignedDocumentCreator:
 
             return packet.getvalue()
 
-        except Exception as e:
+        except (OSError, ValueError, PyPdfError, PDFError) as e:
             raise ValueError(f"Impossible de créer l'overlay de signature: {e}") from e
 
     def _add_single_signature_to_canvas(
@@ -743,7 +749,7 @@ class SignedDocumentCreator:
 
         except ImportError as eie:
             raise ImportError("cairosvg ou PIL non disponible pour la conversion SVG") from eie
-        except Exception as e:
+        except (OSError, ValueError, ElementTree.ParseError, PointError, CairoError) as e:
             raise ValueError(f"Erreur lors de la conversion SVG : {e}") from e
 
     def add_signature_certificates(self) -> 'SignedDocumentCreator':
@@ -800,7 +806,15 @@ class SignedDocumentCreator:
 
             return self
 
-        except Exception as e:
+        except (
+            KeyError,
+            OSError,
+            TypeError,
+            ValueError,
+            InvalidKey,
+            UnsupportedAlgorithm,
+            InternalError,
+        ) as e:
             raise ValueError(f"Erreur lors de l'ajout des certificats : {e}") from e
 
     def save_final_document(self) -> 'SignedDocumentCreator':

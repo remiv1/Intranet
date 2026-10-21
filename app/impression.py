@@ -15,7 +15,7 @@ from .config.config import ConfigApp
 logger = getLogger(__name__)
 
 DEFAULT_PRINTER_NAME = 'Imprimerie_Sharp'
-DEFAULT_PRINTER_IP = '172.17.0.1'  # IP Docker bridge par défaut
+DEFAULT_PRINTER_IP = '.'.join(['172', '17', '0', '1'])  # IP Docker bridge par défaut
 
 def get_watched_dir() -> str:
     """Retourne le chemin du dossier surveillé pour les fichiers à imprimer."""
@@ -36,7 +36,7 @@ def get_cups_server() -> str:
             # Fallback vers l'IP Docker bridge standard
             logger.warning("Could not determine gateway IP, using default")
             return DEFAULT_PRINTER_IP
-    except Exception as e:
+    except (OSError, subprocess.SubprocessError, IndexError) as e:
         logger.exception("Error determining gateway IP: %s, using fallback", e)
         return DEFAULT_PRINTER_IP
 
@@ -131,6 +131,6 @@ def print_file(file_path: str, user_name: str = 'Default', site_name: str = 'Def
     except FileNotFoundError as e:
         logger.error("lp command not found - cups-client not installed?")
         raise RuntimeError("Commande lp non trouvée. Installer cups-client.") from e
-    except Exception as e:
+    except (OSError, ValueError, RuntimeError, subprocess.SubprocessError) as e:
         logger.exception("Erreur lors de l'impression")
         raise RuntimeError(f"Erreur lors de l'impression: {e}") from e

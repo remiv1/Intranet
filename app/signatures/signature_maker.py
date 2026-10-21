@@ -253,7 +253,7 @@ class SignatureMaker:
                     return self
 
                 # Gestion des erreurs lors du renommage
-                except Exception as e:
+                except OSError as e:
                     raise IOError(f"Erreur lors du renommage du fichier : {e}") from e
 
             # Gestion des exceptions liées à l'absence du fichier source
