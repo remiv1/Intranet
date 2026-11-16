@@ -25,3 +25,6 @@ sql/test_user.sql
 documents/*
 !documents/.gitkeep
 !database/251003_MigrationScript.sql
+
+# TTL-LAMa
+**/ttl-lama/*
