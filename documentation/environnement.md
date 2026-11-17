@@ -19,7 +19,7 @@ docker compose logs -f web
 docker compose -it exec web bash
 
 # Accéder à la base de données
-docker compose -it exec db mysql -u root -p
+docker compose -it exec db mariadb -u root -p
 
 # Mise à jour de l'application
 git pull

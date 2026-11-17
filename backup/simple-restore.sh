@@ -165,16 +165,16 @@ else
 fi
 
 # Effectuer la restauration
-if $DECOMPRESS_CMD "$BACKUP_FILE" | docker exec -i "$DB_CONTAINER" mysql --user="root" --password="$ROOT_PASSWORD"; then
+if $DECOMPRESS_CMD "$BACKUP_FILE" | docker exec -i "$DB_CONTAINER" mariadb --user="root" --password="$ROOT_PASSWORD"; then
     success "Restauration terminée avec succès !"
     
     # Vérification de la restauration
     log "Vérification de la restauration..."
-    if docker exec "$DB_CONTAINER" mysql --user="$DB_USER" --password="$DB_PASSWORD" --database="$DB_NAME" -e "SHOW TABLES;" >/dev/null 2>&1; then
+    if docker exec "$DB_CONTAINER" mariadb --user="$DB_USER" --password="$DB_PASSWORD" --database="$DB_NAME" -e "SHOW TABLES;" >/dev/null 2>&1; then
         success "Base de données accessible après restauration"
         
         # Affichage du nombre de tables
-        table_count=$(docker exec "$DB_CONTAINER" mysql --user="$DB_USER" --password="$DB_PASSWORD" --database="$DB_NAME" -e "SHOW TABLES;" 2>/dev/null | wc -l)
+        table_count=$(docker exec "$DB_CONTAINER" mariadb --user="$DB_USER" --password="$DB_PASSWORD" --database="$DB_NAME" -e "SHOW TABLES;" 2>/dev/null | wc -l)
         log "Nombre de tables dans la base: $((table_count - 1))"
     else
         warning "Impossible de vérifier la base de données après restauration"

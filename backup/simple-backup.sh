@@ -85,7 +85,7 @@ log "Fichier de destination: $BACKUP_FILE"
 # Effectuer la sauvegarde
 log "Création de la sauvegarde..."
 
-if docker exec "$DB_CONTAINER" mysqldump \
+if docker exec "$DB_CONTAINER" mariadb-dump \
     --user="$DB_USER" \
     --password="$DB_PASSWORD" \
     --single-transaction \
@@ -127,4 +127,4 @@ echo ""
 success "Sauvegarde terminée avec succès !"
 echo ""
 echo "💡 Pour restaurer cette sauvegarde plus tard:"
-echo "   docker exec -i $DB_CONTAINER mysql -u\$DB_USER -p\$DB_PASSWORD < <(gunzip -c $BACKUP_FILE)"
+echo "   docker exec -i $DB_CONTAINER mariadb -u\$DB_USER -p\$DB_PASSWORD < <(gunzip -c $BACKUP_FILE)"
