@@ -28,3 +28,19 @@ documents/*
 # logs
 *.log
 **/*.log
+
+# TTL Lama
+**/backend_config.yml
+**/config.yml
+**/ssh_config.yml
+**/ssh_known_hosts
+**/panic_mail_config.yml
+**/ttlama-ssh-wrapper
+**/ttlama.sudoers
+**/vpn-host-setup.sh
+**/wireguard-ssh-key.pub
+**/flask_secret_key
+**/panic_mail_secret
+**/ttlama_ssh_key
+**/ttlama_ssh_key.pub
+!ttlama/**/.gitkeep

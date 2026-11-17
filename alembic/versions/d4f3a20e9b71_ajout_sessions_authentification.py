@@ -1,14 +1,14 @@
 """Ajout des sessions d'authentification revocables.
 
 Revision ID: d4f3a20e9b71
-Revises: 
+Revises: b5f240cb2287
 """
 
 import sqlalchemy as sa
 from alembic import op
 
 revision: str = 'd4f3a20e9b71'  # pylint: disable=C0103
-down_revision: str = None  # pylint: disable=C0103
+down_revision: str = 'b5f240cb2287'  # pylint: disable=C0103
 branch_labels: None = None  # pylint: disable=C0103
 depends_on: None = None  # pylint: disable=C0103
 

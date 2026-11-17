@@ -23,7 +23,7 @@ cd "$PROJECT_DIR"
 
 echo "[INFO] Dump de la base $DB_NAME..."
 docker compose exec -T $DB_CONTAINER \
-    mysqldump -u "$DB_USER" -p"$DB_PASSWORD" "$DB_NAME" \
+    mariadb-dump -u "$DB_USER" -p"$DB_PASSWORD" "$DB_NAME" \
     | gzip > "$LOCAL_FILE"
 
 if [ $? -ne 0 ]; then

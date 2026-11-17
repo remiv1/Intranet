@@ -1,4 +1,5 @@
 services:
+
   web:
     build:
       context: .
@@ -6,15 +7,15 @@ services:
       args:
         APP_UID: ${APP_UID:-10001}
         APP_GID: ${APP_GID:-10001}
-    container_name: intranet_app_dev
+    container_name: intranet_app
     depends_on:
       - db
     volumes:
       - ${FILES_LOCAL_PATH}:${FILES_DOCKER_PATH}
       - ${PRINT_LOCAL_PATH}:${PRINT_DOCKER_PATH}
       - ${SIGNATURE_LOCAL_PATH}:${SIGNATURE_DOCKER_PATH}
-      - ./alembic:/app/alembic:z
-      - ./alembic.ini:/app/alembic.ini:z
+      - ./alembic:/app/alembic #:z
+      - ./alembic.ini:/app/alembic.ini #:z
     environment:
       - DB_URL=${DB_URL}
     env_file:
@@ -30,12 +31,12 @@ services:
 
   nginx:
     image: nginx:latest
-    container_name: intranet_proxy_dev
+    container_name: intranet_proxy
     depends_on:
       - web
     volumes:
-      - ./app/nginx/nginx.conf:/etc/nginx/nginx.conf:z
-      - /opt/certs:/etc/nginx/certs:z
+      - ./app/nginx/nginx.conf:/etc/nginx/nginx.conf #:z
+      - /opt/certs:/etc/nginx/certs #:z
     ports:
       - "7443:443"
       - "7080:80"
@@ -48,7 +49,7 @@ services:
       context: ./database
       dockerfile: Dockerfile.mariadb
     image: intranet_mariadb:12.0.2
-    container_name: intranet_db_dev
+    container_name: intranet_db
     restart: always
     environment:
       MYSQL_ROOT_PASSWORD: ${ROOT_PASSWORD}
@@ -58,7 +59,25 @@ services:
     env_file:
       - .env
     volumes:
-      - ${DB_LOCAL_PATH}:${DB_DOCKER_PATH}:U,Z
+      - ${DB_LOCAL_PATH}:${DB_DOCKER_PATH} #:U,Z
+    networks:
+      - intranet_net_dev
+
+  ttl-lama:
+    image: ghcr.io/remiv1/ttl-lama:latest
+    user: "${APP_UID:-999}:${APP_GID:-999}"
+    container_name: ttl-lama
+    restart: always
+    env_file:
+      - ttlama/config/.env
+    volumes:
+      - ttlama/config/etc/ttl-lama/config.yaml:/etc/ttl-lama/config.yaml #:z,rw
+      - ttlama/config/etc/ttl-lama/backend_config.yaml:/etc/ttl-lama/backend_config.yaml #:z,ro
+      - ttlama/etc/ttl-lama/ssh_config.yml:/etc/ttl-lama/ssh_config.yml #:z,ro
+      - ttlama/etc/ttl-lama/ssh_known_hosts:/etc/ttl-lama/ssh_known_hosts #:z,ro
+      - ttlama/run/secrets:/run/secrets #:z,ro
+      - ${DB_LOCAL_PATH}:/data #:z,rw,U
+      - ttlama/etc/ttl-lama/panic_mail_config.yml:/etc/ttl-lama/panic_mail_config.yml #:z,ro
     networks:
       - intranet_net_dev
 

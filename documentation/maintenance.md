@@ -48,7 +48,7 @@ docker-compose top                  # Processus actifs
 
 ## 💾 Stratégie de Sauvegarde
 
-### Sauvegarde automatique quotidienne (à venir)
+### Sauvegarde automatique quotidienne
 
 ```bash
 #!/bin/bash
@@ -61,7 +61,7 @@ DATE=$(date +%Y%m%d_%H%M%S)
 mkdir -p $BACKUP_DIR
 
 # Sauvegarde de la base de données
-docker-compose exec -T db mysqldump -u root -p$(grep ROOT_PASSWORD .env | cut -d'=' -f2) $(grep DB_NAME .env | cut -d'=' -f2) > $BACKUP_DIR/db_$DATE.sql
+docker-compose exec -T db mariadb-dump -u root -p$(grep ROOT_PASSWORD .env | cut -d'=' -f2) $(grep DB_NAME .env | cut -d'=' -f2) > $BACKUP_DIR/db_$DATE.sql
 
 # Sauvegarde des documents
 tar -czf $BACKUP_DIR/documents_$DATE.tar.gz $(grep FILES_LOCAL_PATH .env | cut -d'=' -f2)

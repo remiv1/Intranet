@@ -22,7 +22,7 @@ Ce répertoire contient les scripts pour sauvegarder et restaurer la base de don
 
 **Caractéristiques :**
 
-- Utilise `mysqldump` pour une sauvegarde complète
+- Utilise `mariadb-dump` pour une sauvegarde complète
 - Compression automatique en `.gz`
 - Sauvegarde des routines, triggers et événements
 - Fichiers stockés dans le dossier `backup/`

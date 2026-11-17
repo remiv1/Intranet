@@ -139,6 +139,8 @@
                                     <label for="eleve{{ user['id'] }}" class="form-label">Elève</label><br>
                                     {{ current_rights_form.habil6(id="impression" ~ user['id']) }}
                                     <label for="impression{{ user['id'] }}" class="form-label">Impression</label>
+                                    {{ current_rights_form.habil7(id="vpn" ~ user['id']) }}
+                                    <label for="vpn{{ user['id'] }}" class="form-label">VPN</label><br>
                                 </div>
                             </div>
                             <button type="submit" class="button">Valider</button>

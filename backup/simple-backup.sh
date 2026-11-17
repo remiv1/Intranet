@@ -4,6 +4,7 @@
 # Usage: ./simple-backup.sh [nom_fichier_optionnel]
 
 set -e
+set -o pipefail
 
 # Configuration
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -85,7 +86,7 @@ log "Fichier de destination: $BACKUP_FILE"
 # Effectuer la sauvegarde
 log "Création de la sauvegarde..."
 
-if docker exec "$DB_CONTAINER" mysqldump \
+if docker exec "$DB_CONTAINER" mariadb-dump \
     --user="$DB_USER" \
     --password="$DB_PASSWORD" \
     --single-transaction \

@@ -127,6 +127,7 @@ class UserRightsForm(FlaskForm):
     habil4 = BooleanField(render_kw={'value': '4'})
     habil5 = BooleanField(render_kw={'value': '5'})
     habil6 = BooleanField(render_kw={'value': '6'})
+    habil7 = BooleanField(render_kw={'value': '7'})
 
 
 class PrintDocumentForm(FlaskForm):
