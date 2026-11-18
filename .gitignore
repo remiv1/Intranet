@@ -28,6 +28,8 @@ documents/*
 # logs
 *.log
 **/*.log
+**/*.lock
+**/*.log*
 
 # TTL Lama
 **/backend_config.yml

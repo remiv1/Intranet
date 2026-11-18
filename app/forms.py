@@ -107,6 +107,7 @@ class UserCreateForm(UserFieldsForm):
 class UserUpdateForm(UserFieldsForm):
     """Champs de modification d'un utilisateur, déverrouillage compris."""
 
+    user_id = HiddenField()
     unlock = BooleanField(render_kw={'value': '1'})
 
 

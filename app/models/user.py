@@ -9,7 +9,7 @@
 from datetime import date
 from typing import Optional, Dict, Any
 
-from sqlalchemy import Integer, String, Date, Boolean
+from sqlalchemy import Integer, String, Date, Boolean, JSON
 from sqlalchemy.orm import mapped_column, relationship, Mapped
 from sqlalchemy.sql import func
 
@@ -91,6 +91,17 @@ class User(Base):
         Integer,
         nullable=True,
         comment="Niveau d'habilitation de l'utilisateur"
+    )
+    vpn_uuid: Mapped[Optional[str]] = mapped_column(
+        String(36),
+        nullable=True,
+        unique=True,
+        comment="Identifiant de l'utilisateur TTL-LAMa"
+    )
+    vpn_profiles: Mapped[Optional[list[int]]] = mapped_column(JSON, nullable=True)
+    vpn_sync_state: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+    vpn_password_dirty: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default='0'
     )
 
     # Coordonnées
@@ -186,3 +197,14 @@ class User(Base):
             f"mail='{self.mail}', identifiant='{self.identifiant}', "
             f"habilitation={self.habilitation}, "
             f"début={self.debut}, fin={self.fin}, bloqué={self.locked})>")
+
+    def get_identity(self) -> dict[str, str | int | None]:
+        """Retourn une identité complète à la place d'un objet"""
+        return {
+            'identifiant': self.identifiant,
+            'prenom': self.prenom,
+            'nom': self.nom,
+            'mail': self.mail,
+            'habilitation': str(self.habilitation),
+            'id': self.id,
+        }

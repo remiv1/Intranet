@@ -27,7 +27,8 @@ Routes disponibles :
 - '/rapport-contrats' [POST] : Rapport des contrats arrivant à échéance entre m-6 et m-3
 """
 # Imports standards
-from typing import List, Dict, Any, Optional
+from collections.abc import Callable
+from typing import List, Dict, Any, Optional, cast
 from hmac import compare_digest
 from os.path import splitext
 from datetime import datetime
@@ -39,7 +40,9 @@ from flask.wrappers import Response
 from flask_wtf import CSRFProtect
 from flask_wtf.csrf import CSRFError
 from werkzeug import Response as WerkzeugResponse
+from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Session
 
 from app.repositories.user import get_local_redirect_url, handle_login_post, hash_password
 from app.repositories.auth_session import (
@@ -73,10 +76,19 @@ from .docs import print_document, delete_file
 from .rapport_echeances import envoi_contrats_renego, validate_report_configuration
 from .utilities import get_jsoned_datas
 from .config.logger import api_logger
+from .ttlama import (
+    VPNSyncError,
+    admin_client,
+    available_profiles_for_habilitation,
+    profiles_for_habilitation,
+    sync_user,
+)
 
 # Initialisation de l'application Flask
-peraudiere = Flask(__name__)  # TODO: implémenter autres mesures de sécurité
+peraudiere = Flask(__name__)
 csrf = CSRFProtect(peraudiere)
+ReportRoute = Callable[[], Response | tuple[Response, int]]
+csrf_exempt = cast(Callable[[ReportRoute], ReportRoute], getattr(csrf, 'exempt'))
 
 BLUEPRINTS = [contracts_bp, signatures_bp, vpn_bp]
 # Enregistrement des blueprints
@@ -200,10 +212,13 @@ def home() -> str | Response | WerkzeugResponse:
     Route pour la page d'accueil.
     Si l'utilisateur est connecté, affiche la page d'accueil avec les informations utilisateur
     et les sections disponibles. Sinon, redirige vers la page de connexion.
+
     Args:
         None
+
     Returns:
-        str | Response | WerkzeugResponse: La page d'accueil ou une redirection vers la page de connexion.
+        str | Response | WerkzeugResponse: La page d'accueil ou une redirection vers la page
+            de connexion.
     """
     # Récupération des messages passés en paramètres GET
     message = request.args.get('message', None)
@@ -326,14 +341,51 @@ def gestion_droits() -> str | Response:
             'mdp': '',
             **{
                 f'habil{level}': str(level) in str(user.habilitation)
-                for level in range(1, 7)
+                for level in range(1, 8)
             },
         })
         for user in users
     }
-    return render_template('gestion_droits.html', users=users, message=message,
-                           success_message=success_message, error_message=error_message,
-                           rights_forms=rights_forms)
+    return render_template(
+        'gestion_droits.html',
+        users=users,
+        message=message,
+        success_message=success_message,
+        error_message=error_message,
+        rights_forms=rights_forms,
+    )
+
+
+@peraudiere.get('/gestion-droits/<int:user_id>/vpn-profils')
+@validate_habilitation([ADMINISTRATEUR, GESTIONNAIRE])
+def vpn_profiles(user_id: int) -> Response | tuple[Response, int]:
+    """Charge les profils disponibles et les affectations de l'utilisateur."""
+    user = g.db_session.query(User).filter(User.id == user_id).first()
+    if user is None:
+        return jsonify(error='Utilisateur introuvable.'), 404
+    if user.vpn_sync_state in ('creating', 'review'):
+        return jsonify(error='La création du compte VPN doit être vérifiée manuellement.'), 409
+    habilitation = user.habilitation
+    requested_habilitation = request.args.get('habilitation')
+    if requested_habilitation is not None:
+        if not requested_habilitation.isascii() or any(
+            value not in '1234567' for value in requested_habilitation
+        ):
+            abort(400)
+        habilitation = int(''.join(sorted(set(requested_habilitation))) or '0')
+    try:
+        with admin_client() as client:
+            profiles = available_profiles_for_habilitation(client, habilitation)
+            selected = profiles_for_habilitation(habilitation)
+        response = jsonify(profiles=profiles, selected=sorted(selected),
+                           pending=user.vpn_sync_state == 'pending')
+        response.headers['Cache-Control'] = 'no-store'
+        return response
+    except VPNSyncError as error:
+        api_logger.warning(
+            'VPN-PROFILES indisponible user_id=%s erreur=%s', user_id, error
+        )
+        return jsonify(error='Impossible de charger les profils VPN.'), 503
 
 
 @peraudiere.get('/gestion-utilisateurs')
@@ -356,6 +408,7 @@ def gestion_utilisateurs(message: Optional[str] = None, success_message: Optiona
     users.sort(key=lambda x: (x.nom, x.prenom))
     update_forms = {
         user.id: UserUpdateForm(data={
+            'user_id': user.id,
             'prenom': user.prenom,
             'nom': user.nom,
             'mail': user.mail,
@@ -552,11 +605,15 @@ def ajout_utilisateurs() -> Response | WerkzeugResponse:
             if key.startswith('habil'):
                 habilitation_values.append(value)
 
+        if any(value not in ('1', '2', '3', '4', '5', '6')
+               for value in habilitation_values):
+            abort(400)
+
         # Trier les valeurs d'habilitation
         sorted_habil = sorted(habilitation_values, key=int)
 
         # Concaténation des valeurs d'habilitation
-        habilitation = int(''.join(sorted_habil))
+        habilitation = int(''.join(sorted_habil) or '0')
 
         user = User(prenom=prenom, nom=nom,
                     identifiant=identifiant,
@@ -592,6 +649,10 @@ def suppr_utilisateurs(id_user: int) -> Response | WerkzeugResponse:
             message = 'Vous ne pouvez pas supprimer votre propre compte utilisateur.'
             return redirect(url_for('gestion_utilisateurs', error_message=message))
         if user:
+            if (user.vpn_uuid and '7' in str(user.habilitation or '')) or \
+                    user.vpn_sync_state in ('pending', 'creating', 'review'):
+                message = 'Retirez et synchronisez d’abord les droits VPN de cet utilisateur.'
+                return redirect(url_for('gestion_utilisateurs', error_message=message))
             # Vérification des liens avec les documents à signer et les signatures
             docs = g.db_session.query(DocToSigne) \
                             .join(Points) \
@@ -627,6 +688,80 @@ def suppr_utilisateurs(id_user: int) -> Response | WerkzeugResponse:
         return redirect(url_for('gestion_utilisateurs', error_message=message))
 
 
+def _parse_habilitation(allowed_values: set[str]) -> int:
+    values = [value for key, value in request.form.items() if key.startswith('habil')]
+    if any(value not in allowed_values for value in values):
+        abort(400)
+    return int(''.join(sorted(set(values))) or '0')
+
+
+def _locked_user_for_update(
+    database: Session,
+    identifiant: str,
+    use_submitted_id: bool = False,
+) -> User | None:
+    user_id_value = request.form.get('user_id', '').strip() if use_submitted_id else ''
+    if user_id_value and (not user_id_value.isascii() or not user_id_value.isdecimal()):
+        abort(400)
+    user_filter = (
+        User.id == int(user_id_value)
+        if user_id_value
+        else User.identifiant == identifiant
+    )
+    return database.execute(select(User).where(user_filter).with_for_update()).scalars().first()
+
+
+def _mark_vpn_sync_pending(user: User) -> None:
+    if user.vpn_sync_state not in ('creating', 'review'):
+        user.vpn_sync_state = 'pending'
+
+
+def _apply_vpn_user_update(
+    user: User,
+    mdp: str,
+    habilitation: int,
+    vpn_identity_changed: bool,
+) -> None:
+    if mdp:
+        user.sha_mdp = hash_password(mdp)
+        if user.vpn_uuid or user.vpn_sync_state == 'creating':
+            user.vpn_password_dirty = True
+            if '7' in str(habilitation):
+                _mark_vpn_sync_pending(user)
+    if vpn_identity_changed:
+        _mark_vpn_sync_pending(user)
+
+
+def _apply_user_update(
+    database: Session,
+    user: User,
+    prenom: str,
+    nom: str,
+    mail: str,
+    identifiant: str,
+    mdp: str,
+    unlock: int,
+    habilitation: int,
+) -> None:
+    if '7' in str(user.habilitation or '') and '7' not in str(habilitation):
+        habilitation = int(''.join(sorted(set(str(habilitation) + '7'))))
+    security_changed = bool(mdp) or user.habilitation != habilitation
+    vpn_identity_changed = user.vpn_uuid is not None and (
+        user.identifiant != identifiant or user.mail != mail
+    )
+    user.prenom = prenom
+    user.nom = nom
+    user.mail = mail
+    user.identifiant = identifiant
+    _apply_vpn_user_update(user, mdp, habilitation, vpn_identity_changed)
+    if unlock == 1:
+        user.false_test = 0
+        user.locked = False
+    user.habilitation = habilitation
+    if security_changed:
+        revoke_user_sessions(database, user.id)
+
+
 @peraudiere.post('/modif-utilisateurs')
 @validate_habilitation(ADMINISTRATEUR)
 def modif_utilisateurs() -> Response | WerkzeugResponse | tuple[Response, int]:
@@ -645,35 +780,20 @@ def modif_utilisateurs() -> Response | WerkzeugResponse | tuple[Response, int]:
     mdp = request.form.get('mdp', '')
     unlock = int(request.form.get('unlock', 0)) if request.form.get('unlock') == '1' else 0
     try:
-        # Création du niveau d'habilitation
-        habilitation_values: List[str] = []
-        habilitation_values.extend(
-            value for key, value in request.form.items()
-            if key.startswith('habil')
-            )
-        sorted_habil = sorted(habilitation_values, key=int)
-        habilitation = int(''.join(sorted_habil))
-
-        # Récupération de l'utilisateur
-        user = g.db_session.query(User).filter(User.identifiant == identifiant).first()
-
-        # Modification des informations de l'utilisateur
+        habilitation = _parse_habilitation(set('123456'))
+        user = _locked_user_for_update(g.db_session, identifiant, use_submitted_id=True)
         if user:
-            security_changed = bool(mdp) or user.habilitation != habilitation
-            user.prenom = prenom
-            user.nom = nom
-            user.mail = mail
-            user.identifiant = identifiant
-            user.sha_mdp = hash_password(mdp) if len(mdp) > 0 else user.sha_mdp
-            if unlock == 1:
-                user.false_test = 0
-                user.locked = False
-            user.habilitation = habilitation
-            if security_changed:
-                revoke_user_sessions(g.db_session, user.id)
-
-            # Commit des modifications
+            _apply_user_update(
+                g.db_session, user, prenom, nom, mail, identifiant, mdp, unlock, habilitation
+            )
             g.db_session.commit()
+            if user.vpn_sync_state == 'pending':
+                try:
+                    sync_user(g.db_session, user.id)
+                except VPNSyncError:
+                    return redirect(url_for('gestion_utilisateurs', error_message=(
+                        'Utilisateur modifié, mais la synchronisation VPN reste en attente.'
+                    )))
 
         # Message de succès et redirection
         message = f'Utilisateur {identifiant} modifié avec succès'
@@ -685,6 +805,48 @@ def modif_utilisateurs() -> Response | WerkzeugResponse | tuple[Response, int]:
         # Message d'erreur et redirection
         message = f'Erreur lors de la modification de l\'utilisateur {identifiant} : {e}'
         return redirect(url_for('gestion_utilisateurs', error_message=message))
+
+
+def _selected_vpn_profiles(user: User, new_vpn: bool, habilitation: int) -> list[int] | None:
+    if user.vpn_sync_state in ('creating', 'review') and new_vpn:
+        raise VPNSyncError('La création du compte VPN doit être vérifiée manuellement.')
+    if not new_vpn:
+        return None
+
+    with admin_client() as client:
+        profiles = available_profiles_for_habilitation(client, habilitation)
+    selected = sorted(
+        profile_id for profile in profiles
+        if isinstance(profile_id := profile.get('id'), int)
+    )
+    if not selected:
+        raise VPNSyncError('Aucun profil TTL-LAMa ne correspond aux habilitations.')
+    return selected
+
+
+def _apply_rights_update(
+    database: Session,
+    user: User,
+    habilitation: int,
+    mdp: str,
+    selected: list[int] | None,
+    old_vpn: bool,
+    new_vpn: bool,
+) -> bool:
+    security_changed = bool(mdp) or user.habilitation != habilitation
+    if mdp:
+        user.sha_mdp = hash_password(mdp)
+        if user.vpn_uuid or user.vpn_sync_state == 'creating':
+            user.vpn_password_dirty = True
+    user.habilitation = habilitation
+    if selected is not None:
+        user.vpn_profiles = selected
+    vpn_changed = old_vpn != new_vpn or selected is not None
+    if vpn_changed or (mdp and new_vpn and user.vpn_uuid):
+        _mark_vpn_sync_pending(user)
+    if security_changed:
+        revoke_user_sessions(database, user.id)
+    return user.vpn_sync_state == 'pending' and (vpn_changed or bool(mdp) or not new_vpn)
 
 
 @peraudiere.post('/gestion-droits')
@@ -701,32 +863,36 @@ def gestion_droits_post() -> Response | WerkzeugResponse | tuple[Response, int]:
     # Récupération des données du formulaire
     identifiant = request.form.get('identifiant', '')
     mdp = request.form.get('mdp', '')
+    local_saved = False
 
     try:
-        habilitation_values: List[str] = []  # Création du niveau d'habilitation
-        habilitation_values.extend(
-            value for key, value in request.form.items()
-            if key.startswith('habil')
-            )
-        sorted_habil = sorted(habilitation_values, key=int)
-        habilitation = int(''.join(sorted_habil))
+        habilitation = _parse_habilitation(set('1234567'))
+        user = _locked_user_for_update(g.db_session, identifiant)
+        if user is None:
+            abort(404)
 
-        # Récupération de l'utilisateur
-        user = g.db_session.query(User).filter(User.identifiant == identifiant).first()
-
-        # Modification des informations de l'utilisateur
-        if user:
-            security_changed = bool(mdp) or user.habilitation != habilitation
-            user.sha_mdp = hash_password(mdp) if len(mdp) > 0 else user.sha_mdp
-            user.habilitation = habilitation
-            if security_changed:
-                revoke_user_sessions(g.db_session, user.id)
-            g.db_session.commit()
+        old_vpn = '7' in str(user.habilitation or '')
+        new_vpn = '7' in str(habilitation)
+        selected = _selected_vpn_profiles(user, new_vpn, habilitation)
+        should_sync = _apply_rights_update(
+            g.db_session, user, habilitation, mdp, selected, old_vpn, new_vpn
+        )
+        user_id = user.id
+        g.db_session.commit()
+        local_saved = True
+        if should_sync:
+            sync_user(g.db_session, user_id)
 
         # Message de succès et redirection
         message = f'Droits de l\'utilisateur {identifiant} modifiés avec succès'
         return redirect(url_for('gestion_droits', success_message=message))
 
+    except VPNSyncError as error:
+        g.db_session.rollback()
+        message = str(error)
+        if local_saved:
+            message = 'Droits enregistrés localement, synchronisation VPN non confirmée. ' + message
+        return redirect(url_for('gestion_droits', error_message=message))
     except SQLAlchemyError:
         g.db_session.rollback()
         return jsonify(error="Modification des droits indisponible."), 503
@@ -736,7 +902,7 @@ def gestion_droits_post() -> Response | WerkzeugResponse | tuple[Response, int]:
         return redirect(url_for('gestion_droits', error_message=message))
 
 @peraudiere.route('/rapport-contrats', methods=['POST'])
-@csrf.exempt    # type: ignore
+@csrf_exempt # NOSONAR
 def rapport_contrats() -> Response | tuple[Response, int]:
     """
     Route pour l'envoi du rapport des contrats à renégocier.

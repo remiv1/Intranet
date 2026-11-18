@@ -3,6 +3,7 @@
 import logging
 from datetime import date, timedelta
 from typing import Any
+from unittest.mock import MagicMock
 from test.test_login_redirects import _submit_login # type: ignore
 
 import pytest
@@ -190,6 +191,23 @@ def test_unknown_account_does_not_authenticate(client: FlaskClient) -> None:
     assert "AttributeError" not in response.headers["Location"]
     with client.session_transaction(base_url="https://localhost") as browser_session:
         assert "id" not in browser_session
+
+
+def test_login_lookup_failure_returns_503_without_counting_attempt(
+    client: FlaskClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Une erreur SQL de recherche n'est pas un mauvais mot de passe."""
+    lookup = MagicMock(side_effect=SQLAlchemyError('lookup unavailable'))
+    monkeypatch.setattr(
+        "app.repositories.user.UsersMethods.get_user_from_credentials",
+        lookup,
+    )
+
+    response = _submit_login(client, "/")
+
+    assert response.status_code == 503
+    assert lookup.call_count == 1
 
 
 def test_migration_commit_failure_allows_login_and_safe_log(

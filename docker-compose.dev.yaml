@@ -65,21 +65,24 @@ services:
 
   ttl-lama:
     image: ghcr.io/remiv1/ttl-lama:latest
-    user: "${APP_UID:-999}:${APP_GID:-999}"
+    user: "1000:1000"
     container_name: ttl-lama
     restart: always
     env_file:
-      - ttlama/config/.env
+      - ./ttlama/config/.env
     volumes:
-      - ttlama/config/etc/ttl-lama/config.yaml:/etc/ttl-lama/config.yaml #:z,rw
-      - ttlama/config/etc/ttl-lama/backend_config.yaml:/etc/ttl-lama/backend_config.yaml #:z,ro
-      - ttlama/etc/ttl-lama/ssh_config.yml:/etc/ttl-lama/ssh_config.yml #:z,ro
-      - ttlama/etc/ttl-lama/ssh_known_hosts:/etc/ttl-lama/ssh_known_hosts #:z,ro
-      - ttlama/run/secrets:/run/secrets #:z,ro
-      - ${DB_LOCAL_PATH}:/data #:z,rw,U
-      - ttlama/etc/ttl-lama/panic_mail_config.yml:/etc/ttl-lama/panic_mail_config.yml #:z,ro
+      - ./ttlama/config/etc/ttl-lama/config.yml:/etc/ttl-lama/config.yml:rw #:z,rw
+      - ./ttlama/config/etc/ttl-lama/backend_config.yml:/etc/ttl-lama/backend_config.yml:ro #:z,ro
+      - ./ttlama/config/etc/ttl-lama/ssh_config.yml:/etc/ttl-lama/ssh_config.yml:ro #:z,ro
+      - ./ttlama/config/etc/ttl-lama/ssh_known_hosts:/etc/ttl-lama/ssh_known_hosts:ro #:z,ro
+      - ./ttlama/config/etc/ttl-lama/panic_mail_config.yml:/etc/ttl-lama/panic_mail_config.yml:ro #:z,ro
+      - ./ttlama/config/run/secrets:/run/secrets:ro #:z,ro
+      - ./ttlama/config/opt/ttl-lama-vpn:/opt/ttl-lama-vpn:ro #:z,ro
+      - ./ttlama/data:/data:rw #:z,rw
     networks:
       - intranet_net_dev
+    ports:
+      - "8080:8080"
 
 networks:
   intranet_net_dev:

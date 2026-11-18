@@ -18,6 +18,7 @@ from werkzeug.wrappers.response import Response as WerkzeugResponse
 from app.models import User
 from app.config.logger import api_logger
 from app.repositories.auth_session import create_auth_session, SessionStorageError
+from app.ttlama import VPNSyncError, sync_user
 
 _PASSWORD_HASHER = PasswordHasher()
 
@@ -47,6 +48,68 @@ def _verify_password(stored_hash: str | None, password: str) -> bool:
     ):
         return compare_digest(stored_hash.lower(), sha256(password.encode()).hexdigest())
     return False
+
+
+def _needs_password_upgrade(stored_hash: str) -> bool:
+    return not stored_hash.startswith('$argon2id$') \
+        or _PASSWORD_HASHER.check_needs_rehash(stored_hash)
+
+
+def _persist_authenticated_user(
+    user: User,
+    password: str,
+    identity: dict[str, str | int | None],
+) -> bool:
+    needs_upgrade = _needs_password_upgrade(user.sha_mdp)
+    try:
+        if needs_upgrade:
+            user.sha_mdp = hash_password(password)
+            if user.vpn_uuid or user.vpn_sync_state == 'creating':
+                user.vpn_password_dirty = True
+                if user.vpn_sync_state not in ('creating', 'review'):
+                    user.vpn_sync_state = 'pending'
+        user.false_test = 0
+        g.db_session.commit()
+    except SQLAlchemyError as error:
+        g.db_session.rollback()
+        api_logger.warning(
+            'MIGR-AUTH echec de persistance user_id=%s operation=%s erreur=%s code=%s ; '
+            'connexion autorisee apres rollback',
+            identity['id'], 'rehash' if needs_upgrade else 'compteur',
+            type(error).__name__, getattr(getattr(error, 'orig', None), 'errno', None),
+        )
+    return needs_upgrade
+
+
+def _sync_upgraded_password(user: User, needs_upgrade: bool) -> None:
+    if not needs_upgrade or not user.vpn_uuid or user.vpn_sync_state != 'pending':
+        return
+    try:
+        sync_user(g.db_session, user.id)
+    except (VPNSyncError, SQLAlchemyError):
+        g.db_session.rollback()
+        api_logger.warning('VPN-AUTH synchronisation en attente user_id=%s', user.id)
+
+
+def _create_authenticated_session(user: User) -> str:
+    try:
+        token = create_auth_session(g.db_session, user.id, session.get('auth_token'))
+        g.db_session.commit()
+        return token
+    except SQLAlchemyError:
+        g.db_session.rollback()
+        api_logger.error('SESSION-AUTH echec de creation user_id=%s', user.id)
+        raise SessionStorageError from None
+
+
+def _initialize_authenticated_session(
+    identity: dict[str, str | int | None],
+    token: str,
+) -> None:
+    session.clear()
+    session.update(identity)
+    session['auth_token'] = token
+    session.permanent = True
 
 
 def get_local_redirect_url(redirect_url: str | None) -> str | None:
@@ -115,6 +178,13 @@ def handle_login_post() -> Response | WerkzeugResponse:
         response = jsonify(error="Connexion indisponible : impossible d'enregistrer la session.")
         response.status_code = 503
         return response
+    except SQLAlchemyError:
+        session.clear()
+        g.db_session.rollback()
+        api_logger.error('AUTH-LOOKUP vérification du compte indisponible')
+        response = jsonify(error="Connexion indisponible.")
+        response.status_code = 503
+        return response
     except (ValueError, KeyError, AttributeError) as e:
         # Récupération de l'URL de redirection depuis le formulaire en cas d'erreur
         redirect_url = request.form.get('preview_request', None)
@@ -161,7 +231,7 @@ class UsersMethods:
 
         except SQLAlchemyError:
             g.db_session.rollback()
-            user = None
+            raise
 
         # Retourne les identifiants de l'utilisateur et l'utilisateur
         return user, username, password
@@ -176,49 +246,18 @@ class UsersMethods:
         Returns:
             bool: True si l'authentification est réussie, False sinon.
         """
-        if user is None or user.locked:
+        if user is None:
             return False
-        if user.fin and user.fin <= date.today():
-            return False
-        if user.debut and user.debut > date.today():
+        if UsersMethods.get_user_validation_message(user) is not None:
             return False
         if not _verify_password(user.sha_mdp, password):
             return False
 
-        identity: dict[str, str | int | None] = {
-            'identifiant': user.identifiant,
-            'prenom': user.prenom,
-            'nom': user.nom,
-            'mail': user.mail,
-            'habilitation': str(user.habilitation),
-            'id': user.id,
-        }
-        needs_upgrade = not user.sha_mdp.startswith('$argon2id$') \
-            or _PASSWORD_HASHER.check_needs_rehash(user.sha_mdp)
-        try:
-            if needs_upgrade:
-                user.sha_mdp = hash_password(password)
-            user.false_test = 0
-            g.db_session.commit()
-        except SQLAlchemyError as error:
-            g.db_session.rollback()
-            api_logger.warning(
-                'MIGR-AUTH echec de persistance user_id=%s operation=%s erreur=%s code=%s ; '
-                'connexion autorisee apres rollback',
-                identity['id'], 'rehash' if needs_upgrade else 'compteur',
-                type(error).__name__, getattr(getattr(error, 'orig', None), 'errno', None),
-            )
-        try:
-            token = create_auth_session(g.db_session, user.id, session.get('auth_token'))
-            g.db_session.commit()
-        except SQLAlchemyError:
-            g.db_session.rollback()
-            api_logger.error('SESSION-AUTH echec de creation user_id=%s', identity['id'])
-            raise SessionStorageError from None
-        session.clear()
-        session.update(identity)
-        session['auth_token'] = token
-        session.permanent = True
+        identity: dict[str, str | int | None] = user.get_identity()
+        needs_upgrade = _persist_authenticated_user(user, password, identity)
+        _sync_upgraded_password(user, needs_upgrade)
+        token = _create_authenticated_session(user)
+        _initialize_authenticated_session(identity, token)
         return True
 
     @staticmethod
