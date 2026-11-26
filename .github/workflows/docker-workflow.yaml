@@ -173,6 +173,8 @@ jobs:
             cp .env.example .env
             cat .env
           fi
+          touch ttlama/config/.env
+          echo "API_MAIL_TOKEN=$(openssl rand -hex 32)" >> .env
           echo "Chargement des variables d'environnement:"
           source .env
       - name: Chargement des images Docker
@@ -190,14 +192,35 @@ jobs:
           retry_wait_seconds: 60
           warning_on_retry: true
           command: |
+            set -e
             echo "Tentative de validation de l'application web..."
             source .env
-            docker compose -f docker-compose.dev.yaml up -d web db
+            trap 'docker compose -f docker-compose.dev.yaml down -v' EXIT
+            docker compose -f docker-compose.dev.yaml up -d db
+
+            db_ready=false
+            for i in {1..30}; do
+              if docker compose -f docker-compose.dev.yaml exec -T db mariadb -u "${DB_USER}" -p"${DB_PASSWORD}" -e "SELECT 1 FROM 99_users LIMIT 1" "${DB_NAME}"; then
+                db_ready=true
+                break
+              fi
+              sleep 2
+            done
+            if [ "$db_ready" = false ]; then
+              echo "Le conteneur db n'est pas prêt après 60 secondes."
+              exit 1
+            fi
+
+            if ! docker compose -f docker-compose.dev.yaml run --rm --no-deps --entrypoint sh web -c 'alembic upgrade f1a2b3c4d5e6'; then
+              echo "La migration de la base a échoué."
+              exit 1
+            fi
+            docker compose -f docker-compose.dev.yaml up -d web
             
             echo "Attente que le conteneur web soit prêt..."
             web_ready=false
             for i in {1..30}; do
-              if response=$(curl -s -o /dev/null -w "%{http_code} %{redirect_url}" -L -I http://localhost:5000/ 2>/dev/null); then
+              if response=$(docker compose -f docker-compose.dev.yaml exec -T web curl -s -o /dev/null -w "%{http_code} %{redirect_url}" -I http://localhost:5000/ 2>/dev/null); then
                 code=$(echo "$response" | cut -d' ' -f1)
                 location=$(echo "$response" | cut -d' ' -f2)
                 echo "Tentative $i: Code HTTP: $code, Location: $location"
@@ -221,9 +244,7 @@ jobs:
               echo "Le conteneur web n'est pas prêt après 60 secondes."
               echo "Vérification des logs du conteneur:"
               docker logs intranet_app --tail 20
-              docker compose down -v
               exit 1
             fi
             
             echo "Validation Web réussie, nettoyage..."
-            docker compose down -v
