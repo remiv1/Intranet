@@ -112,7 +112,7 @@ jobs:
             # Attendre que le conteneur db soit prêt
             db_ready=false
             for i in {1..30}; do
-              if docker compose exec -T db mariadb -u "${DB_USER}" -p"${DB_PASSWORD}" -e "SELECT 1" "${DB_NAME}"; then
+              if docker compose -f docker-compose.dev.yaml exec -T db mariadb -u "${DB_USER}" -p"${DB_PASSWORD}" -e "SELECT 1" "${DB_NAME}"; then
                 echo "Le conteneur db est prêt."
                 db_ready=true
                 break
@@ -123,31 +123,31 @@ jobs:
             
             if [ "$db_ready" = false ]; then
               echo "Le conteneur db n'est pas prêt après 60 secondes."
-              docker compose down -v
+              docker compose -f docker-compose.dev.yaml down -v
               exit 1
             fi
             
             # Vérifier la colonne identifiant dans 99_users
-            identifiant=$(docker compose exec -T db mariadb -u "${DB_USER}" -p"${DB_PASSWORD}" -D "${DB_NAME}" -N -e "SELECT identifiant FROM 99_users LIMIT 1;")
+            identifiant=$(docker compose -f docker-compose.dev.yaml exec -T db mariadb -u "${DB_USER}" -p"${DB_PASSWORD}" -D "${DB_NAME}" -N -e "SELECT identifiant FROM 99_users LIMIT 1;")
             if [ "$identifiant" = "admin" ]; then
               echo "La colonne identifiant dans 99_users est correcte."
             else
               echo "La colonne identifiant dans 99_users n'est pas correcte. Valeur trouvée: $identifiant"
-              docker compose down -v
+              docker compose -f docker-compose.dev.yaml down -v
               exit 1
             fi
 
             # Vérifier l'erreur sur une table inexistante
-            if docker compose exec -T db mariadb -u "${DB_USER}" -p"${DB_PASSWORD}" -D "${DB_NAME}" -e "SELECT * FROM table_inexistante;" 2>&1 | grep -q "ERROR"; then
+            if docker compose -f docker-compose.dev.yaml exec -T db mariadb -u "${DB_USER}" -p"${DB_PASSWORD}" -D "${DB_NAME}" -e "SELECT * FROM table_inexistante;" 2>&1 | grep -q "ERROR"; then
               echo "Erreur correctement détectée sur table inexistante."
             else
               echo "Erreur non détectée sur table inexistante."
-              docker compose down -v
+              docker compose -f docker-compose.dev.yaml down -v
               exit 1
             fi
             
             echo "Validation DB réussie, nettoyage..."
-            docker compose down -v
+            docker compose -f docker-compose.dev.yaml down -v
 
   validate-web:
     runs-on: ubuntu-latest
