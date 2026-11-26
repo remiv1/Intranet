@@ -85,6 +85,7 @@ jobs:
             cp .env.example .env
             cat .env
           fi
+          touch ttlama/config/.env
           echo "Chargement des variables d'environnement:"
           source .env
           echo "DB_USER=$DB_USER"
