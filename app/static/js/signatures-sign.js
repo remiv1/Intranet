@@ -7,6 +7,7 @@
 let hasReadDocument = false;
 let signaturePad = null;
 let token = null;
+let csrfToken = null;
 let hashDocument = null;
 let documentId = null;
 
@@ -24,6 +25,7 @@ let customSignatureData = {
 document.addEventListener("DOMContentLoaded", function() {
     initializeDocumentSigning();
     token = document.getElementById('invit-token') ? document.getElementById('invit-token').value : null;
+    csrfToken = document.querySelector('[data-csrf-token]')?.dataset.csrfToken || null;
     hashDocument = document.getElementById('hash-document') ? document.getElementById('hash-document').value : null;
     documentId = document.getElementById('doc-id') ? document.getElementById('doc-id').value : null;
 });
@@ -104,7 +106,7 @@ function displaySignaturePoints(points) {
     const pdfPages = document.querySelectorAll('.pdf-page');
     console.log('Nombre de pages PDF dans le DOM:', pdfPages.length);
     pdfPages.forEach((page, index) => {
-        const pageNum = page.getAttribute('data-page-number');
+        const pageNum = page.dataset.pageNumber;
         console.log(`Page ${index + 1} dans le DOM a data-page-number="${pageNum}"`);
     });
     
@@ -149,7 +151,7 @@ function createSignatureRectangle(viewPoint) {
         const allPages = document.querySelectorAll('.pdf-page[data-page-number]');
         console.error('Pages disponibles dans le DOM:');
         allPages.forEach(p => {
-            console.error(`  - Page ${p.getAttribute('data-page-number')} (${p.tagName})`);
+            console.error(`  - Page ${p.dataset.pageNumber} (${p.tagName})`);
         });
         return;
     }
@@ -290,6 +292,7 @@ function requestOTPCode() {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken,
             'X-Invit-Token': token,
         },
         body: JSON.stringify({
@@ -719,6 +722,7 @@ function validateSignatureWithOTP(otpCode) {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken,
             'X-Invit-Token': token,
         },
         body: JSON.stringify({
@@ -753,7 +757,9 @@ function validateSignatureWithOTP(otpCode) {
                 fetch(`/signature/creer/${data.document_id}/${data.hash_document}`, {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken,
+                        'X-Invit-Token': token,
                     }
                 })
                 .then(response => response.json())

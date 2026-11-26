@@ -1,5 +1,5 @@
 <!-- Template de signature électronique - Inclus dans ea.html -->
-<div class="container-fluid">
+<div class="container-fluid" data-csrf-token="{{ csrf_token() }}">
     <div class="row">
         <div class="col-12">
         <!-- Scripts Signatures -->
@@ -19,7 +19,7 @@
                                 {% if document.doc_sous_type %}
                                 <strong>Sous-type :</strong> {{ document.doc_sous_type }}<br>
                                 {% endif %}
-                                <strong>Priorité :</strong> 
+                                <strong>Priorité :</strong>
                                 <span class="badge badge-{% if document.priority == 2 %}danger{% elif document.priority == 1 %}warning{% else %}success{% endif %}">
                                     {% if document.priorite == -1 %}
                                     Basse

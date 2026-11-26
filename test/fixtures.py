@@ -1,308 +1,192 @@
-"""
-Fixtures spécialisées pour créer des instances d'objets de test avec mocks.
+"""Données et objets persistants pour les tests MariaDB."""
 
-Ce module contient des fixtures qui créent des objets mockés
-sans utiliser de vraie base de données.
-"""
-import pytest
-from typing import List, Dict, Any, Generator
 from datetime import date, timedelta
-from unittest.mock import MagicMock
-from app.models import User, Contract, Document, Event
+from hashlib import sha256
+from typing import Any
+
+import pytest
+from sqlalchemy.orm import Session
+
+from app.models import Contract, Document, Event, User
 
 
 @pytest.fixture
-def create_test_user(mock_db_session: MagicMock, sample_user_data: Dict[str, Any]) -> User:
-    """
-    Fixture pour créer un utilisateur de test dans la session mockée.
-    
-    Returns:
-        User: L'utilisateur créé avec un ID généré
-    """
+def sample_user_data() -> dict[str, Any]:
+    """Retourne les données d'un compte de test."""
+    return {
+        "prenom": "Jean", "nom": "Dupont", "mail": "jean.dupont@test.invalid",
+        "identifiant": "jdupont", "sha_mdp": sha256(b"test-password").hexdigest(),
+        "habilitation": 1, "debut": date.today(), "fin": None,
+        "false_test": 0, "locked": False,
+    }
+
+
+@pytest.fixture
+def sample_contract_data() -> dict[str, Any]:
+    """Retourne les données d'un contrat valide."""
+    return {
+        "type_contrat": "Maintenance", "sous_type_contrat": "Informatique",
+        "entreprise": "TechCorp", "id_externe_contrat": "TC001",
+        "intitule": "Maintenance des serveurs", "date_debut": date.today(),
+        "date_fin_preavis": date.today() + timedelta(days=365), "date_fin": None,
+    }
+
+
+@pytest.fixture
+def sample_document_data() -> dict[str, Any]:
+    """Retourne les données d'un document à rattacher à un contrat."""
+    return {
+        "type_document": "Contrat", "sous_type_document": "Initial",
+        "descriptif": "Contrat initial de maintenance", "str_lien": "contrat_001.pdf",
+        "date_document": date.today(), "name": "contrat_001",
+    }
+
+
+@pytest.fixture
+def sample_event_data() -> dict[str, Any]:
+    """Retourne les données d'un événement à rattacher à un contrat."""
+    return {
+        "type_evenement": "Renouvellement", "sous_type_evenement": "Automatique",
+        "date_evenement": date.today() + timedelta(days=30),
+        "descriptif": "Renouvellement automatique du contrat",
+    }
+
+
+@pytest.fixture
+def create_test_user(db_session: Session, sample_user_data: dict[str, Any]) -> User:  # pylint: disable=W0621
+    """Persiste un utilisateur dans la transaction du test."""
     user = User(**sample_user_data)
-    mock_db_session.add(user)
-    mock_db_session.commit()
+    db_session.add(user)
+    db_session.commit()
     return user
 
 
 @pytest.fixture
-def create_admin_user(mock_db_session: MagicMock) -> User:
-    """
-    Fixture pour créer un utilisateur administrateur de test.
-    
-    Returns:
-        User: L'utilisateur administrateur créé
-    """
-    admin_data: Dict[str, Any] = {
-        'prenom': 'Admin',
-        'nom': 'Système',
-        'mail': 'admin@test.com',
-        'identifiant': 'admin',
-        'sha_mdp': 'admin_hashed_password',
-        'habilitation': 1,  # Administrateur
-        'debut': date.today(),
-        'fin': None,
-        'false_test': 0,
-        'locked': False
-    }
-    
-    user = User(**admin_data)
-    mock_db_session.add(user)
-    mock_db_session.commit()
+def create_admin_user(db_session: Session, sample_user_data: dict[str, Any]) -> User:  # pylint: disable=W0621
+    """Persiste un administrateur avec le mot de passe test-password."""
+    user = User(**(sample_user_data | {"identifiant": "admin", "prenom": "Admin"}))
+    db_session.add(user)
+    db_session.commit()
     return user
 
 
 @pytest.fixture
-def create_test_contract(mock_db_session: MagicMock, sample_contract_data: Dict[str, Any]) -> Contract:
-    """
-    Fixture pour créer un contrat de test dans la session mockée.
-    
-    Returns:
-        Contract: Le contrat créé avec un ID généré
-    """
+def create_test_contract(db_session: Session, sample_contract_data: dict[str, Any]) -> Contract:  # pylint: disable=W0621
+    """Persiste un contrat dans la transaction du test."""
     contract = Contract(**sample_contract_data)
-    mock_db_session.add(contract)
-    mock_db_session.commit()
+    db_session.add(contract)
+    db_session.commit()
     return contract
 
 
 @pytest.fixture
-def create_expiring_contract(mock_db_session: MagicMock) -> Contract:
-    """
-    Fixture pour créer un contrat arrivant à échéance.
-    
-    Returns:
-        Contract: Un contrat qui arrive à échéance dans 30 jours
-    """
-    contract_data: Dict[str, Any] = {
-        'type_contrat': 'Service',
-        'sous_type_contrat': 'Nettoyage',
-        'entreprise': 'CleanCorp',
-        'id_externe_contrat': 'CC001',
-        'intitule': 'Service de nettoyage',
-        'date_debut': date.today() - timedelta(days=335),  # Commencé il y a ~11 mois
-        'date_fin_preavis': date.today() + timedelta(days=30),  # Échéance dans 30 jours
-        'date_fin': None
-    }
-    
-    contract = Contract(**contract_data)
-    mock_db_session.add(contract)
-    mock_db_session.commit()
+def create_expiring_contract(db_session: Session, sample_contract_data: dict[str, Any]) -> Contract:  # pylint: disable=W0621
+    """Persiste un contrat dont le preavis expire dans trente jours."""
+    contract = Contract(**(sample_contract_data | {
+        "date_debut": date.today() - timedelta(days=335),
+        "date_fin_preavis": date.today() + timedelta(days=30),
+    }))
+    db_session.add(contract)
+    db_session.commit()
     return contract
 
 
 @pytest.fixture
-def create_test_document(mock_db_session: MagicMock, create_test_contract: Contract, sample_document_data: Dict[str, Any]) -> Document:
-    """
-    Fixture pour créer un document de test lié à un contrat.
-    
-    Args:
-        create_test_contract: Le contrat auquel lier le document
-        
-    Returns:
-        Document: Le document créé avec un ID généré
-    """
-    document_data = sample_document_data.copy()
-    document_data['id_contrat'] = create_test_contract.id
-    
-    document = Document(**document_data)
-    mock_db_session.add(document)
-    mock_db_session.commit()
+def create_test_document(
+    db_session: Session,
+    create_test_contract: Contract,  # pylint: disable=W0621
+    sample_document_data: dict[str, Any],  # pylint: disable=W0621
+) -> Document:
+    """Persiste un document lié au contrat du test."""
+    document = Document(**(sample_document_data | {"id_contrat": create_test_contract.id}))
+    db_session.add(document)
+    db_session.commit()
     return document
 
 
 @pytest.fixture
-def create_test_event(mock_db_session: MagicMock, create_test_contract: Contract, sample_event_data: Dict[str, Any]) -> Event:
-    """
-    Fixture pour créer un événement de test lié à un contrat.
-    
-    Args:
-        create_test_contract: Le contrat auquel lier l'événement
-        
-    Returns:
-        Event: L'événement créé avec un ID généré
-    """
-    event_data = sample_event_data.copy()
-    event_data['id_contrat'] = create_test_contract.id
-    
-    event = Event(**event_data)
-    mock_db_session.add(event)
-    mock_db_session.commit()
+def create_test_event(
+    db_session: Session,
+    create_test_contract: Contract,  # pylint: disable=W0621
+    sample_event_data: dict[str, Any],  # pylint: disable=W0621
+) -> Event:
+    """Persiste un événement lié au contrat du test."""
+    event = Event(**(sample_event_data | {"id_contrat": create_test_contract.id}))
+    db_session.add(event)
+    db_session.commit()
     return event
 
 
 @pytest.fixture
-def create_multiple_users(mock_db_session: MagicMock) -> List[User]:
-    """
-    Fixture pour créer plusieurs utilisateurs avec différents niveaux d'habilitation.
-    
-    Returns:
-        List[User]: Liste des utilisateurs créés
-    """
-    users_data: List[Dict[str, Any]] = [
-        {
-            'prenom': 'Jean', 'nom': 'Administrateur', 'mail': 'jean.admin@test.com',
-            'identifiant': 'jadmin', 'sha_mdp': 'hash1', 'habilitation': 1,
-            'debut': date.today(), 'fin': None, 'false_test': 0, 'locked': False
-        },
-        {
-            'prenom': 'Marie', 'nom': 'Gestionnaire', 'mail': 'marie.gestionnaire@test.com',
-            'identifiant': 'mgest', 'sha_mdp': 'hash2', 'habilitation': 2,
-            'debut': date.today(), 'fin': None, 'false_test': 0, 'locked': False
-        },
-        {
-            'prenom': 'Pierre', 'nom': 'Professeur', 'mail': 'pierre.prof@test.com',
-            'identifiant': 'pprof', 'sha_mdp': 'hash3', 'habilitation': 4,
-            'debut': date.today(), 'fin': None, 'false_test': 0, 'locked': False
-        },
-        {
-            'prenom': 'Sophie', 'nom': 'Élève', 'mail': 'sophie.eleve@test.com',
-            'identifiant': 'seleve', 'sha_mdp': 'hash4', 'habilitation': 8,
-            'debut': date.today(), 'fin': None, 'false_test': 0, 'locked': False
-        }
+def create_multiple_users(db_session: Session, sample_user_data: dict[str, Any]) -> list[User]:  # pylint: disable=W0621
+    """Persiste quatre utilisateurs avec des habilitations distinctes."""
+    users = [
+        User(**(sample_user_data | {
+            "identifiant": identifier, "prenom": first_name,
+            "habilitation": permission, "mail": f"{identifier}@test.invalid",
+        }))
+        for identifier, first_name, permission in (
+            ("jadmin", "Jean", 1), ("mgest", "Marie", 2),
+            ("pprof", "Pierre", 4), ("seleve", "Sophie", 5),
+        )
     ]
-
-    users: List[User] = []
-    for user_data in users_data:
-        user = User(**user_data)
-        mock_db_session.add(user)
-        users.append(user)
-    
-    mock_db_session.commit()
+    db_session.add_all(users)
+    db_session.commit()
     return users
 
 
 @pytest.fixture
-def create_multiple_contracts(mock_db_session: MagicMock) -> List[Contract]:
-    """
-    Fixture pour créer plusieurs contrats avec des échéances différentes.
-    
-    Returns:
-        List[Contract]: Liste des contrats créés
-    """
-    today = date.today()
-
-    contracts_data: List[Dict[str, Any]] = [
-        {
-            'type_contrat': 'Maintenance', 'sous_type_contrat': 'Informatique',
-            'entreprise': 'TechCorp', 'id_externe_contrat': 'TC001',
-            'intitule': 'Maintenance serveurs', 'date_debut': today - timedelta(days=300),
-            'date_fin_preavis': today + timedelta(days=65), 'date_fin': None
-        },
-        {
-            'type_contrat': 'Service', 'sous_type_contrat': 'Nettoyage',
-            'entreprise': 'CleanCorp', 'id_externe_contrat': 'CC001',
-            'intitule': 'Nettoyage locaux', 'date_debut': today - timedelta(days=200),
-            'date_fin_preavis': today + timedelta(days=120), 'date_fin': None
-        },
-        {
-            'type_contrat': 'Formation', 'sous_type_contrat': 'Informatique',
-            'entreprise': 'FormaCorp', 'id_externe_contrat': 'FC001',
-            'intitule': 'Formation développement', 'date_debut': today - timedelta(days=100),
-            'date_fin_preavis': today + timedelta(days=200), 'date_fin': None
-        },
-        {
-            'type_contrat': 'Maintenance', 'sous_type_contrat': 'Chauffage',
-            'entreprise': 'HeatCorp', 'id_externe_contrat': 'HC001',
-            'intitule': 'Maintenance chauffage', 'date_debut': today - timedelta(days=400),
-            'date_fin_preavis': today - timedelta(days=30), 'date_fin': today - timedelta(days=30)  # Contrat expiré
-        }
+def create_multiple_contracts(
+    db_session: Session,
+    sample_contract_data: dict[str, Any],  # pylint: disable=W0621
+) -> list[Contract]:
+    """Persiste des contrats aux préavis passés, proches et éloignés."""
+    contracts = [
+        Contract(**(sample_contract_data | {
+            "id_externe_contrat": f"TC{index:03}",
+            "date_debut": date.today() - timedelta(days=400),
+            "date_fin_preavis": date.today() + timedelta(days=days),
+        }))
+        for index, days in enumerate((65, 120, 200, -30), start=1)
     ]
-
-    contracts: List[Contract] = []
-    for contract_data in contracts_data:
-        contract = Contract(**contract_data)
-        mock_db_session.add(contract)
-        contracts.append(contract)
-    
-    mock_db_session.commit()
+    db_session.add_all(contracts)
+    db_session.commit()
     return contracts
 
 
 @pytest.fixture
 def create_contract_with_documents_and_events(
-    mock_db_session: MagicMock, 
-    create_test_contract: Contract
+    db_session: Session,
+    create_test_contract: Contract,  # pylint: disable=W0621
+    sample_document_data: dict[str, Any],  # pylint: disable=W0621
+    sample_event_data: dict[str, Any],  # pylint: disable=W0621
 ) -> Contract:
-    """
-    Fixture pour créer un contrat complet avec des documents et événements associés.
-    
-    Args:
-        create_test_contract: Le contrat de base
-        
-    Returns:
-        Contract: Le contrat avec documents et événements créés
-    """
-    contract = create_test_contract
-    
-    # Créer plusieurs documents
-    documents_data: List[Dict[str, Any]] = [
-        {
-            'id_contrat': contract.id, 'type_document': 'Contrat', 'sous_type_document': 'Initial',
-            'descriptif': 'Contrat initial', 'str_lien': '/docs/contrat_initial.pdf',
-            'date_document': date.today() - timedelta(days=300), 'name': 'contrat_initial.pdf'
-        },
-        {
-            'id_contrat': contract.id, 'type_document': 'Avenant', 'sous_type_document': 'Modification',
-            'descriptif': 'Avenant tarifaire', 'str_lien': '/docs/avenant_001.pdf',
-            'date_document': date.today() - timedelta(days=100), 'name': 'avenant_001.pdf'
-        }
-    ]
-    
-    # Créer plusieurs événements
-    events_data: List[Dict[str, Any]] = [
-        {
-            'id_contrat': contract.id, 'type_evenement': 'Signature', 'sous_type_evenement': 'Initial',
-            'date_evenement': date.today() - timedelta(days=300),
-            'descriptif': 'Signature du contrat initial'
-        },
-        {
-            'id_contrat': contract.id, 'type_evenement': 'Renouvellement', 'sous_type_evenement': 'Automatique',
-            'date_evenement': date.today() + timedelta(days=30),
-            'descriptif': 'Renouvellement automatique prévu'
-        }
-    ]
-    
-    # Persister les documents
-    for doc_data in documents_data:
-        document = Document(**doc_data)
-        mock_db_session.add(document)
-    
-    # Persister les événements
-    for event_data in events_data:
-        event = Event(**event_data)
-        mock_db_session.add(event)
-    
-    mock_db_session.commit()
-    return contract
+    """Persiste deux documents et deux événements liés au même contrat."""
+    for index in range(2):
+        db_session.add(Document(**(sample_document_data | {
+            "id_contrat": create_test_contract.id, "name": f"contrat_{index:03}",
+            "str_lien": f"contrat_{index:03}.pdf",
+        })))
+        db_session.add(Event(**(sample_event_data | {
+            "id_contrat": create_test_contract.id, "descriptif": f"Evenement {index}",
+        })))
+    db_session.commit()
+    return create_test_contract
 
 
 @pytest.fixture
-def mock_authenticated_session() -> Dict[str, Any]:
-    """
-    Fixture pour simuler une session utilisateur authentifiée.
-    
-    Returns:
-        dict: Données de session simulées avec les clés attendues par l'application
-    """
-    dict_return: Dict[str, Any] = {
-        'identifiant': 'testuser',
-        'prenom': 'Test',
-        'nom': 'User',
-        'mail': 'test.user@example.com',
-        'habilitation': '1',  # Administrateur (string comme attendu par l'app)
+def authenticated_session_data(
+    db_session: Session,
+    create_admin_user: User,    # pylint: disable=W0621
+) -> dict[str, Any]:
+    """Retourne les données de session du compte réel de test."""
+    from app.repositories.auth_session import create_auth_session   # pylint: disable=C0415
+
+    token = create_auth_session(db_session, create_admin_user.id)
+    db_session.commit()
+    return {
+        "auth_token": token,
+        "id": create_admin_user.id, "identifiant": create_admin_user.identifiant,
+        "prenom": create_admin_user.prenom, "nom": create_admin_user.nom,
+        "mail": create_admin_user.mail, "habilitation": str(create_admin_user.habilitation),
     }
-    return dict_return
-
-@pytest.fixture
-def mock_flask_session(mock_authenticated_session: Dict[str, Any]) -> Generator[Dict[str, Any], None, None]:
-    """
-    Fixture pour mocker la session Flask.
-    
-    Returns:
-        MagicMock: Session Flask mockée avec des données d'authentification
-    """
-    from unittest.mock import patch
-    
-    with patch('flask.session', mock_authenticated_session) as mock_session:
-        yield mock_session

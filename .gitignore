@@ -25,6 +25,28 @@ sql/test_user.sql
 documents/*
 !documents/.gitkeep
 !database/251003_MigrationScript.sql
+!database/261126_ProvisionTTL-LAMa.sql
 
-# TTL-LAMa
-**/ttl-lama/*
+# logs
+*.log
+**/*.log
+**/*.lock
+**/*.log*
+
+# TTL Lama
+**/backend_config.yml
+**/config.yml
+**/ssh_config.yml
+**/ssh_known_hosts
+**/panic_mail_config.yml
+**/ttlama-ssh-wrapper
+**/ttlama.sudoers
+**/vpn-host-setup.sh
+**/wireguard-ssh-key.pub
+**/flask_secret_key
+**/panic_mail_secret
+**/ttlama_ssh_key
+**/ttlama_ssh_key.pub
+!ttlama/**/.gitkeep
+
+app/nginx/maintenance/maintenance.enabled

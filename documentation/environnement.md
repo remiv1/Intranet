@@ -95,6 +95,8 @@ Le fichier `.env` contient toutes les variables de configuration nécessaires :
 
 | Variable | Description | Exemple |
 | --- | --- | --- |
+| `APP_UID` | UID de l'utilisateur non-root du conteneur | `10001` |
+| `APP_GID` | GID de l'utilisateur non-root du conteneur | `10001` |
 | `DB_PORTS` | Mapping ports base de données | `3306:3306` |
 | `WEB_PORTS` | Mapping ports application web | `5000:5000` |
 | `EXPOSE_PORTS` | Mode exposition des ports | `Workflow` ou `Production` |

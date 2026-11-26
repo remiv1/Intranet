@@ -48,7 +48,7 @@ docker-compose top                  # Processus actifs
 
 ## 💾 Stratégie de Sauvegarde
 
-### Sauvegarde automatique quotidienne (à venir)
+### Sauvegarde automatique quotidienne
 
 ```bash
 #!/bin/bash
@@ -87,7 +87,77 @@ tar -xzf documents_backup.tar.gz -C /
 docker-compose restart
 ```
 
+## Pages de secours Nginx
+
+Nginx sert deux pages statiques indépendantes de Flask :
+[panne](../app/nginx/maintenance/outage.html) et [maintenance planifiée](../app/nginx/maintenance/planned.html). Le logo est le fichier existant `app/static/img/favicone.svg`, monté séparément dans le proxy. Les pages et leur CSS ne dépendent d'aucun CDN. Les liens de support ciblent `rverschuur@audit-io.fr` avec l'objet « Panne de l'Intranet de la Péraudière ».
+
+Les erreurs amont `502`, `503` et `504` déclenchent la page de panne et une réponse HTTP `503` sans cache. Les autres erreurs, dont `404` et `500`, ne sont pas remplacées. Les délais réseau Nginx existants sont conservés : en cas de serveur inaccessible, la page peut attendre l'expiration du timeout de connexion.
+
+Une requête reçoit du JSON si son en-tête `Accept` ou `Content-Type` annonce `application/json` ou un type `application/...+json`. Le chemin URL n'entre pas dans cette décision. Les clients API doivent donc annoncer le format JSON. Les réponses contiennent `error`, `message` et `contact`, avec HTTP `503` et `Cache-Control: no-store`.
+
+### Maintenance manuelle
+
+Depuis la racine du dépôt sur l'hôte du proxy :
+
+```bash
+# Activer
+touch app/nginx/maintenance/maintenance.enabled
+
+# Désactiver
+rm -- app/nginx/maintenance/maintenance.enabled
+```
+
+Le fichier témoin est exclu de Git et lu à chaque nouvelle requête, sans redémarrage ni rechargement. La maintenance s'applique à HTTP et HTTPS. Seuls les chemins du logo et du CSS de secours restent accessibles pour que la page s'affiche ; les URLs internes des pages HTML/JSON ne sont pas directement consultables. Les requêtes déjà en cours ne sont pas annulées par le fichier témoin.
+
+### Mise en place initiale
+
+Les fichiers Compose principal et de développement montent la configuration de secours, les pages et le logo dans le service `nginx`. Il faut recréer ce service une première fois pour appliquer ces nouveaux montages, avec le fichier Compose adapté au déploiement. Aucun proxy réel n'a été redémarré lors de l'implémentation.
+
+Conserver Nginx actif pendant les interventions : arrêter uniquement les services nécessaires, plutôt que toute la stack avec `docker compose down`, qui rendrait aussi la page de maintenance indisponible. Valider toute nouvelle configuration avec `nginx -t` avant son rechargement.
+
+Les tests de secours s'exécutent séparément sur l'hôte avec Docker, OpenSSL et l'image `nginx:latest` déjà disponible :
+
+```bash
+.venv/bin/python -m unittest test.test_nginx_maintenance -v
+```
+
+Ils utilisent des conteneurs, certificats et réseau temporaires ; les ports sont liés uniquement à localhost. Ils ne contactent ni l'Intranet réel, ni la base, ni le routeur VPN. Seul le délai de connexion du proxy de test est raccourci.
+
 ## 🔄 Mise à jour de l'Application
+
+### Migration du carnet de contacts
+
+Avant le démarrage de cette version, appliquer la révision Alembic
+`a7c9d2e4f601` (après `f1a2b3c4d5e6`) via le script existant `app/migrate.sh`,
+en utilisant le fichier Compose du déploiement concerné. Sauvegarder les données
+auparavant et suspendre les écritures pendant la migration : le DDL MariaDB
+peut effectuer des commits implicites.
+
+La migration crée `02_contacts_contrats`, copie chaque rattachement existant puis
+retire la colonne `02_contacts.id_contrat`. Il faut exécuter la migration avant
+de démarrer l'application ; la création automatique des tables ne convertit pas
+le schéma historique.
+
+Le downgrade est refusé si une fiche est sans contrat ou liée à plusieurs
+contrats. Il ne choisit aucun contrat arbitrairement et ne supprime aucune fiche.
+Préparer explicitement les données avant un retour arrière, ou restaurer une
+sauvegarde compatible. L'implémentation ne lance aucune migration sur la base
+réelle automatiquement.
+
+### Lanceur depuis l'hôte
+
+Lorsque le conteneur `web` est déjà actif, le [lanceur Alembic](../alembic/migrate.sh)
+permet d'exécuter `alembic upgrade head` à l'intérieur de ce conteneur :
+
+```bash
+sh alembic/migrate.sh
+sh alembic/migrate.sh docker-compose.dev.yaml
+```
+
+Le fichier par défaut est `docker-compose.yaml` à la racine du dépôt. Un fichier fourni en argument est résolu depuis le répertoire courant. Le lanceur ne démarre aucun conteneur et transmet les erreurs de Docker ou d'Alembic. Sauvegarder la base et suspendre les écritures avant de l'utiliser.
+
+Si le nouveau code ne peut pas démarrer sur l'ancien schéma, conserver la procédure ci-dessous avec `docker compose run --rm --no-deps` avant de lancer web.
 
 ### Procédure de mise à jour
 
@@ -112,8 +182,10 @@ diff .env.example .env      # Comparer configurations
 # 6. Reconstruire les images
 docker-compose build --no-cache
 
-# 7. Relancer l'application
-docker-compose up -d
+# 7. Démarrer la base, appliquer les migrations manuellement, puis lancer l'application
+docker compose up -d db
+docker compose run --rm --no-deps --entrypoint sh web app/migrate.sh
+docker compose up -d web
 
 # 8. Vérifier le bon fonctionnement
 docker-compose ps

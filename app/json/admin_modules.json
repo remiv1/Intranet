@@ -11,6 +11,20 @@
         "modules": [
             {
                 "classe": 2,
+                "titre": "Gestion des contrats",
+                "descriptif": "Contrats, documents et événements de l'établissement",
+                "buttonid": "Ddc",
+                "onclick": "contracts_bp.contrats"
+            },
+            {
+                "classe": 2,
+                "titre": "Gestion des contacts",
+                "descriptif": "Carnet de contacts et contrats associés",
+                "buttonid": "contacts",
+                "onclick": "contacts.index"
+            },
+            {
+                "classe": 2,
                 "titre": "Faire signer un document",
                 "descriptif": "Permet de déposer un document à signer par un ou plusieurs utilisateurs de l'Intranet",
                 "buttonid": "signature_make",
@@ -26,7 +40,7 @@
             {
                 "classe": 2,
                 "titre": "Créer un document à faire signer depuis un modèle",
-                "descriptif": "Permet de créer un document à faire signer en utilisant un modèle prédéfini",
+                "descriptif": "Permet de créer un document à faire signer en utilisant un modèle prédéfini. (En cours de développement)",
                 "buttonid": "create_signature_from_template",
                 "onclick": "signature.create_signature_from_template"
             }

@@ -4,15 +4,21 @@
     <meta charset="UTF-8">
     <link rel="shortcut icon" href="{{ url_for('static', filename='img/favicone.svg') }}" type="image/x-icon">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <!-- CSS Bootstrap-->
+    <!-- CSS Bootstrap -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-rbsA2VBKQhggwzxH7pPCaAqO46MgnOM80zW1RWuH61DGLwZJEdK2Kadq2F9CUG65" crossorigin="anonymous">
-    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
-    <!--CSS propriétaires-->
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style-accueil.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style-general.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style-menu.css') }}">
+    
+    <!-- Icônes -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" integrity="sha384-Ay26V7L8bsJTsX9Sxclnvsn+hkdiwRnrjZJXqKmkIDobPgIIWBOVguEcQQLDuhfN" crossorigin="anonymous">
+    
+    <!-- Polices -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fenix&family=Pattaya&display=swap" rel="stylesheet">
+    
+    <!-- CSS Personnalisés -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style-variables.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style-components.css') }}">
     <!--Jeux de polices-->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -27,7 +33,8 @@
 </head>
 <body>
     <header>
-        <h1>Gestion des droits</h1>
+        <h1><i class="bi bi-lock"></i> Gestion des Droits</h1>
+        <p>Gérez les accès et les habilitations des utilisateurs</p>
     </header>
     <main>
         <!-- Fil d'Ariane -->
@@ -113,24 +120,70 @@
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div class="modal-body">
-                        <form action="{{ url_for('gestion_droits') }}" method="post">
-                            <input type="hidden" name="identifiant" value="{{ user['identifiant'] }}">
+                        {% set current_rights_form = rights_forms[user['id']] %}
+                        <form action="{{ url_for('gestion_droits') }}" method="post" class="vpn-rights-form"
+                            data-profiles-url="{{ url_for('vpn_profiles', user_id=user['id']) }}">
+                            {{ current_rights_form.hidden_tag() }}
+                            {% if user['vpn_sync_state'] == 'pending' %}
+                                <div class="alert alert-warning" role="status">Synchronisation VPN en attente.</div>
+                            {% elif user['vpn_sync_state'] in ['creating', 'review'] %}
+                                <div class="alert alert-danger" role="alert">Création du compte VPN à vérifier manuellement.</div>
+                            {% endif %}
                             <div class="form-group">
-                                <label for="mdp">Nouveau mot de passe<br>(ne rien mettre pour ne pas modifier)</label>
-                                <input type="password" class="form-control" id="mdp" name="mdp">
-                                <div class="mb-3">
-                                    <input type="checkbox" name="habil1" id="administration" value="1" {% if '1' in user.habilitation|string %}checked{% endif %}>
-                                    <label for="administration" class="form-label">Administrateur</label><br>
-                                    <input type="checkbox" name="habil2" id="administratif" value="2" {% if '2' in user.habilitation|string %}checked{% endif %}>
-                                    <label for="administratif" class="form-label">Administratif</label><br>
-                                    <input type="checkbox" name="habil3" id="pprofesseur" value="3" {% if '3' in user.habilitation|string %}checked{% endif %}>
-                                    <label for="pprofesseur" class="form-label">Professeur principal</label><br>
-                                    <input type="checkbox" name="habil4" id="professeur" value="4" {% if '4' in user.habilitation|string %}checked{% endif %}>
-                                    <label for="professeur" class="form-label">Professeur</label><br>
-                                    <input type="checkbox" name="habil5" id="eleve" value="5" {% if '5' in user.habilitation|string %}checked{% endif %}>
-                                    <label for="eleve" class="form-label">Elève</label><br>
-                                    <input type="checkbox" name="habil6" id="impression" value="6" {% if '6' in user.habilitation|string %}checked{% endif %}>
-                                    <label for="impression" class="form-label">Impression</label>
+                                <label for="mdp{{ user['id'] }}">Nouveau mot de passe<br>(ne rien mettre pour ne pas modifier)</label>
+                                {{ current_rights_form.mdp(class_="form-control", id="mdp" ~ user['id']) }}
+                                <div class="mb-3 mt-3 rights-dropdown">
+                                    <label class="form-label" id="rights-label{{ user['id'] }}">Habilitations</label>
+                                    <div class="dropdown">
+                                        <button class="btn btn-outline-secondary dropdown-toggle rights-dropdown-button w-100 text-start"
+                                                type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside"
+                                                aria-expanded="false" aria-labelledby="rights-label{{ user['id'] }}">
+                                            Sélectionner les droits
+                                        </button>
+                                        <div class="dropdown-menu rights-dropdown-menu w-100 p-2">
+                                            <label for="administration{{ user['id'] }}" class="dropdown-item d-flex align-items-center gap-2">
+                                                {{ current_rights_form.habil1(id="administration" ~ user['id'], class_="form-check-input m-0 rights-checkbox") }}
+                                                <span>Administrateur</span>
+                                            </label>
+                                            <label for="administratif{{ user['id'] }}" class="dropdown-item d-flex align-items-center gap-2">
+                                                {{ current_rights_form.habil2(id="administratif" ~ user['id'], class_="form-check-input m-0 rights-checkbox") }}
+                                                <span>Administratif</span>
+                                            </label>
+                                            <label for="pprofesseur{{ user['id'] }}" class="dropdown-item d-flex align-items-center gap-2">
+                                                {{ current_rights_form.habil3(id="pprofesseur" ~ user['id'], class_="form-check-input m-0 rights-checkbox") }}
+                                                <span>Professeur principal</span>
+                                            </label>
+                                            <label for="professeur{{ user['id'] }}" class="dropdown-item d-flex align-items-center gap-2">
+                                                {{ current_rights_form.habil4(id="professeur" ~ user['id'], class_="form-check-input m-0 rights-checkbox") }}
+                                                <span>Professeur</span>
+                                            </label>
+                                            <label for="eleve{{ user['id'] }}" class="dropdown-item d-flex align-items-center gap-2">
+                                                {{ current_rights_form.habil5(id="eleve" ~ user['id'], class_="form-check-input m-0 rights-checkbox") }}
+                                                <span>Élève</span>
+                                            </label>
+                                            <label for="impression{{ user['id'] }}" class="dropdown-item d-flex align-items-center gap-2">
+                                                {{ current_rights_form.habil6(id="impression" ~ user['id'], class_="form-check-input m-0 rights-checkbox") }}
+                                                <span>Impression</span>
+                                            </label>
+                                            <label for="vpn{{ user['id'] }}" class="dropdown-item d-flex align-items-center gap-2">
+                                                {{ current_rights_form.habil7(id="vpn" ~ user['id'], class_="vpn-toggle form-check-input m-0 rights-checkbox") }}
+                                                <span>VPN</span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="vpn-profiles mt-3" hidden>
+                                        <input type="hidden" name="vpn_profiles_loaded" value="0">
+                                        <label class="form-label" id="vpn-profiles-label{{ user['id'] }}">Profils TTL-LAMa attribués</label>
+                                        <div class="dropdown">
+                                            <button class="btn btn-outline-secondary dropdown-toggle vpn-profiles-button"
+                                                    type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside"
+                                                    aria-expanded="false" aria-labelledby="vpn-profiles-label{{ user['id'] }}">
+                                                Chargement des profils
+                                            </button>
+                                            <div class="dropdown-menu p-3 vpn-profiles-menu"></div>
+                                        </div>
+                                        <div class="vpn-profiles-status small mt-2" role="status" aria-live="polite"></div>
+                                    </div>
                                 </div>
                             </div>
                             <button type="submit" class="button">Valider</button>
@@ -146,4 +199,5 @@
     </footer>
     <!--Scripts Bootstrap-->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-kenU1KFdBIe4zVF0s0G1M5b4hcpxyD9F7jL+jjXkk+Q2h455rYXK/7HAuoJl+0I4" crossorigin="anonymous"></script>
+    <script src="{{ url_for('static', filename='js/vpn-droits.js') }}" defer></script>
 </body>

@@ -1,0 +1,58 @@
+:root {
+    color-scheme: light;
+    --text: #202b28;
+    --muted: #586661;
+    --line: #d7dfda;
+    --accent: #8e383c;
+    --accent-hover: #712a2e;
+    --paper: #ffffff;
+}
+
+* { box-sizing: border-box; }
+body {
+    margin: 0;
+    min-height: 100vh;
+    color: var(--text);
+    font-family: "Trebuchet MS", sans-serif;
+    line-height: 1.6;
+    background: repeating-linear-gradient(135deg, #f4f6f5 0, #f4f6f5 32px, #eef2ef 32px, #eef2ef 33px);
+}
+.planned { --accent: #25634e; --accent-hover: #194b3a; }
+.status-page {
+    width: min(100%, 960px);
+    min-height: 100vh;
+    margin: 0 auto;
+    padding: 48px 56px 28px;
+    display: flex;
+    flex-direction: column;
+    background: var(--paper);
+    border-top: 5px solid var(--accent);
+}
+.brand { text-align: center; }
+.brand img { display: block; width: 104px; height: 104px; margin: 0 auto 18px; }
+.brand-name { font-family: Georgia, serif; font-size: 32px; line-height: 1.2; }
+.brand-service { margin: 10px 0 0; color: var(--muted); font-size: 14px; }
+main { flex: 1; padding: 48px 0 56px; text-align: center; }
+.status-label { margin: 0 0 20px; color: var(--accent); font-size: 13px; font-weight: 700; text-transform: uppercase; }
+h1 { font-family: Georgia, serif; font-size: 42px; line-height: 1.2; font-weight: 400; margin: 0 auto 24px; overflow-wrap: anywhere; }
+.status-description { max-width: 560px; margin: 0 auto; color: var(--muted); font-size: 17px; }
+.status-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin-top: 32px; }
+.action { min-height: 48px; padding: 11px 24px; border: 1px solid var(--line); border-radius: 6px; text-decoration: none; font-size: 15px; font-weight: 700; transition: background-color .15s ease; }
+.action-primary { color: #fff; background: var(--accent); border-color: var(--accent); }
+.action-primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+.action-secondary { color: var(--text); background: var(--paper); }
+.action-secondary:hover { background: #eef2ef; }
+a:focus-visible { outline: 3px solid var(--accent); outline-offset: 4px; }
+footer { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px 20px; padding-top: 22px; border-top: 1px solid var(--line); font-size: 13px; color: var(--muted); }
+footer a { color: var(--muted); text-underline-offset: 3px; overflow-wrap: anywhere; }
+@media (max-width: 600px) {
+    .status-page { padding: 28px 22px 24px; }
+    .brand img { width: 88px; height: 88px; margin-bottom: 14px; }
+    .brand-name { font-size: 28px; }
+    main { padding: 36px 0 40px; }
+    h1 { font-size: 32px; }
+    .status-description { font-size: 16px; }
+    .desktop-break { display: none; }
+    .status-actions { flex-direction: column; align-items: stretch; }
+    footer { justify-content: center; text-align: center; }
+}

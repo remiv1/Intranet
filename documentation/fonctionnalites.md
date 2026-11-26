@@ -4,10 +4,11 @@
 
 ## 🔐 Authentification et Sécurité
 
-- [x] **Connexion sécurisée** avec hachage SHA-256 (modifications à venir Argon2)
+- [x] **Connexion sécurisée** avec Argon2
 - [x] **Système anti-brute force** : limitation à 3 tentatives
 - [x] **Verrouillage automatique** des comptes après échecs
 - [x] **Gestion des sessions** Flask sécurisées
+- [x] **Enregistrement session en base de données** avec persistance des sessions Flask
 - [x] **HTTPS** avec certificats SSL/TLS
 - [x] **Validation des entrées** côté serveur
 
@@ -22,11 +23,21 @@
 
 ## 📋 Gestion des Contrats
 
+- [x] **Accès depuis l'Espace Administratif**, réservé aux gestionnaires
 - [x] **Création de contrats** avec formulaires structurés
 - [x] **Suivi des échéances** (début, préavis, fin)
 - [x] **Classification** par type et sous-type
 - [x] **Liaison avec entreprises** et partenaires
 - [x] **Historique complet** des modifications
+
+## Gestion des Contacts
+
+- [x] **Carnet indépendant** accessible depuis l'Espace Administratif, réservé aux gestionnaires
+- [x] **Création sans contrat** et recherche par nom ou adresse e-mail
+- [x] **Associations multiples** : une fiche peut être rattachée à zéro, un ou plusieurs contrats
+- [x] **Coordonnées partagées** : une modification s'applique à la même fiche pour tous ses contrats
+- [x] **Retrait depuis un contrat** : seule l'association est supprimée, la fiche reste dans le carnet
+- [x] **Suppression depuis le carnet** : après confirmation, la fiche et tous ses liens sont supprimés, jamais les contrats
 
 ## 📄 Gestion Documentaire
 
@@ -90,5 +101,11 @@
 - [ ] **Recherche globale** dans tous les modules
 - [ ] **Raccourcis clavier** pour actions fréquentes
 - [x] **Notifications toast** pour feedback utilisateur
+
+## VPN
+
+- [x] **Génération des configurations VPN** avec clés et certificats sécurisés
+- [x] **Gestion des utilisateurs VPN** avec attribution de droits et suivi des connexions
+- [x] **Envoi au VPN des configurations générées** pour mise à jour automatique
 
 [<- Retour à la page d'accueil](../README.md)

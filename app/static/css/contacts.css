@@ -1,0 +1,30 @@
+.contact-workspace { max-width: 1100px; margin: 0 auto; padding: 1.5rem 1.25rem 3rem; }
+.contact-toolbar, .contact-search, .contact-actions, .contact-form-actions { display: flex; align-items: center; gap: .75rem; }
+.contact-toolbar { justify-content: space-between; flex-wrap: wrap; }
+.contact-search { flex: 1; max-width: 34rem; }
+.contact-search input { min-width: 0; }
+.contact-count, .contact-muted, .contact-address { color: var(--color-text-muted); }
+.contact-count { margin: 1.5rem 0 .5rem; }
+.contact-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; gap: 1.5rem; align-items: start; padding: 1.25rem 0; border-top: 1px solid var(--color-border); }
+.contact-identity, .contact-contracts { overflow-wrap: anywhere; min-width: 0; }
+.contact-identity h2, .contact-form-title { font-size: 1.35rem; margin: 0 0 .75rem; }
+.contact-identity p { margin: .4rem 0; }
+.contact-contracts { display: grid; gap: .5rem; }
+.contact-workspace .contact-icon { width: 44px; height: 44px; padding: 0; flex-shrink: 0; }
+.contact-icon:focus-visible { outline: 3px solid var(--color-text); outline-offset: 3px; }
+.contact-empty { padding: 2rem 0; border-top: 1px solid var(--color-border); }
+.contact-edit-form { max-width: 850px; }
+.contact-fields, .contact-choices { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem 1.5rem; }
+.contact-associations { border: 0; border-top: 1px solid var(--color-border); padding: 1.5rem 0; margin-top: 1.5rem; min-width: 0; }
+.contact-associations legend { float: none; width: auto; font-size: 1.1rem; font-weight: 600; }
+.contact-choice { display: flex; align-items: start; gap: .65rem; padding: .5rem 0; overflow-wrap: anywhere; }
+.contact-choice input { flex-shrink: 0; }
+.contact-form-actions { justify-content: flex-end; }
+@media (max-width: 700px) {
+    .contact-row { grid-template-columns: minmax(0, 1fr) auto; gap: 1rem; }
+    .contact-contracts { grid-column: 1; }
+    .contact-actions { grid-column: 2; grid-row: 1; }
+    .contact-fields, .contact-choices { grid-template-columns: minmax(0, 1fr); }
+    .contact-toolbar { align-items: stretch; }
+    .contact-search { flex-basis: 100%; max-width: none; }
+}

@@ -1,10 +1,156 @@
 # Rapport d'Évolution des Branches - Projet Intranet
 
-**Date du rapport :** 5 octobre 2025  
+---
+
+**Date du rapport :** 5 octobre 2025
 **Projet :** Intranet - Système de gestion des contrats et signatures électroniques  
-**Auteur :** Rémi Verschuur  
+**Auteur :** Rémi Verschuur
 
 ---
+
+## Préparation de la PR `vpn_orchestrator` vers `main`
+
+**Date :** 26 novembre 2026. **État :** documentation préparatoire, fusion non effectuée.
+
+### Périmètre de comparaison
+
+Le bilan porte sur les références locales disponibles, sans actualisation du distant :
+branche `vpn_orchestrator` à `62b3c11`, cible `origin/main` à `4cbf1f5`, ancêtre
+commun `39395c7f759753794dc3e40d1c659f6e3aaebfee`.
+La comparaison `git diff origin/main...HEAD` comporte 19 commits propres à la
+branche et 154 fichiers modifiés, avec 17 429 insertions et 6 480 suppressions.
+Ces chiffres précèdent l'ajout de ce bilan.
+
+La PR ne se limite donc pas au VPN : elle regroupe les évolutions applicatives,
+de sécurité et de tests décrites ci-dessous. Le rapport de 2025 conservé après
+cette section reste un historique, pas un état de validation de cette PR.
+
+### Changements applicatifs
+
+- **Organisation du backend :** séparation des modèles, configurations, blueprints
+  contrats/signatures/VPN et classes de signature en modules dédiés ; extraction
+  des repositories utilisateur et sessions.
+- **Authentification :** migration progressive des mots de passe SHA-256 vers
+  Argon2id à la connexion ; sessions révocables persistées sous forme d'empreinte,
+  expiration et invalidation lors des changements sensibles ; validation des
+  destinations de redirection locales.
+- **Formulaires :** adoption de WTForms et protection CSRF pour les actions
+  applicatives, notamment gestion des utilisateurs, droits et signatures.
+- **Contrats, fichiers et signatures :** refactorisation de la manipulation des
+  documents et de la génération des PDF signés ; gestion des exceptions et tests
+  de rollback, d'intégrité et de soumission unique.
+- **Rapports :** route protégée par un jeton dédié, gestion des erreurs d'envoi et
+  planification conteneurisée avec Supercronic.
+- **Exécution et outillage :** passage à Gunicorn, démarrage/migrations explicites,
+  adaptation des images et Compose, scripts de sauvegarde déplacés sous `scripts/`,
+  évolution des dépendances, workflows de test et documentation d'exploitation.
+
+### Fonctionnalités VPN
+
+L'Intranet utilise le SDK TTL-LAMa pour synchroniser les comptes et leurs profils.
+Le modèle utilisateur conserve `vpn_uuid`, `vpn_profiles`, `vpn_sync_state` et
+`vpn_password_dirty`. Une création distante non confirmée passe en vérification
+manuelle ; elle n'est pas répétée automatiquement.
+
+La page VPN permet de choisir un profil effectivement attribué, un terminal et
+une durée en heures/minutes, initialisée à la durée du profil et limitée à son
+maximum côté navigateur et serveur. Elle affiche les cinq derniers baux, y
+compris expirés ou révoqués, et propose les actions suivantes :
+
+- créer un terminal et le supprimer après confirmation de la révocation de ses baux ;
+- créer un bail et télécharger sa configuration après confirmation du provisionnement ;
+- retélécharger la configuration d'un bail actif et révoquer celui-ci après confirmation ;
+- actualiser l'état et consulter un guide WireGuard dépliable.
+
+Les clés X25519 sont générées dans le navigateur. Chaque clé privée est chiffrée
+localement par AES-GCM avec une clé dérivée de la phrase secrète du terminal
+par PBKDF2-SHA-256. Ni la clé privée ni la phrase secrète ne sont envoyées au
+serveur. Le fichier WireGuard est assemblé localement à partir des paramètres
+publics retournés par TTL-LAMa, après contrôle de correspondance des clés.
+Les routes VPN utilisent le compte distant de l'utilisateur connecté, vérifient
+son UUID et désactivent la mise en cache des réponses.
+
+Les boutons d'action de l'historique et des terminaux ont des couleurs/bordures
+visibles sans survol, des cibles de 44 px et un focus clavier explicite.
+
+Fichiers de référence : [service TTL-LAMa](../app/ttlama.py),
+[routes VPN](../app/blueprints/vpn.py), [page VPN](../app/templates/vpn.html),
+[JavaScript VPN](../app/static/js/vpn.js), [styles VPN](../app/static/css/vpn.css),
+[documentation TTL-LAMa](../ttlama/README.md).
+
+### Déploiement et migrations
+
+1. Sauvegarder la base et les fichiers avant migration ; vérifier la restauration
+   et disposer d'un accès d'administration indépendant de WireGuard.
+2. Appliquer les migrations Alembic avant le démarrage de l'application, notamment
+   `d4f3a20e9b71` pour les sessions puis `f1a2b3c4d5e6` pour le lien TTL-LAMa.
+   La branche contient aussi une révision de compatibilité pour l'historique archivé.
+3. Préparer séparément la base et le compte MariaDB de TTL-LAMa. Le fichier
+   [SQL de provisionnement](../database/261126_ProvisionTTL-LAMa.sql) est un modèle
+   à adapter et à exécuter manuellement, pas une migration automatique Intranet.
+4. Configurer l'origine HTTPS de TTL-LAMa et les secrets administrateur de
+   synchronisation ; HTTP n'est prévu que pour le développement isolé.
+   Servir la page VPN en HTTPS avec un navigateur compatible Web Crypto/X25519.
+5. Le [Compose de développement](../docker-compose.dev.yaml) inclut TTL-LAMa ;
+   le [Compose principal](../docker-compose.yaml) ne l'inclut pas. Prévoir son
+   déploiement ou un service externe explicitement avant la mise en production.
+
+L'image TTL-LAMa utilise le compte non-root `ttl-lama`, UID/GID `999:999`.
+Les données et journaux doivent lui appartenir, avec répertoires privés `0700`
+et fichiers `0600`. La clé SSH privée doit rester `0600` et lisible par ce compte.
+Les autres configurations/secrets montés doivent lui être accessibles sans
+ouverture aux autres utilisateurs. Les changements de propriétaire et ACL
+réalisés sur l'hôte durant cette session ne sont pas transportés par Git.
+
+Le compte SSH du routeur est restreint par une commande forcée et `sudoers`.
+Le test de lecture attendu est `sudo -n ttlama backend wg leases ls --interface all --json`,
+avec SSH non interactif (`-T`), clé privée et vérification stricte de la clé d'hôte.
+Les fichiers locaux de secrets, clés et configuration réelle ne doivent pas être
+inclus dans la PR.
+
+### Validation et limites
+
+- Dernière exécution complète constatée durant cette session : **210 tests réussis**
+  sur MariaDB temporaire, conteneur de test terminé avec le code `0`. Ce résultat
+  est un historique de validation, pas une nouvelle exécution au moment de ce bilan.
+- Commande reproductible : `docker compose -f docker-compose.test.yaml up --build --force-recreate --abort-on-container-exit --exit-code-from test`.
+  Recréer la base temporaire à chaque suite ; ne pas combiner ce Compose avec les
+  configurations de développement ou production. Voir le [guide de tests](../test/README.md).
+- Les tests couvrent notamment authentification, CSRF, validation des durées et
+  ressources VPN, historique, erreurs et mutations non répétées automatiquement.
+  Les appels TTL-LAMa sont simulés : la suite ne certifie pas le routeur réel.
+- Contrôles navigateur de session : chiffrement local, rejet d'une phrase incorrecte,
+  téléchargement avec API simulée, visibilité des actions. L'aperçu statique ne
+  valide pas le chargement des assets dans le déploiement définitif.
+- La migration de sessions est exercée par la suite isolée ; toutes les migrations
+  historiques et leurs retours arrière ne sont pas validés par cette suite.
+
+### Précautions d'exploitation et points ouverts
+
+- Un échec SSH/provisionnement peut révoquer immédiatement le bail et conserver
+  une réservation `apply_failed` en suppression ou dans un état incertain. Un
+  nouveau bail sur le même terminal/profil peut alors recevoir `409`. Vérifier
+  `lease_provisioning`, les journaux et l'état WireGuard avant toute reprise ; ne
+  pas supprimer les enregistrements SQL pour contourner le conflit.
+- Au démarrage, la réconciliation TTL-LAMa peut supprimer les peers observés sans
+  bail actif connu. Ne pas redémarrer le service depuis un tunnel qui pourrait être
+  affecté ; vérifier le périmètre réellement inspecté, notamment `--interface all`,
+  et la coexistence avec les tunnels administrés hors TTL-LAMa.
+- Les `AllowedIPs` serveur représentent les adresses clientes des peers, tandis
+  que ceux du fichier client représentent les destinations routées. Une allocation
+  `/32` peut entrer en conflit avec un peer existant couvrant le même `/24` ; valider
+  les allocations et routes avant d'utiliser simultanément les deux tunnels.
+- Les politiques de pare-feu et routes de retour restent à gérer sur l'infrastructure.
+  Une configuration cliente n'est pas une garantie de filtrage côté serveur.
+- Les dates sont transmises en UTC et affichées dans le fuseau du navigateur.
+  Le statut `révoqué` vient de TTL-LAMa, pas d'un calcul d'heure dans l'interface.
+- Une clé/phrase perdue ou un autre navigateur impose la création d'un nouveau
+  terminal. Le fichier téléchargé contient la clé privée et doit être protégé.
+- Les tests de bout en bout sur le serveur définitif, la sauvegarde de la base
+  TTL-LAMa et le contrôle des permissions doivent être confirmés avant déploiement.
+- [project_vpn.md](project_vpn.md) reste un document de conception initiale : ses
+  propositions de micro-API, génération serveur et purge à minuit ne décrivent
+  pas l'intégration TTL-LAMa implémentée dans cette branche.
 
 ## 1. Récapitulatif Général
 
@@ -28,10 +174,10 @@
 
 ### 2.1 sprint_signature ✅
 
-**Période :** 27 septembre - 5 octobre 2025  
-**Durée d'exécution :** 9 jours  
-**Commits :** 50+ commits majeurs  
-**État :** Mergé dans main le 5 octobre 2025 (tag: version-1.3.0)  
+**Période :** 27 septembre - 5 octobre 2025
+**Durée d'exécution :** 9 jours
+**Commits :** 50+ commits majeurs
+**État :** Mergé dans main le 5 octobre 2025 (tag: version-1.3.0)
 
 #### Travail Réalisé (9 jours - Complet)
 
@@ -141,9 +287,9 @@
 
 ### 2.2 sprint_contacts ✅
 
-**Période :** 27 septembre 2025  
-**Durée d'exécution :** 1 jour  
-**État :** Mergé dans main  
+**Période :** 27 septembre 2025
+**Durée d'exécution :** 1 jour
+**État :** Mergé dans main
 
 #### Travail Réalisé (1 jour)
 
@@ -162,9 +308,9 @@
 
 ### 2.3 sprint_mails ✅
 
-**Période :** 19 septembre 2025  
-**Durée d'exécution :** 1 jour  
-**État :** Mergé dans main  
+**Période :** 19 septembre 2025
+**Durée d'exécution :** 1 jour
+**État :** Mergé dans main
 
 #### Travail Réalisé pendant le sprint (1 jour)
 
@@ -184,9 +330,9 @@
 
 ### 2.4 sprint_bills ✅
 
-**Période :** 15-19 septembre 2025  
-**Durée d'exécution :** 4 jours  
-**État :** Mergé dans main  
+**Période :** 15-19 septembre 2025
+**Durée d'exécution :** 4 jours
+**État :** Mergé dans main
 
 #### Travail Réalisé (4 jours)
 
@@ -214,9 +360,9 @@
 
 ### 2.5 sprint_workflows ✅
 
-**Période :** 20 septembre 2025  
-**Durée d'exécution :** 1 jour intensif  
-**État :** Mergé dans main  
+**Période :** 20 septembre 2025
+**Durée d'exécution :** 1 jour intensif
+**État :** Mergé dans main
 
 #### Travail Réalisé durant le sprint (1 jour)
 
@@ -237,9 +383,9 @@
 
 ### 2.6 sprint_code_cleaner ✅
 
-**Période :** 11-15 septembre 2025  
-**Durée d'exécution :** 4 jours  
-**État :** Mergé dans main  
+**Période :** 11-15 septembre 2025
+**Durée d'exécution :** 4 jours
+**État :** Mergé dans main
 
 #### Travail Réalisé (5 jours)
 
@@ -261,9 +407,9 @@
 
 ### 2.7 monitoring 🔄
 
-**Période :** Juillet - septembre 2025  
-**Durée d'exécution :** 2 mois (développement continu)  
-**État :** En développement  
+**Période :** Juillet - septembre 2025
+**Durée d'exécution :** 2 mois (développement continu)
+**État :** En développement
 
 #### Travail Réalisé (continu)
 
@@ -284,9 +430,9 @@
 
 ### 2.8 secure-app ✅
 
-**Période :** 18 juillet 2025  
-**Durée d'exécution :** 1 jour  
-**État :** Mergé dans main  
+**Période :** 18 juillet 2025
+**Durée d'exécution :** 1 jour
+**État :** Mergé dans main
 
 #### Travail Réalisé sur le sprint (1 jour)
 
@@ -307,14 +453,14 @@
 
 #### depot_devoirs ❌
 
-**Période :** 25 mai 2025  
-**Raison :** Remplacement par une solution partage de documents  
+**Période :** 25 mai 2025
+**Raison :** Remplacement par une solution partage de documents
 **Travail :** Page HTML pour dépôt de devoirs (fonctionnalité éducative)
 
 #### cloud ❌
 
-**Période :** 31 mai 2025  
-**Raison :** Complexité technique vs ROI  
+**Période :** 31 mai 2025
+**Raison :** Complexité technique vs ROI
 **Travail :** Intégration services cloud (stockage, authentification)
 
 ---
@@ -357,7 +503,7 @@ Oct 2025     : ~10000 lignes (+signatures électroniques complètes)
 
 ```txt
 sprint_signature : 9 jours → Module très complexe finalisé (excellent)
-sprint_contacts  : 1 jour → Fonctionnalité complète (excellent)  
+sprint_contacts  : 1 jour → Fonctionnalité complète (excellent)
 sprint_mails     : 1 jour → Amélioration majeure (excellent)
 sprint_bills     : 4 jours → Module complexe (bon)
 sprint_workflows : 1 jour → CI/CD complet (excellent)
@@ -479,6 +625,6 @@ La **qualité du code** et la **discipline de développement** montrent une **ma
 
 ---
 
-**Rapport généré le :** 5 octobre 2025  
-**Version :** 1.6 (sprint signature - finalisé et mergé)  
+**Rapport généré le :** 5 octobre 2025
+**Version :** 1.6 (sprint signature - finalisé et mergé)
 **Prochaine révision :** Fin octobre 2025

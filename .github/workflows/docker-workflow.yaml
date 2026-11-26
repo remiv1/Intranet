@@ -1,6 +1,12 @@
 name: Docker Workflow
 
-on: [push, pull_request]
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
 
 jobs:
   build:
@@ -37,43 +43,24 @@ jobs:
     steps:
       - name: Récupération du code
         uses: actions/checkout@v4
-      - name: Configuration de Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.12'
-      - name: Installation des dépendances système
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libcups2-dev
-      - name: Cache des packages Python
-        uses: actions/cache@v3
-        with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
-          restore-keys: |
-            ${{ runner.os }}-pip-
-      - name: Installation des dépendances Python
-        run: |
-          python -m pip install --upgrade pip
-          if [ -f requirements.txt ]; then
-            pip install -r requirements.txt
-          fi
-          pip install pytest pytest-cov
-      - name: Exécution des tests pytest
-        run: |
-          echo "Exécution des tests pytest sans conteneurs..."
-          echo "Contenu du répertoire racine:"
-          ls -la
-          echo "Contenu du répertoire app:"
-          ls -la app/
-          cd test
-          python -m pytest -v --tb=short --cov=../app --cov-report=xml --cov-report=term
+      - name: Exécution des tests avec MariaDB
+        run: >-
+          docker compose -f docker-compose.test.yaml up --build --force-recreate
+          --abort-on-container-exit --exit-code-from test
+      - name: Récupération du rapport de couverture
+        if: always()
+        run: >-
+          docker compose -f docker-compose.test.yaml cp
+          test:/tmp/coverage.xml "$RUNNER_TEMP/coverage.xml"
       - name: Upload des résultats de couverture
         uses: codecov/codecov-action@v3
         if: always()
         with:
-          file: ./test/coverage.xml
+          file: ${{ runner.temp }}/coverage.xml
           fail_ci_if_error: false
+      - name: Nettoyage des conteneurs de test
+        if: always()
+        run: docker compose -f docker-compose.test.yaml down --remove-orphans
 
   validate-database:
     runs-on: ubuntu-latest
@@ -98,6 +85,7 @@ jobs:
             cp .env.example .env
             cat .env
           fi
+          touch ttlama/config/.env
           echo "Chargement des variables d'environnement:"
           source .env
           echo "DB_USER=$DB_USER"
@@ -125,7 +113,7 @@ jobs:
             # Attendre que le conteneur db soit prêt
             db_ready=false
             for i in {1..30}; do
-              if docker compose exec -T db mariadb -u "${DB_USER}" -p"${DB_PASSWORD}" -e "SELECT 1" "${DB_NAME}"; then
+              if docker compose -f docker-compose.dev.yaml exec -T db mariadb -u "${DB_USER}" -p"${DB_PASSWORD}" -e "SELECT 1" "${DB_NAME}"; then
                 echo "Le conteneur db est prêt."
                 db_ready=true
                 break
@@ -136,31 +124,31 @@ jobs:
             
             if [ "$db_ready" = false ]; then
               echo "Le conteneur db n'est pas prêt après 60 secondes."
-              docker compose down -v
+              docker compose -f docker-compose.dev.yaml down -v
               exit 1
             fi
             
             # Vérifier la colonne identifiant dans 99_users
-            identifiant=$(docker compose exec -T db mariadb -u "${DB_USER}" -p"${DB_PASSWORD}" -D "${DB_NAME}" -N -e "SELECT identifiant FROM 99_users LIMIT 1;")
+            identifiant=$(docker compose -f docker-compose.dev.yaml exec -T db mariadb -u "${DB_USER}" -p"${DB_PASSWORD}" -D "${DB_NAME}" -N -e "SELECT identifiant FROM 99_users LIMIT 1;")
             if [ "$identifiant" = "admin" ]; then
               echo "La colonne identifiant dans 99_users est correcte."
             else
               echo "La colonne identifiant dans 99_users n'est pas correcte. Valeur trouvée: $identifiant"
-              docker compose down -v
+              docker compose -f docker-compose.dev.yaml down -v
               exit 1
             fi
 
             # Vérifier l'erreur sur une table inexistante
-            if docker compose exec -T db mariadb -u "${DB_USER}" -p"${DB_PASSWORD}" -D "${DB_NAME}" -e "SELECT * FROM table_inexistante;" 2>&1 | grep -q "ERROR"; then
+            if docker compose -f docker-compose.dev.yaml exec -T db mariadb -u "${DB_USER}" -p"${DB_PASSWORD}" -D "${DB_NAME}" -e "SELECT * FROM table_inexistante;" 2>&1 | grep -q "ERROR"; then
               echo "Erreur correctement détectée sur table inexistante."
             else
               echo "Erreur non détectée sur table inexistante."
-              docker compose down -v
+              docker compose -f docker-compose.dev.yaml down -v
               exit 1
             fi
             
             echo "Validation DB réussie, nettoyage..."
-            docker compose down -v
+            docker compose -f docker-compose.dev.yaml down -v
 
   validate-web:
     runs-on: ubuntu-latest
@@ -185,6 +173,8 @@ jobs:
             cp .env.example .env
             cat .env
           fi
+          touch ttlama/config/.env
+          echo "API_MAIL_TOKEN=$(openssl rand -hex 32)" >> .env
           echo "Chargement des variables d'environnement:"
           source .env
       - name: Chargement des images Docker
@@ -202,14 +192,35 @@ jobs:
           retry_wait_seconds: 60
           warning_on_retry: true
           command: |
+            set -e
             echo "Tentative de validation de l'application web..."
             source .env
-            docker compose -f docker-compose.dev.yaml up -d web db
+            trap 'docker compose -f docker-compose.dev.yaml down -v' EXIT
+            docker compose -f docker-compose.dev.yaml up -d db
+
+            db_ready=false
+            for i in {1..30}; do
+              if docker compose -f docker-compose.dev.yaml exec -T db mariadb -u "${DB_USER}" -p"${DB_PASSWORD}" -e "SELECT 1 FROM 99_users LIMIT 1" "${DB_NAME}"; then
+                db_ready=true
+                break
+              fi
+              sleep 2
+            done
+            if [ "$db_ready" = false ]; then
+              echo "Le conteneur db n'est pas prêt après 60 secondes."
+              exit 1
+            fi
+
+            if ! docker compose -f docker-compose.dev.yaml run --rm --no-deps --entrypoint sh web -c 'alembic upgrade f1a2b3c4d5e6'; then
+              echo "La migration de la base a échoué."
+              exit 1
+            fi
+            docker compose -f docker-compose.dev.yaml up -d web
             
             echo "Attente que le conteneur web soit prêt..."
             web_ready=false
             for i in {1..30}; do
-              if response=$(curl -s -o /dev/null -w "%{http_code} %{redirect_url}" -L -I http://localhost:5000/ 2>/dev/null); then
+              if response=$(docker compose -f docker-compose.dev.yaml exec -T web curl -s -o /dev/null -w "%{http_code} %{redirect_url}" -I http://localhost:5000/ 2>/dev/null); then
                 code=$(echo "$response" | cut -d' ' -f1)
                 location=$(echo "$response" | cut -d' ' -f2)
                 echo "Tentative $i: Code HTTP: $code, Location: $location"
@@ -233,9 +244,7 @@ jobs:
               echo "Le conteneur web n'est pas prêt après 60 secondes."
               echo "Vérification des logs du conteneur:"
               docker logs intranet_app --tail 20
-              docker compose down -v
               exit 1
             fi
             
             echo "Validation Web réussie, nettoyage..."
-            docker compose down -v

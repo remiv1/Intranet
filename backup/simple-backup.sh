@@ -4,6 +4,7 @@
 # Usage: ./simple-backup.sh [nom_fichier_optionnel]
 
 set -e
+set -o pipefail
 
 # Configuration
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

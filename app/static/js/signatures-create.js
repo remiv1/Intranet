@@ -30,7 +30,7 @@ function initializeDocumentCreation() {
     console.log('[Signatures Create] Initialisation de la création de document');
     
     // Récupérer le nom du fichier
-    const filename = pdfContainer.getAttribute('data-filename');
+    const filename = pdfContainer.dataset.filename;
     if (!filename) {
         handleSignatureError(new Error('Nom de fichier manquant'), 'Initialisation création');
         return;
@@ -105,7 +105,7 @@ function addClickListenerToPDF() {
             console.log(`Clic: (${clickX.toFixed(2)}, ${clickY.toFixed(2)}) → Normalisé: (${x.toFixed(2)}, ${y.toFixed(2)}), Scale: ${scaleX.toFixed(3)}`);
             
             // Trouver le numéro de page
-            const pageNum = parseInt(canvas.getAttribute('data-page-number')) || 1;
+            const pageNum = parseInt(canvas.dataset.pageNumber) || 1;
             
             // Créer le point de signature
             createSignaturePoint(x, y, pageNum, pageDiv);
@@ -473,11 +473,10 @@ function submitCompleteDocument() {
         // Ajouter les données de configuration au formulaire principal
         const formData = new FormData(configForm);
         formData.forEach((value, key) => {
-            const hiddenInput = document.createElement('input');
-            hiddenInput.type = 'hidden';
-            hiddenInput.name = key;
-            hiddenInput.value = value;
-            signatureForm.appendChild(hiddenInput);
+            const hiddenInput = signatureForm.elements.namedItem(key);
+            if (hiddenInput) {
+                hiddenInput.value = value;
+            }
         });
         
         // Ajouter les points de signature validés
@@ -501,6 +500,11 @@ function submitCompleteDocument() {
         // Afficher un message de chargement
         showNotification('Envoi du document en cours...', 'info');
         
+        const csrfTokenInput = signatureForm.querySelector('input[name="csrf_token"]');
+        if (!csrfTokenInput?.value) {
+            throw new Error('Jeton CSRF absent du formulaire');
+        }
+
         // Soumettre le formulaire
         signatureForm.submit();
         
