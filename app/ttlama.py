@@ -18,6 +18,41 @@ class VPNSyncError(Exception):
 
 
 @contextmanager
+def user_client(user: User) -> Generator[TTLLama, None, None]:
+    """Ouvre une session TTL-LAMa propre à l'utilisateur Intranet."""
+    if (user.vpn_sync_state != 'synced' or user.vpn_password_dirty
+            or not user.vpn_uuid or not user.identifiant):
+        raise VPNSyncError('Le compte VPN doit être synchronisé par un administrateur.')
+    url = ConfigTTLLama.URL
+    parts = urlsplit(url)
+    if not url or (parts.scheme != 'https' and not (
+            parts.scheme == 'http' and ConfigTTLLama.ALLOW_HTTP)):
+        raise VPNSyncError('La connexion TTL-LAMa doit utiliser HTTPS.')
+    try:
+        client = TTLLama(url, timeout=5.0)
+    except ValueError as error:
+        raise VPNSyncError('Adresse TTL-LAMa invalide.') from error
+    try:
+        client.login(user.identifiant, user.sha_mdp)
+        identity = client.me.get().get('user')
+        try:
+            remote_id = UUID(str(identity['id'])) if isinstance(identity, dict) else None
+            expected_id = UUID(user.vpn_uuid)
+        except (KeyError, ValueError, TypeError) as error:
+            raise VPNSyncError('Identité TTL-LAMa invalide.') from error
+        if remote_id != expected_id:
+            raise VPNSyncError('Identité TTL-LAMa incohérente.')
+        yield client
+    finally:
+        if client.token:
+            try:
+                client.auth.logout()
+            except APIError:
+                pass
+        client.close()
+
+
+@contextmanager
 def admin_client() -> Generator[TTLLama, None, None]:
     """Ouvre une session administrateur temporaire, sans journaliser ses secrets."""
     url = ConfigTTLLama.URL

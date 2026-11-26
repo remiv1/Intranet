@@ -19,5 +19,5 @@ PyNaCl>=1.6.2,<2.0.0
 pypdf>=6.21.1,<7.0.0
 reportlab>=5.0.1,<6.0.0
 SQLAlchemy>=2.1.5,<3.0.0
-ttlama-sdk>=0.1.0,<1.0.0
+ttlama-sdk>=0.1.1,<1.0.0
 typing-extensions>=4.16.0,<5.0.0

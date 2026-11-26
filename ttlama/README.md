@@ -46,6 +46,14 @@ Le hash du mot de passe Intranet est utilisé comme secret technique de connexio
 
 Les modifications en attente sont conservées dans la base Intranet et peuvent être relancées depuis la modale. Si une création de compte n'a pas été confirmée ou si un nom existe déjà, ne pas recréer ni rattacher automatiquement le compte : vérifier la situation dans TTL-LAMa avant toute intervention.
 
+## Utilisation des baux VPN
+
+La page VPN affiche les cinq derniers baux, permet de créer ou révoquer un bail et de créer ou supprimer un terminal. Les profils et leurs durées sont ceux attribués dans TTL-LAMa. La création attend la confirmation du backend WireGuard ; en cas d'erreur ou de délai dépassé, actualiser la page et vérifier l'état avant de réessayer.
+
+La génération des clés et du fichier WireGuard s'effectue dans le navigateur. La clé privée ne transite pas par l'Intranet ni par TTL-LAMa : elle est chiffrée dans le stockage local avec la phrase secrète du terminal. Le navigateur doit prendre en charge Web Crypto et X25519, et la page doit être servie en HTTPS. La perte de la phrase secrète, l'effacement du stockage ou l'utilisation d'un autre navigateur rend cette clé indisponible ; créer alors un nouveau terminal. Un script compromis sur la même origine peut accéder aux données lors du déverrouillage : la protection locale ne remplace pas la sécurisation du poste et de l'application.
+
+Un bail actif peut être retéléchargé tant que sa clé locale est disponible. Les baux actifs d'un même terminal peuvent partager une configuration WireGuard : après ajout ou révocation d'un bail, retélécharger et réimporter la configuration pour mettre à jour les réseaux autorisés. Le fichier téléchargé contient la clé privée et doit rester confidentiel.
+
 ## Création d'un utilisateur
 
 ```mermaid

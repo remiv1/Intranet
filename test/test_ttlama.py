@@ -4,6 +4,7 @@ from collections.abc import Generator, Iterator
 from contextlib import contextmanager
 from importlib import import_module
 from types import ModuleType
+from typing import cast
 from unittest.mock import MagicMock, call
 
 import pytest
@@ -16,7 +17,189 @@ from werkzeug.exceptions import BadRequest
 
 from app.models import User
 from app.repositories.auth_session import create_auth_session
-from app.ttlama import VPNSyncError, profiles_for_habilitation, sync_user
+from app.ttlama import VPNSyncError, profiles_for_habilitation, sync_user, user_client
+
+
+def test_client_vpn_utilisateur_verifie_identite(monkeypatch: pytest.MonkeyPatch) -> None:
+    """La session ne donne accès qu'au compte distant lié à l'utilisateur."""
+    remote = MagicMock()
+    remote.me.get.return_value = {'user': {'id': '12345678-1234-4234-8234-123456789abc'}}
+    def create_client(*_args: object, **_kwargs: object) -> MagicMock:
+        return remote
+
+    monkeypatch.setattr('app.ttlama.TTLLama', create_client)
+    monkeypatch.setattr('app.ttlama.ConfigTTLLama.URL', 'https://vpn.example.org')
+    user = User(identifiant='alice', sha_mdp='secret-technique', vpn_sync_state='synced',
+                vpn_password_dirty=False, vpn_uuid='12345678-1234-4234-8234-123456789abc')
+    with user_client(user) as client:
+        assert client is remote
+    remote.login.assert_called_once_with('alice', 'secret-technique')
+    remote.auth.logout.assert_called_once()
+    remote.close.assert_called_once()
+
+    remote.me.get.return_value = {'user': {'id': 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'}}
+    mismatched_client = user_client(user)
+    with pytest.raises(VPNSyncError, match='incohérente'):
+        mismatched_client.__enter__()
+    assert remote.close.call_count == 2
+
+
+@pytest.fixture
+def vpn_routes(monkeypatch: pytest.MonkeyPatch) -> tuple[FlaskClient, MagicMock]:
+    """Exerce le blueprint sans connexion réseau ni base de données."""
+    from app.blueprints.vpn import vpn_bp  # pylint: disable=C0415
+
+    remote = MagicMock()
+    remote.me.overview.return_value = {
+        'devices': [{'id': 10, 'revoked_at': None}],
+        'profiles': [{'id': 2, 'name': 'Fichiers', 'policy': {
+            'default_duration': '1h', 'maximum_duration': '2h',
+        }}],
+        'leases': [{'id': identifier, 'created_at': f'2026-01-{identifier:02}T00:00:00Z',
+                    'status': 'expired'} for identifier in range(1, 8)],
+    }
+    remote.me.devices.list.return_value = [{'id': 10, 'name': 'Portable'}]
+    remote.me.leases.create.return_value = {'id': 8, 'status': 'active'}
+
+    @contextmanager
+    def fake_user_client(_user: User) -> Generator[MagicMock, None, None]:
+        yield remote
+
+    monkeypatch.setattr('app.blueprints.vpn.user_client', fake_user_client)
+    application = Flask(__name__)
+    application.secret_key = 'test-secret'
+    application.register_blueprint(vpn_bp)
+
+    @application.before_request
+    def set_user() -> None:
+        g.current_user = User(vpn_uuid='12345678-1234-4234-8234-123456789abc')
+
+    client = application.test_client()
+    with client.session_transaction() as browser_session:
+        browser_session['habilitation'] = '7'
+    return client, remote
+
+
+def test_routes_vpn_baux_validation_et_historique(
+    vpn_routes: tuple[FlaskClient, MagicMock],  # pylint: disable=W0621
+) -> None:
+    """Teste la validation des baux VPN et l'affichage de l'historique."""
+    client, remote = vpn_routes
+    response = client.get('/vpn/api/state')
+    assert response.status_code == 200
+    assert response.headers['Cache-Control'] == 'no-store'
+    state = cast(dict[str, object], response.get_json())
+    leases = cast(list[dict[str, object]], state['leases'])
+    assert [lease['id'] for lease in leases] == [7, 6, 5, 4, 3]
+
+    response = client.post('/vpn/api/leases', json={
+        'device_id': 10, 'profile_id': 2, 'duration_minutes': 120,
+    })
+    assert response.status_code == 201
+    remote.me.leases.create.assert_called_once_with(10, 2, duration='120m')
+    invalid_payloads: tuple[dict[str, object], ...] = (
+        {'device_id': 10, 'profile_id': 2, 'duration_minutes': 121},
+        {'device_id': 99, 'profile_id': 2, 'duration_minutes': 60},
+        {'device_id': 10, 'profile_id': 99, 'duration_minutes': 60},
+        {'device_id': 10, 'profile_id': 2, 'duration_minutes': True},
+        {'device_id': 10, 'profile_id': 2, 'duration_minutes': 60, 'private_key': 'secret'},
+    )
+    for data in invalid_payloads:
+        assert client.post('/vpn/api/leases', json=data).status_code == 400
+    assert remote.me.leases.create.call_count == 1
+
+
+def test_routes_vpn_operations_et_incertitude(
+    vpn_routes: tuple[FlaskClient, MagicMock],  # pylint: disable=W0621
+) -> None:
+    """Teste les opérations VPN et la gestion des erreurs."""
+    client, remote = vpn_routes
+    public_key = 'A' * 43 + '='
+    remote.me.devices.create.return_value = {'id': 12, 'public_key': public_key}
+    assert client.post('/vpn/api/devices', json={
+        'name': 'Portable', 'public_key': public_key,
+    }).status_code == 201
+    assert client.post('/vpn/api/devices', json={
+        'name': 'Portable', 'public_key': public_key, 'private_key': 'secret',
+    }).status_code == 400
+    assert client.post('/vpn/api/devices/12/delete', json={}).status_code == 200
+    remote.me.devices.delete.assert_called_once_with(12)
+    remote.me.leases.configuration.return_value = {'configuration_template': 'public'}
+    assert client.get('/vpn/api/leases/8/configuration').json == {
+        'configuration_template': 'public',
+    }
+    remote.me.leases.revoke.side_effect = APIError('secret', status_code=503, lease_id=8)
+    response = client.post('/vpn/api/leases/8/revoke', json={})
+    assert response.status_code == 503
+    error_body = cast(dict[str, object], response.get_json())
+    assert error_body['lease_id'] == 8
+    assert 'secret' not in response.get_data(as_text=True)
+    remote.me.leases.revoke.assert_called_once_with(8)
+
+
+def test_routes_vpn_protegent_csrf_et_habilitation() -> None:
+    """Teste la protection CSRF et l'habilitation pour les routes VPN."""
+    from flask_wtf import CSRFProtect  # pylint: disable=C0415
+    from app.blueprints.vpn import vpn_bp  # pylint: disable=C0415
+
+    application = Flask(__name__)
+    application.secret_key = 'test-secret'
+    CSRFProtect(application)
+    application.register_blueprint(vpn_bp)
+
+    @application.get('/logout')
+    def logout() -> str:
+        return 'logout'
+
+    client = application.test_client()
+    with client.session_transaction() as browser_session:
+        browser_session['habilitation'] = '7'
+    assert client.post('/vpn/api/leases', json={}).status_code == 400
+    with client.session_transaction() as browser_session:
+        browser_session['habilitation'] = '1'
+    assert client.get('/vpn/api/state').status_code == 302
+
+
+def test_routes_vpn_session_reelle_et_csrf(
+    client: FlaskClient,
+    db_session: Session,
+    create_admin_user: User,
+    authenticated_session_data: dict[str, object],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Utilise la session authentifiée réelle et le jeton CSRF de la page."""
+    import re  # pylint: disable=C0415
+
+    create_admin_user.habilitation = 17
+    create_admin_user.vpn_uuid = '12345678-1234-4234-8234-123456789abc'
+    create_admin_user.vpn_sync_state = 'synced'
+    create_admin_user.vpn_password_dirty = False
+    db_session.commit()
+    remote = MagicMock()
+    remote.me.devices.create.return_value = {'id': 12}
+
+    @contextmanager
+    def fake_user_client(user: User) -> Generator[MagicMock, None, None]:
+        assert user.id == create_admin_user.id
+        yield remote
+
+    monkeypatch.setattr('app.blueprints.vpn.user_client', fake_user_client)
+    with client.session_transaction(base_url='https://localhost') as browser_session:
+        browser_session.update(authenticated_session_data)
+    page = client.get('/vpn/vpn', base_url='https://localhost')
+    assert page.status_code == 200
+    token = re.search(r'<meta name="csrf-token" content="([^"]+)">', page.get_data(as_text=True))
+    assert token is not None
+    body = {'name': 'Portable', 'public_key': 'A' * 43 + '='}
+    assert client.post(
+        '/vpn/api/devices',
+        base_url='https://localhost',
+        json=body,
+    ).status_code == 400
+    response = client.post('/vpn/api/devices', base_url='https://localhost', json=body,
+                           headers={'Referer': 'https://localhost/', 'X-CSRFToken': token.group(1)})
+    assert response.status_code == 201
+    remote.me.devices.create.assert_called_once_with('Portable', body['public_key'])
 
 
 @pytest.mark.parametrize(
