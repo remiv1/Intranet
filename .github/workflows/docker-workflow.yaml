@@ -43,55 +43,24 @@ jobs:
     steps:
       - name: Récupération du code
         uses: actions/checkout@v4
-      - name: Configuration de Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.14'
-      - name: Installation des dépendances système
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libcups2-dev \
-            build-essential \
-            ca-certificates \
-            curl \
-            cups-client \
-            libcairo2 \
-            libcups2-dev \
-            libffi-dev \
-            libssl-dev \
-            netcat-openbsd \
-            pkg-config \
-            tzdata
-          rm -rf /var/lib/apt/lists/*
-      - name: Cache des packages Python
-        uses: actions/cache@v3
-        with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
-          restore-keys: |
-            ${{ runner.os }}-pip-
-      - name: Installation des dépendances Python
-        run: |
-          python -m pip install --upgrade pip
-          if [ -f requirements.txt ]; then
-            pip install -r requirements.txt
-          fi
-          pip install pytest pytest-cov
-      - name: Exécution des tests pytest
-        run: |
-          echo "Exécution des tests pytest sans conteneurs..."
-          echo "Contenu du répertoire racine:"
-          ls -la
-          echo "Contenu du répertoire app:"
-          ls -la app/
-          cd test
-          python -m pytest -v --tb=short --cov=../app --cov-report=xml --cov-report=term
+      - name: Exécution des tests avec MariaDB
+        run: >-
+          docker compose -f docker-compose.test.yaml up --build --force-recreate
+          --abort-on-container-exit --exit-code-from test
+      - name: Récupération du rapport de couverture
+        if: always()
+        run: >-
+          docker compose -f docker-compose.test.yaml cp
+          test:/tmp/coverage.xml "$RUNNER_TEMP/coverage.xml"
       - name: Upload des résultats de couverture
         uses: codecov/codecov-action@v3
         if: always()
         with:
-          file: ./test/coverage.xml
+          file: ${{ runner.temp }}/coverage.xml
           fail_ci_if_error: false
+      - name: Nettoyage des conteneurs de test
+        if: always()
+        run: docker compose -f docker-compose.test.yaml down --remove-orphans
 
   validate-database:
     runs-on: ubuntu-latest
