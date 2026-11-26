@@ -9,6 +9,7 @@ veraudiere/
 **/__pycache__/
 *.pem
 venv/
+.venv/
 
 # Fichiers de test (ne pas commiter vers main)
 sql/test_user.sql

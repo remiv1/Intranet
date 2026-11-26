@@ -44,8 +44,8 @@ services:
       - /etc/localtime:/etc/localtime:ro  #  Synchronisation de l'heure avec l'hôte
       - /etc/timezone:/etc/timezone:ro  #  Synchronisation du fuseau horaire avec l'hôte
     ports:
-      - "7443:443"  #  Port HTTPS
-      - "7080:80"
+      - "443:443"  #  Port HTTPS
+      - "80:80"
     networks:
       - intranet_net
     restart: always
