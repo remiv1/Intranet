@@ -1,4 +1,4 @@
-"""Modèle représentant un contact associé à un contrat.
+"""Modèle représentant un contact du carnet administratif.
 
 .. classes::
     - `Contacts` (Contacts): Représente un contact associé à un contrat.
@@ -6,18 +6,30 @@
 .. module_author:: Rémi Verschuur <rverschuur@audit-io.fr>
 .. module_version:: 1.0.0
 """
-from typing import Optional
-from sqlalchemy import Integer, String, ForeignKey
+from __future__ import annotations
+
+from typing import Optional, TYPE_CHECKING
+from sqlalchemy import Column, Integer, String, ForeignKey, Table
 from sqlalchemy.orm import mapped_column, relationship, Mapped
 from ._common import Base, PK_CONTRACT
 
+if TYPE_CHECKING:
+    from .contract import Contract
+
+contacts_contrats = Table(
+    '02_contacts_contrats',
+    Base.metadata,
+    Column('id_contact', Integer, ForeignKey('02_contacts.id', ondelete='CASCADE'),
+           primary_key=True),
+    Column('id_contrat', Integer, ForeignKey(PK_CONTRACT, ondelete='CASCADE'),
+           primary_key=True, index=True),
+)
+
 class Contacts(Base):
-    """Représente un contact associé à un contrat.
+    """Représente un contact indépendant associé à zéro ou plusieurs contrats.
 
     :param id: Identifiant unique du contact.
     :type id: int
-    :param id_contrat: Identifiant du contrat associé.
-    :type id_contrat: int
     :param nom: Nom du contact.
     :type nom: str
     :param fonction: Fonction du contact.
@@ -36,7 +48,7 @@ class Contacts(Base):
     :type ville: str
 
     .. relations::
-        - `contrat`: Le contrat associé à ce contact.
+        - `contrats`: Les contrats associés à ce contact.
 
     .. table:: `02_contacts`
 
@@ -50,12 +62,6 @@ class Contacts(Base):
         Integer,
         primary_key=True,
         comment="Identifiant unique du contact."
-    )
-    id_contrat: Mapped[int] = mapped_column(
-        Integer,
-        ForeignKey(PK_CONTRACT),
-        nullable=False,
-        comment="Identifiant du contrat associé."
     )
 
     # Coordonnées
@@ -101,8 +107,9 @@ class Contacts(Base):
     )
 
     # Relations
-    contrat = relationship(
+    contrats: Mapped[list[Contract]] = relationship(
         "Contract",
+        secondary=contacts_contrats,
         back_populates="contacts",
     )
 
@@ -112,15 +119,15 @@ class Contacts(Base):
         .. exemple::
             .. code-block:: python
                 print(contact)
-                >>> <Contacts(id=1, id_contrat=1, nom='Doe', prenom='John', fonction='Manager',
+                >>> <Contacts(id=1, nom='Doe', prenom='John', fonction='Manager',
                 mail='john.doe@example.com', tel_fixe='0123456789', tel_portable='0612345678',
                 adresse='123 Rue de Paris', code_postal='75001', ville='Paris', pays='France')>
             
         """
         return (
-            f"<Contacts(id={self.id}, id_contrat={self.id_contrat}, nom='{self.nom}', "
-            f"prenom='{self.prenom}', fonction='{self.fonction}', mail='{self.mail}', "
+            f"<Contacts(id={self.id}, nom='{self.nom}', "
+            f"fonction='{self.fonction}', mail='{self.mail}', "
             f"tel_fixe='{self.tel_fixe}', tel_portable='{self.tel_portable}', "
             f"adresse='{self.adresse}', code_postal='{self.code_postal}', "
-            f"ville='{self.ville}', pays='{self.pays}')>"
+            f"ville='{self.ville}')>"
         )

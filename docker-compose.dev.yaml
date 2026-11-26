@@ -36,6 +36,9 @@ services:
       - web
     volumes:
       - ./app/nginx/nginx.conf:/etc/nginx/nginx.conf #:z
+      - ./app/nginx/maintenance.conf:/etc/nginx/maintenance.conf:ro
+      - ./app/nginx/maintenance:/usr/share/nginx/_maintenance:ro
+      - ./app/static/img/favicone.svg:/usr/share/nginx/favicone.svg:ro
       - /opt/certs:/etc/nginx/certs #:z
     ports:
       - "7443:443"

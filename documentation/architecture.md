@@ -16,6 +16,25 @@
 
 ## Structure du projet
 
+### Carnet de contacts
+
+Le blueprint [contacts](../app/blueprints/contacts.py) expose le carnet sous
+`/ea/contacts`, avec contrôle de l'habilitation gestionnaire et protection CSRF.
+Le menu de l'Espace Administratif regroupe les contrats et le carnet ; les URLs
+existantes de gestion des contrats sont conservées.
+
+Le modèle [Contacts](../app/models/contacts.py) représente une fiche autonome.
+`Contacts.contrats` et `Contract.contacts` utilisent la table d'association
+`02_contacts_contrats`, dont la clé primaire composée interdit les liens dupliqués.
+La suppression d'une association ne supprime aucune fiche. La suppression d'une
+fiche retire ses associations sans supprimer de contrat ; aucune route de
+suppression de contrat n'est ajoutée.
+
+La migration [a7c9d2e4f601](../alembic/versions/a7c9d2e4f601_contacts_independants.py)
+copie les rattachements précédemment stockés dans `02_contacts.id_contrat` avant
+de retirer cette colonne. Aucun regroupement automatique des contacts existants
+n'est effectué. Les coordonnées restent communes à tous les contrats d'une fiche.
+
 ```text
 .
 ├── alembic/                          # ⚗️ Migrations de la base de données

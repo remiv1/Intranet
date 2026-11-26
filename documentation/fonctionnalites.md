@@ -23,11 +23,21 @@
 
 ## 📋 Gestion des Contrats
 
+- [x] **Accès depuis l'Espace Administratif**, réservé aux gestionnaires
 - [x] **Création de contrats** avec formulaires structurés
 - [x] **Suivi des échéances** (début, préavis, fin)
 - [x] **Classification** par type et sous-type
 - [x] **Liaison avec entreprises** et partenaires
 - [x] **Historique complet** des modifications
+
+## Gestion des Contacts
+
+- [x] **Carnet indépendant** accessible depuis l'Espace Administratif, réservé aux gestionnaires
+- [x] **Création sans contrat** et recherche par nom ou adresse e-mail
+- [x] **Associations multiples** : une fiche peut être rattachée à zéro, un ou plusieurs contrats
+- [x] **Coordonnées partagées** : une modification s'applique à la même fiche pour tous ses contrats
+- [x] **Retrait depuis un contrat** : seule l'association est supprimée, la fiche reste dans le carnet
+- [x] **Suppression depuis le carnet** : après confirmation, la fiche et tous ses liens sont supprimés, jamais les contrats
 
 ## 📄 Gestion Documentaire
 

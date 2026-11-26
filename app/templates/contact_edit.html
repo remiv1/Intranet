@@ -1,0 +1,46 @@
+{% extends 'contacts.html' %}
+{% block breadcrumb %}
+<nav aria-label="Fil d'Ariane">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{{ url_for('home') }}">Accueil</a></li>
+        <li class="breadcrumb-item"><a href="{{ url_for('ea') }}">Espace Administratif</a></li>
+        <li class="breadcrumb-item"><a href="{{ url_for('contacts.index') }}">Contacts</a></li>
+        <li class="breadcrumb-item active" aria-current="page">{{ contact.nom if contact else 'Nouveau contact' }}</li>
+    </ol>
+</nav>
+{% endblock %}
+{% block content %}
+<h2 class="contact-form-title">{{ 'Modifier le contact' if contact else 'Nouveau contact' }}</h2>
+{% if form.errors %}
+<div class="alert alert-danger" role="alert">
+    <p>Vérifiez les champs du formulaire.</p>
+    <ul>{% for errors in form.errors.values() %}{% for error in errors %}<li>{{ error }}</li>{% endfor %}{% endfor %}</ul>
+</div>
+{% endif %}
+<form method="post" class="contact-edit-form">
+    {{ form.hidden_tag() }}
+    <div class="contact-fields">
+        {% for field, label in [(form.nomC, 'Nom'), (form.fonctionC, 'Fonction'), (form.mailC, 'Adresse e-mail'), (form.telFixeC, 'Téléphone fixe'), (form.telPortableC, 'Téléphone portable'), (form.adresseC, 'Adresse'), (form.codePostalC, 'Code postal'), (form.villeC, 'Ville')] %}
+        <div>
+            <label class="form-label" for="{{ field.id }}">{{ label }}</label>
+            {{ field(class_='form-control' + (' is-invalid' if field.errors else ''), aria_invalid='true' if field.errors else 'false') }}
+        </div>
+        {% endfor %}
+    </div>
+    <fieldset class="contact-associations">
+        <legend>Contrats associés</legend>
+        <div class="contact-choices">
+            {% for identifier, label in form.contrats.choices %}
+            <label class="contact-choice" for="contract-{{ identifier }}">
+                <input class="form-check-input" type="checkbox" name="contrats" id="contract-{{ identifier }}" value="{{ identifier }}" {% if identifier in (form.contrats.data or []) %}checked{% endif %}>
+                <span>{{ label }}</span>
+            </label>
+            {% else %}<p class="contact-muted">Aucun contrat disponible.</p>{% endfor %}
+        </div>
+    </fieldset>
+    <div class="contact-form-actions">
+        <a class="btn btn-outline" href="{{ url_for('contacts.index') }}">Annuler</a>
+        <button class="btn btn-primary" type="submit"><i class="bi bi-check-lg me-2" aria-hidden="true"></i>Enregistrer</button>
+    </div>
+</form>
+{% endblock %}

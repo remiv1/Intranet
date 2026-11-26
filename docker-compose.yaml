@@ -37,6 +37,9 @@ services:
       - web
     volumes:
       - ./app/nginx/nginx.conf:/etc/nginx/nginx.conf:z
+      - ./app/nginx/maintenance.conf:/etc/nginx/maintenance.conf:ro,z
+      - ./app/nginx/maintenance:/usr/share/nginx/_maintenance:ro,z
+      - ./app/static/img/favicone.svg:/usr/share/nginx/favicone.svg:ro,z
       - /opt/certs:/etc/nginx/certs:z
       - /etc/localtime:/etc/localtime:ro  #  Synchronisation de l'heure avec l'hôte
       - /etc/timezone:/etc/timezone:ro  #  Synchronisation du fuseau horaire avec l'hôte
@@ -67,6 +70,26 @@ services:
     - /etc/timezone:/etc/timezone:ro  #  Synchronisation du fuseau horaire avec l'hôte
     networks:
       - intranet_net
+
+  ttl-lama:
+    image: ghcr.io/remiv1/ttl-lama:latest
+    container_name: ttl-lama
+    restart: always
+    env_file:
+      - ./ttlama/config/.env
+    volumes:
+      - ./ttlama/config/etc/ttl-lama/config.yml:/etc/ttl-lama/config.yml:rw #:z,rw
+      - ./ttlama/config/etc/ttl-lama/backend_config.yml:/etc/ttl-lama/backend_config.yml:ro #:z,ro
+      - ./ttlama/config/etc/ttl-lama/ssh_config.yml:/etc/ttl-lama/ssh_config.yml:ro #:z,ro
+      - ./ttlama/config/etc/ttl-lama/ssh_known_hosts:/etc/ttl-lama/ssh_known_hosts:ro #:z,ro
+      - ./ttlama/config/etc/ttl-lama/panic_mail_config.yml:/etc/ttl-lama/panic_mail_config.yml:ro #:z,ro
+      - ./ttlama/config/run/secrets:/run/secrets:ro #:z,ro
+      - ./ttlama/config/opt/ttl-lama-vpn:/opt/ttl-lama-vpn:ro #:z,ro
+      - ./ttlama/data:/data:rw #:z,rw
+    networks:
+      - intranet_net
+    ports:
+      - "8080:8080"
 
 volumes:
   dbdata:

@@ -50,6 +50,7 @@
                             </svg>
                         </a>
                     </li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('ea') }}">Espace Administratif</a></li>
                     <li class="breadcrumb-item">
                         <a class="link-body-emphasis fw-semibold text-decoration-none" href="{{ url_for('contracts_bp.contrats') }}">
                             Gestion des Contrats
@@ -103,8 +104,10 @@
                 <!-- Contenu -->
                 <div id="collapseOne" class="show" aria-labelledby="headingOne" data-parent="#accordion">
                     <div class="card-body">
-                        <div class="d-flex justify-content-start">
-                            <button type="button" class="button" data-bs-toggle="modal" data-bs-target="#modalAjoutContact">Ajouter</button>
+                        <div class="d-flex justify-content-start gap-2 flex-wrap mb-3">
+                            <button type="button" class="button" data-bs-toggle="modal" data-bs-target="#modalRattacherContact" {% if not association_form.contact_id.choices %}disabled{% endif %}>Rattacher un contact</button>
+                            <button type="button" class="button" data-bs-toggle="modal" data-bs-target="#modalAjoutContact">Nouveau contact</button>
+                            <a href="{{ url_for('contacts.index') }}" class="btn btn-outline">Carnet des contacts</a>
                         </div>
                         <table class="table table-bordered">
                             <thead>
@@ -164,10 +167,10 @@
                                                     title="Modifier le contact {{ contact['nom'] }}">
                                                 <i class="bi bi-pencil-square"></i>
                                             </button>
-                                            <form class="d-inline" action="{{ url_for('contracts_bp.delete_contact_id', id_contrat=contact['id_contrat'], id_contact=contact['id'], tab='c') }}" method="post">
+                                            <form class="d-inline" action="{{ url_for('contracts_bp.delete_contact_id', id_contrat=contract['id'], id_contact=contact['id'], tab='c') }}" method="post">
                                                 {{ contact_delete_forms[contact['id']].hidden_tag() }}
-                                                <button type="submit" class="button" title="Supprimer le contact {{ contact['nom'] }}" onclick="return confirm('Êtes-vous sûr de vouloir supprimer ce contact ?');">
-                                                    <i class="bi bi-trash-fill"></i>
+                                                <button type="submit" class="button" title="Retirer {{ contact['nom'] }} du contrat" aria-label="Retirer {{ contact['nom'] }} du contrat" onclick="return confirm('Retirer ce contact du contrat ? Sa fiche et ses autres associations seront conservées.');">
+                                                    <i class="bi bi-link-45deg" aria-hidden="true"></i>
                                                 </button>
                                             </form>
                                         </td>
@@ -177,7 +180,7 @@
                                     <tr>
                                         <td colspan="6" class="text-center">
                                             <i class="bi bi-person"></i>
-                                            Aucun contact disponible.
+                                            Aucun contact rattaché à ce contrat.
                                         </td>
                                     </tr>
                                 {% endif %}
@@ -343,6 +346,24 @@
                                 {% endif %}
                             </tbody>
                         </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="modal fade" id="modalRattacherContact" tabindex="-1" aria-labelledby="rattacherContactTitle" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="rattacherContactTitle">Rattacher un contact</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                    </div>
+                    <div class="modal-body">
+                        <form method="post" action="{{ url_for('contracts_bp.associate_contact', id_contrat=contract.id) }}">
+                            {{ association_form.hidden_tag() }}
+                            <label for="existing-contact" class="form-label">Contact du carnet</label>
+                            {{ association_form.contact_id(id='existing-contact', class_='form-select', required=True) }}
+                            <button type="submit" class="btn btn-primary mt-3">Rattacher</button>
+                        </form>
                     </div>
                 </div>
             </div>
@@ -535,8 +556,9 @@
                     </div>
                     <div class="modal-body">
                         {% set current_contact_form = contact_forms[contact['id']] %}
-                        <form action="{{ url_for('contracts_bp.modif_contact_id', id_contrat=contact['id_contrat'], id_contact=contact['id'], tab='c') }}" method="post">
+                        <form action="{{ url_for('contracts_bp.modif_contact_id', id_contrat=contract['id'], id_contact=contact['id'], tab='c') }}" method="post">
                             {{ current_contact_form.hidden_tag() }}
+                            <p>Les coordonnées seront mises à jour dans le carnet et pour tous les contrats associés.</p>
                             <!-- Nom du contact -->
                             <div class="mb-3">
                                 <label for="nomC{{ contact['id'] }}" class="form-label">Nom du contact *</label>

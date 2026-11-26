@@ -60,7 +60,7 @@ from .habilitations import (
     ELEVES,
     IMPRESSIONS,
 )
-from .blueprints import contracts_bp, signatures_bp, vpn_bp
+from .blueprints import contacts_bp, contracts_bp, signatures_bp, vpn_bp
 from .config.config import ConfigApp, ConfigMail
 from .forms import (
     LoginForm,
@@ -90,7 +90,7 @@ csrf = CSRFProtect(peraudiere)
 ReportRoute = Callable[[], Response | tuple[Response, int]]
 csrf_exempt = cast(Callable[[ReportRoute], ReportRoute], getattr(csrf, 'exempt'))
 
-BLUEPRINTS = [contracts_bp, signatures_bp, vpn_bp]
+BLUEPRINTS = [contacts_bp, contracts_bp, signatures_bp, vpn_bp]
 # Enregistrement des blueprints
 for bp in BLUEPRINTS:
     peraudiere.register_blueprint(bp)

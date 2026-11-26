@@ -5,11 +5,13 @@
 """
 
 from .contracts import contracts_bp
+from .contacts import contacts_bp
 from .signature import signatures_bp
 from .vpn import vpn_bp
 
 __all__ = [
     'contracts_bp',
+    'contacts_bp',
     'signatures_bp',
     'vpn_bp',
 ]

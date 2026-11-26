@@ -47,3 +47,5 @@ documents/*
 **/ttlama_ssh_key
 **/ttlama_ssh_key.pub
 !ttlama/**/.gitkeep
+
+app/nginx/maintenance/maintenance.enabled

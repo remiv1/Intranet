@@ -83,6 +83,15 @@ importer directement. Pour respecter les cookies `Secure`, utiliser
 
 ## Périmètre
 
+Les tests contacts dans `test_contract_routes.py` couvrent le carnet autonome,
+les associations multiples, la modification des coordonnées partagées, le retrait
+d'un seul lien, la suppression complète de fiche sans suppression de contrat,
+la navigation administrative, les identifiants invalides et le contrôle gestionnaire/CSRF.
+Les tests de migration dans `test_database.py` utilisent un ancien schéma SQLite
+en mémoire, distinct de MariaDB des routes : conservation des liens lors de
+l'upgrade/downgrade et refus des downgrades avec contacts autonomes ou partagés.
+Ils ne constituent pas une validation du DDL de migration sur une base MariaDB de production.
+
 `test_application.py` vérifie la persistance des modèles, les filtres SQL, les
 relations et les routes d'accueil et de connexion existantes. `test_database.py`
 remplace les anciens tests de MockSession par des vérifications des transactions,

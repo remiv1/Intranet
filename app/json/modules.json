@@ -26,16 +26,9 @@
             {
                 "classe": 2,
                 "titre": "Espace administratif",
-                "descriptif": "Espace réservé pour le personnel administratif de l'établissement (en construction)",
+                "descriptif": "Contrats, contacts et documents de l'établissement",
                 "buttonid": "Ea",
                 "onclick": "ea"
-            },
-            {
-                "classe": 2,
-                "titre": "Gestion des contrats",
-                "descriptif": "Permet de gérer/accéder aux contrats en cours pour l'établissement et d'en gérer les documents et évènements",
-                "buttonid": "Ddc",
-                "onclick": "contracts_bp.contrats"
             },
             {
                 "classe": 3,

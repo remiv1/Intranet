@@ -111,8 +111,8 @@ class Contract(Base):
     # Relations
     contacts: Mapped[List["Contacts"]] = relationship(
         "Contacts",
-        back_populates="contrat",
-        cascade=CASCADE,
+        secondary="02_contacts_contrats",
+        back_populates="contrats",
     )
     evenements: Mapped[List["Event"]] = relationship(
         "Event",

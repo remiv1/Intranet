@@ -1,0 +1,64 @@
+{% from 'macros.html' import head_content, page_footer, alerts with context %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    {{ head_content() }}
+    <title>La Péraudière | Gestion des contacts</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/contacts.css') }}">
+</head>
+<body>
+    <header><h1><i class="bi bi-person-lines-fill" aria-hidden="true"></i> Gestion des contacts</h1></header>
+    <main class="contact-workspace">
+        {% block breadcrumb %}
+        <nav aria-label="Fil d'Ariane">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{{ url_for('home') }}">Accueil</a></li>
+                <li class="breadcrumb-item"><a href="{{ url_for('ea') }}">Espace Administratif</a></li>
+                <li class="breadcrumb-item active" aria-current="page">Contacts</li>
+            </ol>
+        </nav>
+        {% endblock %}
+        {{ alerts() }}
+        {% block content %}
+        <div class="contact-toolbar">
+            <form action="{{ url_for('contacts.index') }}" method="get" class="contact-search" role="search">
+                <label class="visually-hidden" for="contact-search">Nom ou adresse e-mail</label>
+                <input class="form-control" id="contact-search" type="search" name="q" value="{{ query }}" placeholder="Nom ou adresse e-mail">
+                <button class="btn btn-primary contact-icon" type="submit" title="Rechercher" aria-label="Rechercher"><i class="bi bi-search" aria-hidden="true"></i></button>
+                {% if query %}<a class="btn btn-outline contact-icon" href="{{ url_for('contacts.index') }}" title="Effacer la recherche" aria-label="Effacer la recherche"><i class="bi bi-x-lg" aria-hidden="true"></i></a>{% endif %}
+            </form>
+            <a class="btn btn-primary" href="{{ url_for('contacts.create') }}"><i class="bi bi-person-plus me-2" aria-hidden="true"></i>Nouveau contact</a>
+        </div>
+        <p class="contact-count">{{ contacts|length }} contact{{ 's' if contacts|length != 1 else '' }}</p>
+        <div class="contact-list">
+            {% for contact in contacts %}
+            <article class="contact-row">
+                <div class="contact-identity">
+                    <h2><a href="{{ url_for('contacts.edit', contact_id=contact.id) }}">{{ contact.nom }}</a></h2>
+                    {% if contact.fonction %}<p>{{ contact.fonction }}</p>{% endif %}
+                    <a href="mailto:{{ contact.mail }}">{{ contact.mail }}</a>
+                    {% if contact.tel_fixe %}<div><a href="tel:{{ contact.tel_fixe }}">{{ contact.tel_fixe }}</a></div>{% endif %}
+                    {% if contact.tel_portable %}<div><a href="tel:{{ contact.tel_portable }}">{{ contact.tel_portable }}</a></div>{% endif %}
+                    {% if contact.adresse or contact.ville %}<p class="contact-address">{{ contact.adresse or '' }} {{ contact.code_postal or '' }} {{ contact.ville or '' }}</p>{% endif %}
+                </div>
+                <div class="contact-contracts">
+                    {% for contract in contact.contrats|sort(attribute='intitule') %}
+                    <a href="{{ url_for('contracts_bp.contrats_by_num', id_contrat=contract.id, tab='c') }}">{{ contract.intitule }} · {{ contract.entreprise }}</a>
+                    {% else %}<span class="contact-muted">Sans contrat</span>{% endfor %}
+                </div>
+                <div class="contact-actions">
+                    <a class="btn btn-primary contact-icon" href="{{ url_for('contacts.edit', contact_id=contact.id) }}" title="Modifier le contact" aria-label="Modifier {{ contact.nom }}"><i class="bi bi-pencil-square" aria-hidden="true"></i></a>
+                    <form method="post" action="{{ url_for('contacts.delete', contact_id=contact.id) }}" onsubmit="return confirm('Supprimer définitivement cette fiche et toutes ses associations aux contrats ? Les contrats seront conservés.');">
+                        {{ delete_forms[contact.id].hidden_tag() }}
+                        <button class="btn btn-danger contact-icon" type="submit" title="Supprimer la fiche" aria-label="Supprimer {{ contact.nom }}"><i class="bi bi-trash" aria-hidden="true"></i></button>
+                    </form>
+                </div>
+            </article>
+            {% else %}<p class="contact-empty">{{ 'Aucun contact ne correspond à cette recherche.' if query else 'Aucun contact dans le carnet.' }}</p>{% endfor %}
+        </div>
+        {% endblock %}
+    </main>
+    {{ page_footer() }}
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-kenU1KFdBIe4zVF0s0G1M5b4hcpxyD9F7jL+jjXkk+Q2h455rYXK/7HAuoJl+0I4" crossorigin="anonymous"></script>
+</body>
+</html>

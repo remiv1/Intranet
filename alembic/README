@@ -1,1 +1,14 @@
-Generic single-database configuration.
+# Migrations Alembic
+
+Depuis l'hôte, lancer dans le conteneur web déjà démarré :
+
+```bash
+sh alembic/migrate.sh
+sh alembic/migrate.sh docker-compose.dev.yaml
+```
+
+Sans argument, le lanceur utilise docker-compose.yaml à la racine du dépôt. Un chemin explicite relatif est résolu depuis le répertoire courant de l'appelant. Le lanceur fonctionne aussi depuis un autre répertoire avec son chemin absolu.
+
+Docker et le plugin Docker Compose doivent être disponibles. Le service web et la base doivent déjà fonctionner. Le lanceur exécute le script interne app/migrate.sh, qui applique `alembic upgrade head`, et conserve son code de sortie. Il ne démarre ni ne redémarre de service et ne propose pas de retour arrière.
+
+Sauvegarder la base et suspendre les écritures avant l'exécution. Si web ne peut pas démarrer avant migration, utiliser la procédure avec conteneur temporaire décrite dans documentation/maintenance.md ; ce lanceur utilise uniquement `exec`.

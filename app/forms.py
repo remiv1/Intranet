@@ -8,10 +8,11 @@ from wtforms import (
     IntegerField,
     PasswordField,
     SelectField,
+    SelectMultipleField,
     StringField,
     TextAreaField,
 )
-from wtforms.validators import DataRequired
+from wtforms.validators import DataRequired, Length
 
 
 class LoginForm(FlaskForm):
@@ -38,14 +39,26 @@ class ContractForm(FlaskForm):
 class ContactForm(FlaskForm):
     """Champs de création et de modification d'un contact."""
 
-    nomC = StringField()
-    fonctionC = StringField()
-    mailC = StringField(render_kw={'type': 'email'})
-    telFixeC = StringField(render_kw={'type': 'tel'})
-    telPortableC = StringField(render_kw={'type': 'tel'})
-    adresseC = StringField()
-    codePostalC = StringField()
-    villeC = StringField()
+    nomC = StringField(validators=[DataRequired(), Length(max=255)])
+    fonctionC = StringField(validators=[Length(max=100)])
+    mailC = StringField(render_kw={'type': 'email'}, validators=[DataRequired(), Length(max=255)])
+    telFixeC = StringField(render_kw={'type': 'tel'}, validators=[Length(max=20)])
+    telPortableC = StringField(render_kw={'type': 'tel'}, validators=[Length(max=20)])
+    adresseC = StringField(validators=[Length(max=255)])
+    codePostalC = StringField(validators=[Length(max=10)])
+    villeC = StringField(validators=[Length(max=100)])
+
+
+class ContactBookForm(ContactForm):
+    """Coordonnées et contrats associés à une fiche du carnet."""
+
+    contrats = SelectMultipleField(coerce=int)
+
+
+class AssociateContactForm(FlaskForm):
+    """Sélection d'un contact existant à rattacher au contrat."""
+
+    contact_id = SelectField(coerce=int, validators=[DataRequired()])
 
 
 class DeleteContactForm(FlaskForm):

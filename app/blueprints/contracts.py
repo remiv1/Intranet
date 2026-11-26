@@ -20,7 +20,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
-from flask import Blueprint, render_template, request, g, redirect, url_for
+from flask import Blueprint, abort, render_template, request, g, redirect, url_for
 from flask.typing import ResponseReturnValue
 from sqlalchemy.exc import SQLAlchemyError
 
@@ -35,7 +35,9 @@ from ..utilities import (
 from ..models import Contract, Contacts, Event, Document, Bill
 from ..habilitations import validate_habilitation, GESTIONNAIRE
 from ..docs import download_file, preserve_files_on_error
+from ..repositories.contacts import contact_form_data, update_contact
 from ..forms import (
+    AssociateContactForm,
     BillForm,
     ContactForm,
     ContractForm,
@@ -165,6 +167,8 @@ def contrats_by_num(id_contrat: int) -> ResponseReturnValue:
     tab = request.args.get('tab', 'c')
     # Récupération du contrat
     contract = g.db_session.query(Contract).filter(Contract.id == id_contrat).first()
+    if contract is None:
+        abort(404)
 
     # === Gestion de la méthode GET (affichage du détail du contrat) ===
     if request.method == 'GET':
@@ -177,18 +181,16 @@ def contrats_by_num(id_contrat: int) -> ResponseReturnValue:
         events = list(g.db_session.query(Event).filter(Event.id_contrat == id_contrat))
         documents = list(g.db_session.query(Document).filter(Document.id_contrat == id_contrat))
         bills = list(g.db_session.query(Bill).filter(Bill.id_contrat == id_contrat))
-        contacts = list(g.db_session.query(Contacts).filter(Contacts.id_contrat == id_contrat))
+        contacts = list(contract.contacts)
+        available_contacts = g.db_session.query(Contacts).filter(
+            ~Contacts.contrats.any(Contract.id == id_contrat)
+        ).order_by(Contacts.nom, Contacts.id).all()
+        association_form = AssociateContactForm()
+        association_form.contact_id.choices = [
+            (contact.id, f'{contact.nom} · {contact.mail}') for contact in available_contacts
+        ]
         contact_forms = {
-            contact.id: ContactForm(data={
-                'nomC': contact.nom,
-                'fonctionC': contact.fonction,
-                'mailC': contact.mail,
-                'telFixeC': contact.tel_fixe,
-                'telPortableC': contact.tel_portable,
-                'adresseC': contact.adresse,
-                'codePostalC': contact.code_postal,
-                'villeC': contact.ville,
-            })
+            contact.id: ContactForm(data=contact_form_data(contact))
             for contact in contacts
         }
         contact_delete_forms = {
@@ -289,6 +291,7 @@ def contrats_by_num(id_contrat: int) -> ResponseReturnValue:
             bill_form=BillForm(),
             bill_forms=bill_forms,
             contact_delete_forms=contact_delete_forms,
+            association_form=association_form,
         )
 
     # === Gestion de la méthode POST (modification du contrat) ===
@@ -340,55 +343,50 @@ def add_contrats_contact(id_contrat: int) -> ResponseReturnValue:
     :rtype: Response
     """
     tab = 'c'
-    if request.method == 'POST':
-        # Récupération des données du formulaire
-        nom = request.form.get('nomC', '')
-        fonction = request.form.get('fonctionC', '')
-        mail = request.form.get('mailC', '')
-        tel_fixe = request.form.get('telFixeC', '')
-        tel_portable = request.form.get('telPortableC', '')
-        adresse = request.form.get('adresseC', '')
-        code_postal = request.form.get('codePostalC', '')
-        ville = request.form.get('villeC', '')
+    contract = g.db_session.get(Contract, id_contrat)
+    if contract is None:
+        abort(404)
+    form = ContactForm()
+    if not form.validate_on_submit():
+        abort(400)
+    try:
+        contact = Contacts()
+        update_contact(contact, form)
+        contract.contacts.append(contact)
+        g.db_session.commit()
+    except SQLAlchemyError:
+        g.db_session.rollback()
+        return redirect(url_for(DETAIL_CONTRAT, id_contrat=id_contrat, tab=tab,
+                                error_message='Ajout du contact indisponible.'))
+    return redirect(url_for(DETAIL_CONTRAT, id_contrat=id_contrat, tab=tab,
+                            success_message='Contact créé et rattaché au contrat.'))
 
-        try:
-            # Création du contact dans la base de données
-            contact = Contacts(
-                id_contrat=id_contrat,
-                nom=nom,
-                fonction=fonction,
-                mail=mail,
-                tel_fixe=tel_fixe,
-                tel_portable=tel_portable,
-                adresse=adresse,
-                code_postal=code_postal,
-                ville=ville,
-            )
 
-            # Ajout commit de la session
-            g.db_session.add(contact)
-            g.db_session.commit()
-
-            # Message de succès et redirection
-            message = f'Contact {contact.id} ajouté avec succès'
-            return redirect(url_for(
-                DETAIL_CONTRAT,
-                id_contrat=id_contrat,
-                success_message=message,
-                tab=tab,
-            ))
-        except SQLAlchemyError as e:
-            # Message d'erreur et redirection
-            message = f'Erreur lors de l\'ajout du contact : {e}'
-            return redirect(url_for(
-                DETAIL_CONTRAT,
-                id_contrat=id_contrat,
-                error_message=message,
-                tab=tab,
-            ))
-    return redirect(
-        url_for(DETAIL_CONTRAT, id_contrat=id_contrat, error_message=NOT_ALLOWED, tab=tab)
-    )
+@contracts_bp.post('/contrat-<int:id_contrat>/contact/rattacher')
+@validate_habilitation(GESTIONNAIRE)
+def associate_contact(id_contrat: int) -> ResponseReturnValue:
+    """Rattache une fiche existante sans dupliquer ses coordonnées."""
+    contract = g.db_session.get(Contract, id_contrat)
+    if contract is None:
+        abort(404)
+    form = AssociateContactForm()
+    form.contact_id.choices = [(contact.id, contact.nom)
+                               for contact in g.db_session.query(Contacts).all()]
+    if not form.validate_on_submit():
+        abort(400)
+    contact = g.db_session.get(Contacts, form.contact_id.data)
+    if contact is None:
+        abort(404)
+    try:
+        if contact not in contract.contacts:
+            contract.contacts.append(contact)
+        g.db_session.commit()
+    except SQLAlchemyError:
+        g.db_session.rollback()
+        return redirect(url_for(DETAIL_CONTRAT, id_contrat=id_contrat, tab='c',
+                                error_message='Rattachement du contact indisponible.'))
+    return redirect(url_for(DETAIL_CONTRAT, id_contrat=id_contrat, tab='c',
+                            success_message='Contact rattaché au contrat.'))
 
 
 @contracts_bp.route('/contrat-<int:id_contrat>/evenement', methods=['POST'])
@@ -558,55 +556,23 @@ def modif_contact_id(id_contact: int, id_contrat: int) -> ResponseReturnValue:
     :rtype: ResponseReturnValue
     """
     tab = 'c'
-    # === Gestion de la méthode POST (modification d'un contact) ===
-    if request.method == 'POST':
-        # Récupération du formulaire
-        nom = request.form.get('nomC')
-        fonction = request.form.get('fonctionC')
-        mail = request.form.get('mailC')
-        tel_fixe = request.form.get('telFixeC')
-        tel_portable = request.form.get('telPortableC')
-        adresse = request.form.get('adresseC')
-        code_postal = request.form.get('codePostalC')
-        ville = request.form.get('villeC')
-
-        try:
-            # Récupération du contact
-            contact = g.db_session.query(Contacts).filter(Contacts.id == id_contact).first()
-
-            if contact:
-                # Mise à jour des informations du contact
-                contact.id_contrat = id_contrat
-                contact.nom = nom
-                contact.fonction = fonction
-                contact.mail = mail
-                contact.tel_fixe = tel_fixe
-                contact.tel_portable = tel_portable
-                contact.adresse = adresse
-                contact.code_postal = code_postal
-                contact.ville = ville
-
-                # Retour
-                g.db_session.commit()
-
-                message = f'Contact {contact.id} modifié avec succès'
-                return redirect(url_for(
-                        DETAIL_CONTRAT, id_contrat = id_contrat, success_message=message, tab=tab
-                    ))
-            message = f'Contact {id_contact} non trouvé'
-            return redirect(
-                url_for(
-                    DETAIL_CONTRAT, id_contrat = id_contrat, error_message=message, tab=tab
-                )
-            )
-        except SQLAlchemyError:
-            message = f'Erreur lors de la modification du contact {id_contact}'
-            return redirect(
-                url_for(DETAIL_CONTRAT, id_contrat = id_contrat, error_message=message, tab=tab)
-            )
-    return redirect(
-        url_for(DETAIL_CONTRAT, id_contrat = id_contrat, error_message=NOT_ALLOWED, tab=tab)
-    )
+    contact = g.db_session.query(Contacts).filter(
+        Contacts.id == id_contact, Contacts.contrats.any(Contract.id == id_contrat)
+    ).first()
+    if contact is None:
+        abort(404)
+    form = ContactForm()
+    if not form.validate_on_submit():
+        abort(400)
+    try:
+        update_contact(contact, form)
+        g.db_session.commit()
+    except SQLAlchemyError:
+        g.db_session.rollback()
+        return redirect(url_for(DETAIL_CONTRAT, id_contrat=id_contrat, tab=tab,
+                                error_message='Modification du contact indisponible.'))
+    return redirect(url_for(DETAIL_CONTRAT, id_contrat=id_contrat, tab=tab,
+                            success_message='Coordonnées du contact mises à jour dans le carnet.'))
 
 
 @contracts_bp.route('/contrat-<int:id_contrat>/evenement-<int:id_event>', methods=['POST'])
@@ -823,34 +789,22 @@ def delete_contact_id(id_contact: int, id_contrat: int) -> ResponseReturnValue:
         Response: Redirection vers la page de détail du contrat.
     """
     tab = 'c'
-    if request.method == 'POST':
-        try:
-            # Récupération du contact
-            contact = g.db_session.query(Contacts).filter(Contacts.id == id_contact).first()
-
-            if contact:
-                # Suppression du contact
-                g.db_session.delete(contact)
-                g.db_session.commit()
-
-                message = f'Contact {contact.id} supprimé avec succès'
-                return redirect(
-                    url_for(
-                        DETAIL_CONTRAT, id_contrat = id_contrat, success_message=message, tab=tab
-                    )
-                )
-            message = f'Contact {id_contact} non trouvé'
-            return redirect(
-                url_for(DETAIL_CONTRAT, id_contrat = id_contrat, error_message=message, tab=tab)
-            )
-        except SQLAlchemyError as e:
-            message = f'Erreur lors de la suppression du contact {id_contact} : {e}'
-            return redirect(
-                url_for(DETAIL_CONTRAT, id_contrat = id_contrat, error_message=message, tab=tab)
-            )
-    return redirect(
-        url_for(DETAIL_CONTRAT, id_contrat = id_contrat, error_message=NOT_ALLOWED, tab=tab)
-    )
+    form = DeleteContactForm()
+    if not form.validate_on_submit() or form.contact_id.data != str(id_contact):
+        abort(400)
+    contract = g.db_session.get(Contract, id_contrat)
+    contact = g.db_session.get(Contacts, id_contact)
+    if contract is None or contact is None or contact not in contract.contacts:
+        abort(404)
+    try:
+        contract.contacts.remove(contact)
+        g.db_session.commit()
+    except SQLAlchemyError:
+        g.db_session.rollback()
+        return redirect(url_for(DETAIL_CONTRAT, id_contrat=id_contrat, tab=tab,
+                                error_message='Retrait du contact indisponible.'))
+    return redirect(url_for(DETAIL_CONTRAT, id_contrat=id_contrat, tab=tab,
+                            success_message='Contact retiré du contrat ; fiche conservée.'))
 
 
 @contracts_bp.route('/download/<name>', methods=['GET'])

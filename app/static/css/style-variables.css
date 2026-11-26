@@ -108,8 +108,8 @@
   --shadow-card-hover: var(--shadow-lg);
   /* ===== Transitions ===== */
   --transition-fast: 150ms ease-in-out;
-  --transition-base: 300ms ease-in-out;
-  --transition-slow: 500ms ease-in-out;
+  --transition-base: 500ms ease-in-out;
+  --transition-slow: 800ms ease-in-out;
   /* ===== Z-index ===== */
   --z-dropdown: 1000;
   --z-sticky: 1020;
