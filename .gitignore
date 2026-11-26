@@ -19,6 +19,7 @@ sql/test_user.sql
 *.bak
 *.backup
 *.old
+*.tar.gz
 
 # Tous les documents uploadés sauf .gitkeep
 documents/*

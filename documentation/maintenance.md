@@ -78,7 +78,7 @@ find $BACKUP_DIR -name "*.tar.gz" -mtime +30 -delete
 
 ```bash
 # Restaurer la base de données
-docker-compose exec -T db mysql -u root -p$(grep ROOT_PASSWORD .env | cut -d'=' -f2) $(grep DB_NAME .env | cut -d'=' -f2) < backup_file.sql
+docker-compose exec -T db mariadb -u root -p$(grep ROOT_PASSWORD .env | cut -d'=' -f2) $(grep DB_NAME .env | cut -d'=' -f2) < backup_file.sql
 
 # Restaurer les documents  
 tar -xzf documents_backup.tar.gz -C /
@@ -231,6 +231,14 @@ grep "403\|404\|500" docker-compose logs nginx
 ```
 
 ## 🚨 Procédures d'Urgence
+
+### Erreur de récupération MariaDB (`Bad magic header in tc log`)
+
+Après un arrêt brutal, MariaDB peut ne pas démarrer si son journal `tc.log` est
+corrompu. Consultez la [procédure détaillée et le script de récupération
+idempotent](./recovery-mariadb-tc-log.md). Ne supprimez pas les fichiers InnoDB
+et ne choisissez pas `--tc-heuristic-recover=COMMIT` ou `ROLLBACK` sans avoir
+vérifié l'usage des transactions XA.
 
 ### En cas de panne
 
