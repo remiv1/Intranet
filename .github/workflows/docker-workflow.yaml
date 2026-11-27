@@ -85,6 +85,7 @@ jobs:
             cp .env.example .env
             cat .env
           fi
+          mkdir -p ttlama/config
           touch ttlama/config/.env
           echo "Chargement des variables d'environnement:"
           source .env
@@ -173,6 +174,7 @@ jobs:
             cp .env.example .env
             cat .env
           fi
+          mkdir -p ttlama/config
           touch ttlama/config/.env
           echo "API_MAIL_TOKEN=$(openssl rand -hex 32)" >> .env
           echo "Chargement des variables d'environnement:"
