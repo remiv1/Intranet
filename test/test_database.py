@@ -49,6 +49,7 @@ def test_contact_migration_preserves_existing_links(
 
     connection, migration = contact_migration
     migration.upgrade()
+    migration.upgrade()
     assert connection.execute(
         text(
             'SELECT * FROM "02_contacts_contrats" ORDER BY id_contact'
@@ -61,6 +62,39 @@ def test_contact_migration_preserves_existing_links(
     assert connection.execute(
         text('SELECT id, id_contrat FROM "02_contacts" ORDER BY id')
     ).all() == [(1, 1), (2, 2)]
+
+
+@pytest.mark.parametrize('existing_index', [False, True])
+def test_contact_migration_resumes_precreated_table(
+    contact_migration: tuple[Connection, ModuleType], existing_index: bool,
+) -> None:
+    """Reprend une table existante sans perdre ni dupliquer ses associations."""
+    from sqlalchemy import inspect # pylint: disable=C0415
+
+    connection, migration = contact_migration
+    connection.execute(text(
+        'CREATE TABLE "02_contacts_contrats" ('
+        'id_contact INTEGER NOT NULL REFERENCES "02_contacts" (id) ON DELETE CASCADE, '
+        'id_contrat INTEGER NOT NULL REFERENCES "01_contrats" (id) ON DELETE CASCADE, '
+        'PRIMARY KEY (id_contact, id_contrat))'
+    ))
+    connection.execute(text('INSERT INTO "02_contacts_contrats" VALUES (1, 1), (1, 2)'))
+    if existing_index:
+        connection.execute(text(
+            'CREATE INDEX ix_02_contacts_contrats_id_contrat '
+            'ON "02_contacts_contrats" (id_contrat)'
+        ))
+
+    migration.upgrade()
+
+    assert connection.execute(text(
+        'SELECT * FROM "02_contacts_contrats" ORDER BY id_contact, id_contrat'
+    )).all() == [(1, 1), (1, 2), (2, 2)]
+    assert 'id_contrat' not in {
+        column['name'] for column in inspect(connection).get_columns('02_contacts')
+    }
+    assert any(index['column_names'] == ['id_contrat']
+               for index in inspect(connection).get_indexes('02_contacts_contrats'))
 
 
 @pytest.mark.parametrize('multiple', [False, True])

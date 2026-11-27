@@ -15,8 +15,8 @@
 --   -e "s|__DB_NAME__|${DB_NAME}|g" \
 --   -e "s|__DB_USER__|${DB_USER}|g" \
 --   -e "s|__DB_PASSWORD__|${DB_PASSWORD}|g" \
---   database/provision_ttl_lama.sql \
--- | docker exec -T db mariadb -u root -p"${MARIADB_ROOT_PASSWORD}"
+--   database/261126_ProvisionTTL-LAMa.sql \
+-- | docker compose exec -T db mariadb -u root -p"${MARIADB_ROOT_PASSWORD}"
 -- ```
 
 

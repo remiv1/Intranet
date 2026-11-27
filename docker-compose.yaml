@@ -73,7 +73,9 @@ services:
       - intranet_net
 
   ttl-lama:
-    image: ghcr.io/remiv1/ttl-lama:latest
+    image: ghcr.io/remiv1/ttl-lama:0.1.2-arm64
+    group_add:
+      - "989"
     container_name: ttl-lama
     restart: always
     env_file:

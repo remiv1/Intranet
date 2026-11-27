@@ -18,22 +18,39 @@ ASSOCIATIONS = sa.table('02_contacts_contrats', sa.column('id_contact'), sa.colu
 def upgrade() -> None:
     """Conserve tous les rattachements existants dans la table d'association."""
     connection = op.get_bind() # pylint: disable=E1101
-    foreign_keys = sa.inspect(connection).get_foreign_keys('02_contacts')
-    op.create_table( # pylint: disable=E1101
-        '02_contacts_contrats',
-        sa.Column('id_contact', sa.Integer(), nullable=False),
-        sa.Column('id_contrat', sa.Integer(), nullable=False),
-        sa.ForeignKeyConstraint(['id_contact'], ['02_contacts.id'], ondelete='CASCADE'),
-        sa.ForeignKeyConstraint(['id_contrat'], ['01_contrats.id'], ondelete='CASCADE'),
-        sa.PrimaryKeyConstraint('id_contact', 'id_contrat'),
+    inspector = sa.inspect(connection)
+    has_legacy_column = any(
+        column['name'] == 'id_contrat' for column in inspector.get_columns('02_contacts')
     )
-    op.create_index( # pylint: disable=E1101
-        'ix_02_contacts_contrats_id_contrat',
-        '02_contacts_contrats',
-        ['id_contrat'],
-    )
+    if not inspector.has_table('02_contacts_contrats'):
+        if not has_legacy_column:
+            raise RuntimeError(
+                "Migration impossible : table d'association et ancienne colonne absentes."
+            )
+        op.create_table( # pylint: disable=E1101
+            '02_contacts_contrats',
+            sa.Column('id_contact', sa.Integer(), nullable=False),
+            sa.Column('id_contrat', sa.Integer(), nullable=False),
+            sa.ForeignKeyConstraint(['id_contact'], ['02_contacts.id'], ondelete='CASCADE'),
+            sa.ForeignKeyConstraint(['id_contrat'], ['01_contrats.id'], ondelete='CASCADE'),
+            sa.PrimaryKeyConstraint('id_contact', 'id_contrat'),
+        )
+    indexes = sa.inspect(connection).get_indexes('02_contacts_contrats')
+    if not any(index['column_names'] == ['id_contrat'] for index in indexes):
+        op.create_index( # pylint: disable=E1101
+            'ix_02_contacts_contrats_id_contrat',
+            '02_contacts_contrats',
+            ['id_contrat'],
+        )
+    if not has_legacy_column:
+        return
+    foreign_keys = inspector.get_foreign_keys('02_contacts')
     connection.execute(ASSOCIATIONS.insert().from_select(
-        ['id_contact', 'id_contrat'], sa.select(CONTACTS.c.id, CONTACTS.c.id_contrat)
+        ['id_contact', 'id_contrat'],
+        sa.select(CONTACTS.c.id, CONTACTS.c.id_contrat).where(~sa.exists().where(
+            ASSOCIATIONS.c.id_contact == CONTACTS.c.id,
+            ASSOCIATIONS.c.id_contrat == CONTACTS.c.id_contrat,
+        )),
     ))
     with op.batch_alter_table(
         '02_contacts',
